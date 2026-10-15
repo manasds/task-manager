@@ -32,6 +32,7 @@ export interface Activity {
   notes?: string;
   completedAt?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CategoryMeta {

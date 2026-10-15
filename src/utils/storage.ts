@@ -1,7 +1,7 @@
 import { Activity } from '../types/activity';
 
-const STORAGE_KEY = 'orbittask_activities_v1';
-const GOAL_STORAGE_KEY = 'orbittask_daily_goal_minutes';
+export const STORAGE_KEY = 'orbittask_activities_v1';
+export const GOAL_STORAGE_KEY = 'orbittask_daily_goal_minutes';
 
 export function getTodayDateString(): string {
   const now = new Date();
@@ -417,21 +417,15 @@ export function generateInitialActivities(): Activity[] {
 }
 
 export function loadActivities(): Activity[] {
-  if (typeof window === 'undefined') return generateInitialActivities();
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const initial = generateInitialActivities();
-      saveActivities(initial);
-      return initial;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-    return generateInitialActivities();
+    if (Array.isArray(parsed)) return parsed;
+    return [];
   } catch {
-    return generateInitialActivities();
+    return [];
   }
 }
 

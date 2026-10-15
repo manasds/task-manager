@@ -12,6 +12,10 @@ import {
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import { PWAInstallButton } from './PWAInstallButton';
+import { AuthPanel } from './AuthPanel';
+import { SyncStatus } from './SyncStatus';
+import { CloudUser, FlushReason } from '../types/document';
+import { SyncPhase } from '../hooks/useSessionPersistence';
 
 export type ActiveTab = 'board' | 'planner' | 'analytics';
 
@@ -24,6 +28,15 @@ interface NavbarProps {
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  user: CloudUser | null;
+  syncPhase: SyncPhase;
+  lastError: string | null;
+  lastFlushReason: FlushReason | null;
+  lastSyncedAt: string | null;
+  onAuth: (mode: 'signin' | 'signup', email: string, password: string) => Promise<void>;
+  onFlush: () => void;
+  onSignOut: () => void;
+  showResetDemo: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -35,6 +48,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   onImportData,
   isMuted,
   onToggleMute,
+  user,
+  syncPhase,
+  lastError,
+  lastFlushReason,
+  lastSyncedAt,
+  onAuth,
+  onFlush,
+  onSignOut,
+  showResetDemo,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -115,16 +137,36 @@ export const Navbar: React.FC<NavbarProps> = ({
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
 
+            <div className="hidden xl:flex items-center">
+              <SyncStatus
+                user={user}
+                phase={syncPhase}
+                lastError={lastError}
+                lastFlushReason={lastFlushReason}
+                lastSyncedAt={lastSyncedAt}
+                onFlush={onFlush}
+                onSignOut={onSignOut}
+              />
+            </div>
+
+            {!user && (
+              <div className="hidden lg:block">
+                <AuthPanel compact onSubmit={onAuth} />
+              </div>
+            )}
+
             {/* Quick Demo Reset / Export on desktop */}
             <div className="hidden lg:flex items-center gap-1 border-r border-slate-200 pr-2 mr-1">
-              <button
-                onClick={onResetData}
-                title="Reset to sample activities"
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors whitespace-nowrap"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-                <span>Reset Demo</span>
-              </button>
+              {showResetDemo && (
+                <button
+                  onClick={onResetData}
+                  title="Load sample activities on this device"
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors whitespace-nowrap"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Load demo</span>
+                </button>
+              )}
               <button
                 onClick={onExportData}
                 title="Export activities as JSON"
