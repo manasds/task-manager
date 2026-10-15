@@ -1,0 +1,89 @@
+import React from 'react';
+import { Kanban, Calendar, BarChart3, Plus } from 'lucide-react';
+import { ActiveTab } from './Navbar';
+import { soundManager } from '../utils/audio';
+
+interface MobileBottomNavProps {
+  activeTab: ActiveTab;
+  onTabChange: (tab: ActiveTab) => void;
+  onOpenNewTaskModal: () => void;
+}
+
+export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
+  activeTab,
+  onTabChange,
+  onOpenNewTaskModal,
+}) => {
+  const handleTabClick = (tab: ActiveTab) => {
+    soundManager.playDragStart();
+    onTabChange(tab);
+  };
+
+  return (
+    <nav 
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-1 shadow-lg"
+      aria-label="Mobile Navigation"
+    >
+      <div className="grid grid-cols-4 items-center h-14 max-w-md mx-auto">
+        
+        {/* Tab 1: Board */}
+        <button
+          onClick={() => handleTabClick('board')}
+          className={`flex flex-col items-center justify-center min-h-[44px] min-w-[44px] rounded-xl transition-all ${
+            activeTab === 'board'
+              ? 'text-indigo-600 font-semibold'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+          aria-label="Board View"
+        >
+          <Kanban className={`w-5 h-5 ${activeTab === 'board' ? 'stroke-[2.5]' : ''}`} />
+          <span className="text-[10px] tracking-tight mt-0.5">Board</span>
+        </button>
+
+        {/* Tab 2: Planner */}
+        <button
+          onClick={() => handleTabClick('planner')}
+          className={`flex flex-col items-center justify-center min-h-[44px] min-w-[44px] rounded-xl transition-all ${
+            activeTab === 'planner'
+              ? 'text-indigo-600 font-semibold'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+          aria-label="Day Planner View"
+        >
+          <Calendar className={`w-5 h-5 ${activeTab === 'planner' ? 'stroke-[2.5]' : ''}`} />
+          <span className="text-[10px] tracking-tight mt-0.5">Planner</span>
+        </button>
+
+        {/* Tab 3: Charts / Analytics */}
+        <button
+          onClick={() => handleTabClick('analytics')}
+          className={`flex flex-col items-center justify-center min-h-[44px] min-w-[44px] rounded-xl transition-all ${
+            activeTab === 'analytics'
+              ? 'text-indigo-600 font-semibold'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+          aria-label="Analytics & Charts"
+        >
+          <BarChart3 className={`w-5 h-5 ${activeTab === 'analytics' ? 'stroke-[2.5]' : ''}`} />
+          <span className="text-[10px] tracking-tight mt-0.5">Charts</span>
+        </button>
+
+        {/* Action: Quick Add Activity in Natural Thumb Zone */}
+        <button
+          onClick={() => {
+            soundManager.playDragStart();
+            onOpenNewTaskModal();
+          }}
+          className="flex flex-col items-center justify-center min-h-[44px] min-w-[44px] text-indigo-600 hover:text-indigo-700 active:scale-95 transition-transform"
+          aria-label="Add New Activity"
+        >
+          <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+          </div>
+          <span className="text-[10px] font-semibold text-slate-800 tracking-tight mt-0.5">New</span>
+        </button>
+
+      </div>
+    </nav>
+  );
+};
