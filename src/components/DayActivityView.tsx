@@ -5,8 +5,8 @@ import { DayDateNav } from './DayDateNav';
 import {
   TIMELINE_HOURS,
   formatMinutes,
-  sessionBlockStyle,
-  sessionDate,
+  sessionBlockStyleForDate,
+  sessionOnLocalDate,
   taskStatsForDate,
 } from '../utils/workSessions';
 
@@ -30,7 +30,7 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
 
   const timelineSessions = activities.flatMap((activity) =>
     (activity.workSessions ?? [])
-      .filter((s) => sessionDate(s) === selectedDate)
+      .filter((s) => sessionOnLocalDate(s, selectedDate))
       .map((session) => ({ session, activity }))
   );
 
@@ -154,26 +154,39 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
             <div className="relative ml-[4.5rem] sm:ml-20 mr-3 sm:mr-4 h-full pointer-events-auto">
               {timelineSessions.map(({ session, activity }) => {
                 const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
-                const { top, height } = sessionBlockStyle(session, ROW_HEIGHT_PX);
+                const block = sessionBlockStyleForDate(session, selectedDate, ROW_HEIGHT_PX);
+                if (!block) return null;
+
+                const { top, height, clippedStart, clippedEnd } = block;
                 const startTime = new Date(session.start).toLocaleTimeString('en-US', {
                   hour: '2-digit',
                   minute: '2-digit',
                   hour12: false,
                 });
+                const clipLabel =
+                  clippedStart && clippedEnd
+                    ? ' · outside grid'
+                    : clippedStart
+                      ? ' · starts earlier'
+                      : clippedEnd
+                        ? ' · continues later'
+                        : '';
 
                 return (
                   <button
-                    key={session.id}
+                    key={`${session.id}-${selectedDate}`}
                     type="button"
                     onClick={() => onEditActivity(activity)}
-                    className="absolute left-0 right-0 rounded-lg px-2 py-1 text-left overflow-hidden border shadow-xs transition-opacity hover:opacity-90"
+                    className={`absolute left-0 right-0 rounded-lg px-2 py-1 text-left overflow-hidden border shadow-xs transition-opacity hover:opacity-90 ${
+                      clippedStart || clippedEnd ? 'border-dashed' : ''
+                    }`}
                     style={{
                       top,
                       height,
                       backgroundColor: categoryMeta.lightBg,
                       borderColor: categoryMeta.borderColor,
                     }}
-                    title={`${activity.title} · ${session.minutes}m`}
+                    title={`${activity.title} · ${session.minutes}m${clipLabel}`}
                   >
                     <div
                       className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
@@ -181,6 +194,9 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
                     />
                     <p className="text-[10px] font-bold text-slate-900 truncate pl-1.5">
                       {activity.title}
+                      {(clippedStart || clippedEnd) && (
+                        <span className="text-slate-400 font-normal"> ···</span>
+                      )}
                     </p>
                     <p className="text-[9px] text-slate-500 tabular-nums pl-1.5">
                       {startTime} · {session.minutes}m

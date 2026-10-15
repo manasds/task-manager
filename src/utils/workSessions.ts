@@ -10,6 +10,22 @@ export const TIMELINE_START_MINUTES = 7 * 60;
 export const TIMELINE_END_MINUTES = 23 * 60;
 export const TIMELINE_SPAN_MINUTES = TIMELINE_END_MINUTES - TIMELINE_START_MINUTES;
 
+const MIN_BLOCK_MINUTES = 20;
+
+/** Local calendar date YYYY-MM-DD (matches getTodayDateString). */
+export function localDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/** Midnight at the start of a local calendar date. */
+export function parseLocalDate(date: string): Date {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
 export function createWorkSession(activityId: string, minutes: number): WorkSession {
   const end = new Date();
   const start = new Date(end.getTime() - minutes * 60 * 1000);
@@ -23,15 +39,52 @@ export function createWorkSession(activityId: string, minutes: number): WorkSess
 }
 
 export function sessionDate(session: WorkSession): string {
-  return session.start.split('T')[0];
+  return localDateString(new Date(session.start));
+}
+
+export function sessionEndDate(session: WorkSession): string {
+  return localDateString(new Date(session.end));
+}
+
+export function sessionOnLocalDate(session: WorkSession, date: string): boolean {
+  const startDate = sessionDate(session);
+  const endDate = sessionEndDate(session);
+  return startDate === date || endDate === date;
+}
+
+export function clipSessionToDate(
+  session: WorkSession,
+  date: string
+): { start: Date; end: Date } | null {
+  const dayStart = parseLocalDate(date);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  const sessionStart = new Date(session.start);
+  const sessionEnd = new Date(session.end);
+  const visibleStart = new Date(Math.max(sessionStart.getTime(), dayStart.getTime()));
+  const visibleEnd = new Date(Math.min(sessionEnd.getTime(), dayEnd.getTime()));
+
+  if (visibleEnd.getTime() <= visibleStart.getTime()) return null;
+  return { start: visibleStart, end: visibleEnd };
 }
 
 export function sessionsOnDate(activity: Activity, date: string): WorkSession[] {
-  return (activity.workSessions ?? []).filter((s) => sessionDate(s) === date);
+  return (activity.workSessions ?? []).filter((s) => sessionOnLocalDate(s, date));
+}
+
+export function sessionMinutesOnDate(session: WorkSession, date: string): number {
+  const clipped = clipSessionToDate(session, date);
+  if (!clipped) return 0;
+  return Math.round((clipped.end.getTime() - clipped.start.getTime()) / 60_000);
 }
 
 export function totalSessionMinutes(sessions: WorkSession[]): number {
   return sessions.reduce((sum, s) => sum + s.minutes, 0);
+}
+
+export function timedMinutesOnDate(sessions: WorkSession[], date: string): number {
+  return sessions.reduce((sum, s) => sum + sessionMinutesOnDate(s, date), 0);
 }
 
 export function allSessionMinutes(activity: Activity): number {
@@ -54,9 +107,8 @@ export function taskStatsForDate(activities: Activity[], date: string): TaskDayS
 
   for (const activity of activities) {
     const daySessions = sessionsOnDate(activity, date);
-    const timedMinutes = totalSessionMinutes(daySessions);
-    const untimed =
-      activity.date === date || daySessions.length > 0 ? untimedMinutes(activity) : 0;
+    const timedMinutes = timedMinutesOnDate(daySessions, date);
+    const untimed = activity.date === date ? untimedMinutes(activity) : 0;
     const totalMinutes = timedMinutes + untimed;
 
     if (totalMinutes > 0) {
@@ -79,23 +131,58 @@ export function mergeWorkSessions(
   );
 }
 
-export function minutesFromMidnight(iso: string): number {
-  const d = new Date(iso);
-  return d.getHours() * 60 + d.getMinutes();
+export function minutesFromDayStart(d: Date, dayStart: Date): number {
+  return (d.getTime() - dayStart.getTime()) / 60_000;
 }
 
-export function sessionBlockStyle(
+export interface SessionBlockStyle {
+  top: number;
+  height: number;
+  clippedStart: boolean;
+  clippedEnd: boolean;
+}
+
+export function sessionBlockStyleForDate(
   session: WorkSession,
+  date: string,
   rowHeightPx: number
-): { top: number; height: number } {
-  const startMin = minutesFromMidnight(session.start);
-  const endMin = minutesFromMidnight(session.end);
-  const top = ((startMin - TIMELINE_START_MINUTES) / TIMELINE_SPAN_MINUTES) * rowHeightPx * TIMELINE_HOURS.length;
+): SessionBlockStyle | null {
+  const clipped = clipSessionToDate(session, date);
+  if (!clipped) return null;
+
+  const dayStart = parseLocalDate(date);
+  const gridHeight = TIMELINE_HOURS.length * rowHeightPx;
+  const rawStartMin = minutesFromDayStart(clipped.start, dayStart);
+  const rawEndMin = minutesFromDayStart(clipped.end, dayStart);
+
+  let clippedStart = rawStartMin < TIMELINE_START_MINUTES;
+  let clippedEnd = rawEndMin > TIMELINE_END_MINUTES;
+
+  let displayStartMin = Math.max(rawStartMin, TIMELINE_START_MINUTES);
+  let displayEndMin = Math.min(rawEndMin, TIMELINE_END_MINUTES);
+
+  if (displayEndMin <= displayStartMin) {
+    if (rawEndMin <= TIMELINE_START_MINUTES) {
+      displayStartMin = TIMELINE_START_MINUTES;
+      displayEndMin = TIMELINE_START_MINUTES + MIN_BLOCK_MINUTES;
+      clippedStart = true;
+      clippedEnd = true;
+    } else {
+      displayEndMin = TIMELINE_END_MINUTES;
+      displayStartMin = TIMELINE_END_MINUTES - MIN_BLOCK_MINUTES;
+      clippedStart = true;
+      clippedEnd = true;
+    }
+  }
+
+  const top =
+    ((displayStartMin - TIMELINE_START_MINUTES) / TIMELINE_SPAN_MINUTES) * gridHeight;
   const height = Math.max(
-    ((endMin - startMin) / TIMELINE_SPAN_MINUTES) * rowHeightPx * TIMELINE_HOURS.length,
+    ((displayEndMin - displayStartMin) / TIMELINE_SPAN_MINUTES) * gridHeight,
     20
   );
-  return { top, height };
+
+  return { top, height, clippedStart, clippedEnd };
 }
 
 export function formatMinutes(minutes: number): string {
