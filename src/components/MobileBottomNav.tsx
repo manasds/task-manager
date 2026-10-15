@@ -21,7 +21,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
   return (
     <nav 
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-1 shadow-lg"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-lg"
       aria-label="Mobile Navigation"
     >
       <div className="grid grid-cols-4 items-center h-14 max-w-md mx-auto">
@@ -29,7 +29,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {/* Tab 1: Board */}
         <button
           onClick={() => handleTabClick('board')}
-          className={`flex flex-col items-center justify-center min-h-[44px] min-w-[44px] rounded-xl transition-all ${
+          className={`flex flex-col items-center justify-center min-h-11 min-w-11 rounded-xl transition-all ${
             activeTab === 'board'
               ? 'text-indigo-600 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
@@ -43,7 +43,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {/* Tab 2: Planner */}
         <button
           onClick={() => handleTabClick('planner')}
-          className={`flex flex-col items-center justify-center min-h-[44px] min-w-[44px] rounded-xl transition-all ${
+          className={`flex flex-col items-center justify-center min-h-11 min-w-11 rounded-xl transition-all ${
             activeTab === 'planner'
               ? 'text-indigo-600 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
@@ -57,7 +57,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {/* Tab 3: Charts / Analytics */}
         <button
           onClick={() => handleTabClick('analytics')}
-          className={`flex flex-col items-center justify-center min-h-[44px] min-w-[44px] rounded-xl transition-all ${
+          className={`flex flex-col items-center justify-center min-h-11 min-w-11 rounded-xl transition-all ${
             activeTab === 'analytics'
               ? 'text-indigo-600 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
@@ -74,7 +74,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             soundManager.playDragStart();
             onOpenNewTaskModal();
           }}
-          className="flex flex-col items-center justify-center min-h-[44px] min-w-[44px] text-indigo-600 hover:text-indigo-700 active:scale-95 transition-transform"
+          className="flex flex-col items-center justify-center min-h-11 min-w-11 text-indigo-600 hover:text-indigo-700 active:scale-95 transition-transform"
           aria-label="Add New Activity"
         >
           <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-xs">

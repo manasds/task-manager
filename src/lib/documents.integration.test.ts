@@ -5,12 +5,11 @@ import { emptyDocument } from '../utils/syncPolicy';
 
 describe('postgres document writes', () => {
   it('rejects a stale revision so session flushes cannot silently clobber', async (t) => {
-    if (!process.env.DATABASE_URL) {
+    const { configuredDatabaseUrl, migrate, pool } = await import('./db');
+    if (!configuredDatabaseUrl()) {
       t.skip('DATABASE_URL not set');
       return;
     }
-
-    const { migrate, pool } = await import('./db');
     const { insertTestUser } = await import('./auth');
     const { saveDocument, getDocument } = await import('./documents');
 

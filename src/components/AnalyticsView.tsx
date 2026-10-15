@@ -140,7 +140,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
       
       {/* Analytics Header & Scope Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
         <div>
           <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-indigo-600" />
@@ -155,7 +155,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
             <button
               onClick={() => setTimeframe('7days')}
-              className={`flex-1 sm:flex-initial min-h-[36px] px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+              className={`flex-1 sm:flex-initial min-h-9 px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
                 timeframe === '7days' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
               }`}
             >
@@ -163,7 +163,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             </button>
             <button
               onClick={() => setTimeframe('14days')}
-              className={`flex-1 sm:flex-initial min-h-[36px] px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+              className={`flex-1 sm:flex-initial min-h-9 px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
                 timeframe === '14days' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
               }`}
             >
@@ -193,7 +193,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
                 <button
                   onClick={() => setVelocityMetric('hours')}
-                  className={`min-h-[36px] px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
+                  className={`min-h-9 px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
                     velocityMetric === 'hours' ? 'bg-white text-slate-900 shadow-2xs font-semibold' : 'text-slate-600'
                   }`}
                 >
@@ -201,7 +201,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 </button>
                 <button
                   onClick={() => setVelocityMetric('tasks')}
-                  className={`min-h-[36px] px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
+                  className={`min-h-9 px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
                     velocityMetric === 'tasks' ? 'bg-white text-slate-900 shadow-2xs font-semibold' : 'text-slate-600'
                   }`}
                 >
@@ -225,7 +225,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 </div>
               )}
 
-              <div className="h-48 sm:h-56 flex items-end justify-between gap-1.5 sm:gap-3 px-1 border-b border-slate-100 min-w-[280px]">
+              <div className="h-48 sm:h-56 flex items-end justify-between gap-1.5 sm:gap-3 px-1 border-b border-slate-100 min-w-70">
                 {daySeries.map((d, idx) => {
                   const val = velocityMetric === 'hours' ? d.hours : d.completedTasks;
                   const max = velocityMetric === 'hours' ? maxHours : maxTasks;
@@ -257,7 +257,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         </div>
                       )}
 
-                      <div className="w-full max-w-[36px] flex flex-col justify-end items-center h-full">
+                      <div className="w-full max-w-9 flex flex-col justify-end items-center h-full">
                         <div
                           className={`w-full rounded-t-lg transition-all duration-300 ${
                             isHovered
@@ -368,7 +368,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 step="30"
                 value={dailyGoalMinutes}
                 onChange={(e) => onUpdateDailyGoal(parseInt(e.target.value, 10))}
-                className="w-full accent-indigo-600 cursor-pointer min-h-[36px]"
+                className="w-full accent-indigo-600 cursor-pointer min-h-9"
               />
               <div className="flex justify-between text-[10px] text-slate-400 font-mono">
                 <span>2 hrs</span>
@@ -460,7 +460,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 </div>
               </div>
 
-              {/* Category Breakdown Cards with min-h-[38px] */}
+              {/* Category Breakdown Cards with min-h-9.5 */}
               <div className="sm:col-span-7 space-y-1">
                 {donutSlices.map((slice) => (
                   <div
@@ -468,7 +468,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     onClick={() => setHoveredCategory(hoveredCategory === slice.category ? null : slice.category)}
                     onMouseEnter={() => setHoveredCategory(slice.category)}
                     onMouseLeave={() => setHoveredCategory(null)}
-                    className={`flex items-center justify-between p-2 rounded-xl border transition-colors cursor-pointer min-h-[40px] ${
+                    className={`flex items-center justify-between p-2 rounded-xl border transition-colors cursor-pointer min-h-10 ${
                       hoveredCategory === slice.category
                         ? 'bg-slate-50 border-slate-300 shadow-2xs'
                         : 'border-transparent hover:bg-slate-50/60'

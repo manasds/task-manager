@@ -1,8 +1,7 @@
-const CACHE_NAME = 'orbittask-cache-v1';
+const CACHE_NAME = 'orbittask-cache-v2';
 
 const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
   '/manifest.json',
   '/icon.svg',
   '/apple-touch-icon.png',
@@ -38,8 +37,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Ignore non-GET requests
+  // Ignore non-GET requests. Auth callbacks and document sync must hit the network.
   if (event.request.method !== 'GET') return;
+  if (url.pathname.startsWith('/api/')) return;
 
   // Cache-first for Google Fonts
   if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
@@ -73,7 +73,7 @@ self.addEventListener('fetch', (event) => {
         if (cached) return cached;
         // Fallback to index.html for navigation requests when offline
         if (event.request.mode === 'navigate') {
-          const fallback = await caches.match('/index.html');
+          const fallback = await caches.match('/');
           if (fallback) return fallback;
         }
         return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });

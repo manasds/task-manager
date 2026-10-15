@@ -22,6 +22,15 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  return writeDocument(request);
+}
+
+/** sendBeacon can only POST. Tab-hide sync uses it. */
+export async function POST(request: Request) {
+  return writeDocument(request);
+}
+
+async function writeDocument(request: Request) {
   try {
     await ensureMigrated();
     const user = await getSessionUser();

@@ -6,6 +6,7 @@ import {
   emptyDocument,
   isLikelyDemoDocument,
   mergeDocuments,
+  resolveBootDocument,
   shouldFlushOnSessionEnd,
   shouldSafetyFlush,
   SAFETY_FLUSH_MS,
@@ -86,5 +87,40 @@ describe('document merge', () => {
     });
     assert.equal(isLikelyDemoDocument(demo), true);
     assert.equal(isLikelyDemoDocument(emptyDocument()), false);
+  });
+});
+
+describe('boot document resolution', () => {
+  const server = {
+    revision: 5,
+    document: doc({
+      activities: [activity({ id: 'beaconed', updatedAt: '2026-10-15T11:00:00.000Z' })],
+    }),
+  };
+
+  it('keeps edits made after a beacon whose new revision was never seen', () => {
+    const local = doc({
+      activities: [
+        activity({ id: 'beaconed', updatedAt: '2026-10-15T11:00:00.000Z' }),
+        activity({ id: 'after-beacon', updatedAt: '2026-10-15T11:05:00.000Z' }),
+      ],
+    });
+    const resolved = resolveBootDocument(local, 4, true, server);
+    assert.equal(resolved.dirty, true);
+    assert.deepEqual(resolved.document.activities.map((a) => a.id).sort(), ['after-beacon', 'beaconed']);
+  });
+
+  it('re-flushes unconfirmed edits even when the revision still matches', () => {
+    const local = doc({ activities: [activity({ id: 'offline-edit' })] });
+    const resolved = resolveBootDocument(local, 5, true, server);
+    assert.equal(resolved.dirty, true);
+    assert.equal(resolved.document, local);
+  });
+
+  it('takes the server copy when local is clean and behind', () => {
+    const local = doc({ activities: [activity({ id: 'old' })] });
+    const resolved = resolveBootDocument(local, 3, false, server);
+    assert.equal(resolved.dirty, false);
+    assert.equal(resolved.document, server.document);
   });
 });

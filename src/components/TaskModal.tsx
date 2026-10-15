@@ -171,7 +171,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-slate-700 active:bg-slate-100 rounded-xl transition-colors"
+            className="min-h-11 min-w-11 flex items-center justify-center text-slate-400 hover:text-slate-700 active:bg-slate-100 rounded-xl transition-colors"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -179,14 +179,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
           {error && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-medium">
               {error}
             </div>
           )}
 
-          {/* Title input with min-h-[44px] */}
+          {/* Title input with min-h-11 */}
           <div className="space-y-1.5">
             <label className="font-semibold text-slate-700 text-xs">Activity Title *</label>
             <input
@@ -195,7 +196,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               placeholder="e.g. Architect Database Caching Layer"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-sm font-medium px-3.5 min-h-[44px] border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="w-full text-sm font-medium px-3.5 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             />
           </div>
 
@@ -206,7 +207,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ActivityCategory)}
-                className="w-full px-3 min-h-[44px] border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
+                className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
               >
                 {Object.values(CATEGORIES).map((c) => (
                   <option key={c.id} value={c.id}>
@@ -221,7 +222,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as ActivityPriority)}
-                className="w-full px-3 min-h-[44px] border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
+                className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
               >
                 <option value="urgent">Urgent</option>
                 <option value="high">High</option>
@@ -238,7 +239,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ActivityStatus)}
-                className="w-full px-3 min-h-[44px] border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
+                className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
               >
                 <option value="backlog">Planned & Queued</option>
                 <option value="in_progress">In Progress</option>
@@ -257,7 +258,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   step="5"
                   value={estimatedMinutes}
                   onChange={(e) => setEstimatedMinutes(Math.max(5, parseInt(e.target.value, 10) || 5))}
-                  className="w-full px-3 min-h-[44px] border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 font-mono tabular-nums text-xs"
+                  className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 font-mono tabular-nums text-xs"
                 />
                 <span className="text-slate-500 shrink-0 font-medium">min</span>
               </div>
@@ -272,7 +273,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 type="button"
                 key={mins}
                 onClick={() => setEstimatedMinutes(mins)}
-                className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-semibold tabular-nums transition-colors active:scale-95 ${
+                className={`min-h-9 px-3 py-1.5 rounded-xl text-xs font-semibold tabular-nums transition-colors active:scale-95 ${
                   estimatedMinutes === mins
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -291,7 +292,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 min-h-[44px] border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 text-xs"
+                className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 text-xs"
               />
             </div>
 
@@ -301,7 +302,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 type="time"
                 value={scheduledTime}
                 onChange={(e) => setScheduledTime(e.target.value)}
-                className="w-full px-3 min-h-[44px] border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 font-mono text-xs"
+                className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 font-mono text-xs"
               />
             </div>
           </div>
@@ -336,7 +337,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleToggleSubtask(sub.id)}
-                    className="flex items-center gap-2.5 min-w-0 text-left min-h-[36px]"
+                    className="flex items-center gap-2.5 min-w-0 text-left min-h-9"
                   >
                     {sub.completed ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -354,7 +355,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleRemoveSubtask(sub.id)}
-                    className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-rose-600 rounded-lg"
+                    className="min-h-9 min-w-9 flex items-center justify-center text-slate-400 hover:text-rose-600 rounded-lg"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -374,12 +375,12 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     handleAddSubtask();
                   }
                 }}
-                className="flex-1 px-3 min-h-[44px] border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 text-xs"
+                className="flex-1 px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 text-xs"
               />
               <button
                 type="button"
                 onClick={handleAddSubtask}
-                className="min-h-[44px] px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-semibold text-xs active:scale-95 transition-transform"
+                className="min-h-11 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-semibold text-xs active:scale-95 transition-transform"
               >
                 Add
               </button>
@@ -411,23 +412,23 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
-                className="px-3 min-h-[36px] border border-slate-200 rounded-xl text-xs w-32 focus:outline-hidden focus:border-indigo-500"
+                className="px-3 min-h-9 border border-slate-200 rounded-xl text-xs w-32 focus:outline-hidden focus:border-indigo-500"
               />
             </div>
           </div>
 
-          {/* Modal Footer Actions with min-h-[48px] touch CTAs */}
-          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+        </div>
+          <div className="flex items-center justify-end gap-2.5 px-5 sm:px-6 py-3 border-t border-slate-100 bg-white">
             <button
               type="button"
               onClick={onClose}
-              className="min-h-[44px] px-4 font-semibold text-slate-600 hover:text-slate-900 rounded-xl transition-colors"
+              className="min-h-11 px-4 font-semibold text-slate-600 hover:text-slate-900 rounded-xl transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="min-h-[44px] px-5 font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-98 rounded-xl shadow-xs transition-all"
+              className="min-h-11 px-5 font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-98 rounded-xl shadow-xs transition-all"
             >
               {initialActivity ? 'Save Changes' : 'Create Activity'}
             </button>

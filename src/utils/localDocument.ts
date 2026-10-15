@@ -4,6 +4,7 @@ import { loadActivities, loadDailyGoalMinutes, STORAGE_KEY, GOAL_STORAGE_KEY } f
 
 const DOC_KEY_PREFIX = 'orbittask_doc_v2_';
 const REVISION_KEY_PREFIX = 'orbittask_revision_v2_';
+const DIRTY_KEY_PREFIX = 'orbittask_dirty_v2_';
 
 export function guestScope(): string {
   return 'guest';
@@ -27,6 +28,19 @@ export function loadLocalRevision(scope: string): number {
 export function saveLocalRevision(scope: string, revision: number): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(revisionKey(scope), String(revision));
+}
+
+/** Survives reloads so edits the server never confirmed are merged, not replaced. */
+export function loadLocalDirty(scope: string): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(`${DIRTY_KEY_PREFIX}${scope}`) === '1';
+}
+
+export function saveLocalDirty(scope: string, dirty: boolean): void {
+  if (typeof window === 'undefined') return;
+  const key = `${DIRTY_KEY_PREFIX}${scope}`;
+  if (dirty) localStorage.setItem(key, '1');
+  else localStorage.removeItem(key);
 }
 
 export function loadLocalDocument(scope: string): PersistedDocument {

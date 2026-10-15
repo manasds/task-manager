@@ -85,6 +85,27 @@ export function mergeDocuments(
   };
 }
 
+/**
+ * Pick the document to show after sign-in when the server already has one.
+ * Unconfirmed local edits (a beacon whose result was never seen, an offline
+ * close) are merged on top of the server copy and must be flushed again.
+ */
+export function resolveBootDocument(
+  local: PersistedDocument,
+  localRevision: number,
+  localDirty: boolean,
+  server: { document: PersistedDocument; revision: number }
+): { document: PersistedDocument; dirty: boolean } {
+  if (localDirty && local.activities.length + local.deletedIds.length > 0) {
+    if (localRevision === server.revision) return { document: local, dirty: true };
+    return { document: mergeDocuments(local, server.document), dirty: true };
+  }
+  if (localRevision === server.revision && local.activities.length > 0) {
+    return { document: local, dirty: false };
+  }
+  return { document: server.document, dirty: false };
+}
+
 export function isValidDocument(value: unknown): value is PersistedDocument {
   if (!value || typeof value !== 'object') return false;
   const doc = value as PersistedDocument;

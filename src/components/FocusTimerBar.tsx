@@ -88,7 +88,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   };
 
   return (
-    <div className="fixed bottom-16 sm:bottom-4 left-1/2 -translate-x-1/2 z-40 w-[96%] max-w-3xl">
+    <div className="fixed bottom-20 md:bottom-4 inset-x-3 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 z-40 md:w-full max-w-3xl">
       <div className="bg-slate-900/95 backdrop-blur-md text-white rounded-2xl p-2.5 sm:px-5 sm:py-3.5 shadow-2xl border border-slate-800 flex items-center justify-between gap-2 sm:gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
         
         {/* Left: Activity Details */}
@@ -118,7 +118,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
           {/* Play/Pause (Touch Target >= 44px) */}
           <button
             onClick={handleToggleTimer}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-xs transition-colors active:scale-95"
+            className="min-h-11 min-w-11 flex items-center justify-center p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-xs transition-colors active:scale-95"
             title={isRunning ? 'Pause Timer' : 'Resume Timer'}
           >
             {isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
@@ -127,7 +127,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
           {/* Ambient Noise */}
           <button
             onClick={handleToggleAmbient}
-            className={`min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl transition-colors active:scale-95 ${
+            className={`min-h-11 min-w-11 flex items-center justify-center p-2 rounded-xl transition-colors active:scale-95 ${
               isAmbientOn
                 ? 'bg-emerald-600 text-white'
                 : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
@@ -140,7 +140,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
           {/* Quick +5m on desktop */}
           <button
             onClick={handleAddFiveMinutes}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors tabular-nums min-h-[44px]"
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors tabular-nums min-h-11"
             title="Add 5 minutes"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -153,7 +153,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
           {secondsElapsed >= 30 && (
             <button
               onClick={handleCommitLoggedTime}
-              className="min-h-[44px] px-2.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl transition-colors whitespace-nowrap active:scale-95"
+              className="min-h-11 px-2.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl transition-colors whitespace-nowrap active:scale-95"
               title="Save elapsed minutes to this activity"
             >
               Log
@@ -162,7 +162,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
 
           <button
             onClick={handleCompleteAndLog}
-            className="min-h-[44px] flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition-colors whitespace-nowrap active:scale-95"
+            className="min-h-11 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition-colors whitespace-nowrap active:scale-95"
             title="Mark activity completed"
           >
             <Check className="w-4 h-4 stroke-[2.5]" />
@@ -171,7 +171,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
 
           <button
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+            className="min-h-11 min-w-11 flex items-center justify-center p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
             title="Dismiss focus bar"
           >
             <X className="w-4 h-4" />

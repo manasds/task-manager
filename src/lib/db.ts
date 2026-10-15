@@ -5,22 +5,43 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
-const DATABASE_URL = process.env.DATABASE_URL;
+const PLACEHOLDER_HOST = 'ep-xxx-pooler.region.aws.neon.tech';
+
+/** Real Neon URI, or undefined when unset or still the example from .env.example. */
+export function configuredDatabaseUrl(value = process.env.DATABASE_URL): string | undefined {
+  const url = value?.trim();
+  if (!url) return undefined;
+  if (url.includes(PLACEHOLDER_HOST) || url.includes('://USER:PASSWORD@')) return undefined;
+  return url;
+}
+
+const DATABASE_URL = configuredDatabaseUrl();
 
 if (!DATABASE_URL) {
-  console.warn('DATABASE_URL is not set. API routes that need Postgres will fail.');
+  console.warn(
+    'DATABASE_URL is missing or still the Neon example. Local mode only until you paste a pooled connection string.',
+  );
 }
 
 function isNeon(connectionString: string): boolean {
   return /neon\.tech/i.test(connectionString);
 }
 
+/** pg 8 treats require/prefer/verify-ca as verify-full and warns until the string says so. */
+function normalizeSslMode(connectionString: string): string {
+  return connectionString.replace(
+    /([?&])sslmode=(?:prefer|require|verify-ca)\b/gi,
+    '$1sslmode=verify-full',
+  );
+}
+
 function poolConfig(connectionString: string | undefined): pg.PoolConfig {
   if (!connectionString) return { connectionString };
-  const neon = isNeon(connectionString);
-  const requireSsl = neon || /sslmode=require/i.test(connectionString);
+  const normalized = normalizeSslMode(connectionString);
+  const neon = isNeon(normalized);
+  const requireSsl = neon || /sslmode=verify-full/i.test(normalized);
   return {
-    connectionString,
+    connectionString: normalized,
     max: neon ? 5 : 10,
     idleTimeoutMillis: 20_000,
     connectionTimeoutMillis: 10_000,
@@ -32,7 +53,9 @@ export const pool = new Pool(poolConfig(DATABASE_URL));
 
 export async function migrate(): Promise<void> {
   if (!DATABASE_URL) {
-    throw new Error('DATABASE_URL is required');
+    throw new Error(
+      'DATABASE_URL is required. Paste the pooled Neon connection string from the dashboard.',
+    );
   }
   const here = path.dirname(fileURLToPath(import.meta.url));
   const sql = fs.readFileSync(path.join(here, 'schema.sql'), 'utf8');

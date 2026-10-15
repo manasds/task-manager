@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Activity, CATEGORIES, PRIORITY_CONFIG } from '../types/activity';
 import { soundManager } from '../utils/audio';
+import { getTodayDateString, shiftIsoDate } from '../utils/storage';
 
 interface DayPlannerViewProps {
   activities: Activity[];
@@ -38,34 +39,31 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   selectedDate,
   onSelectDate,
 }) => {
+  const plannerDate = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : getTodayDateString();
   const [draggedActivityId, setDraggedActivityId] = useState<string | null>(null);
   const [activeDropHour, setActiveDropHour] = useState<string | null>(null);
   const [isUnscheduledDropActive, setIsUnscheduledDropActive] = useState(false);
   const [isQueueExpandedOnMobile, setIsQueueExpandedOnMobile] = useState(false);
 
-  const dayActivities = activities.filter((a) => a.date === selectedDate);
+  const dayActivities = activities.filter((a) => a.date === plannerDate);
   const scheduledActivities = dayActivities.filter((a) => Boolean(a.scheduledTime));
   const unscheduledActivities = dayActivities.filter((a) => !a.scheduledTime);
 
   const totalScheduledMinutes = scheduledActivities.reduce((acc, c) => acc + (c.estimatedMinutes || 0), 0);
 
   const handlePrevDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 1);
-    onSelectDate(d.toISOString().split('T')[0]);
+    onSelectDate(shiftIsoDate(plannerDate, -1));
   };
 
   const handleNextDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 1);
-    onSelectDate(d.toISOString().split('T')[0]);
+    onSelectDate(shiftIsoDate(plannerDate, 1));
   };
 
   const handleToday = () => {
-    onSelectDate(new Date().toISOString().split('T')[0]);
+    onSelectDate(getTodayDateString());
   };
 
-  const formattedDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+  const formattedDate = new Date(plannerDate + 'T00:00:00').toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -101,7 +99,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
         soundManager.playDrop();
         onUpdateActivity({
           ...act,
-          date: selectedDate,
+          date: plannerDate,
           scheduledTime: hour,
         });
       }
@@ -132,7 +130,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
     soundManager.playDrop();
     onUpdateActivity({
       ...act,
-      date: selectedDate,
+      date: plannerDate,
       scheduledTime: hour,
     });
   };
@@ -141,12 +139,12 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
       
       {/* Date Header Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
             <button
               onClick={handlePrevDay}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-600 hover:text-slate-900 active:bg-white rounded-lg transition-colors"
+              className="min-h-11 min-w-11 flex items-center justify-center text-slate-600 hover:text-slate-900 active:bg-white rounded-lg transition-colors"
               title="Previous Day"
               aria-label="Previous Day"
             >
@@ -154,13 +152,13 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
             </button>
             <button
               onClick={handleToday}
-              className="min-h-[44px] px-3 text-xs font-bold text-slate-800 hover:text-slate-900 active:bg-white rounded-lg transition-colors"
+              className="min-h-11 px-3 text-xs font-bold text-slate-800 hover:text-slate-900 active:bg-white rounded-lg transition-colors"
             >
               Today
             </button>
             <button
               onClick={handleNextDay}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-600 hover:text-slate-900 active:bg-white rounded-lg transition-colors"
+              className="min-h-11 min-w-11 flex items-center justify-center text-slate-600 hover:text-slate-900 active:bg-white rounded-lg transition-colors"
               title="Next Day"
               aria-label="Next Day"
             >
@@ -177,7 +175,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+        <div className="flex items-center justify-between sm:justify-end gap-3">
           <div className="text-left sm:text-right">
             <span className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider font-semibold">Scheduled</span>
             <div className="text-xs sm:text-sm font-bold text-slate-900 tabular-nums">
@@ -186,7 +184,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
           </div>
           <button
             onClick={() => onOpenNewTaskModal('in_progress', '09:00')}
-            className="min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 rounded-xl shadow-xs transition-all"
+            className="min-h-11 flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 rounded-xl shadow-xs transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>Schedule Slot</span>
@@ -220,7 +218,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Unscheduled Queue
                 </h3>
-                <span className="text-xs font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.2 rounded-md tabular-nums">
+                <span className="text-xs font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-md tabular-nums">
                   {unscheduledActivities.length}
                 </span>
               </div>
@@ -229,18 +227,20 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
               </p>
             </div>
             
-            <button className="sm:hidden min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500">
+            <button className="sm:hidden min-h-9 min-w-9 flex items-center justify-center text-slate-500">
               {isQueueExpandedOnMobile ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
           </div>
 
-          <div className={`space-y-2 max-h-[500px] overflow-y-auto pr-1 ${
+          <div className={`space-y-2 max-h-125 overflow-y-auto pr-1 ${
             isQueueExpandedOnMobile ? 'block' : 'hidden sm:block'
           }`}>
             {unscheduledActivities.length === 0 ? (
               <div className="py-8 sm:py-12 border-2 border-dashed border-slate-200 rounded-xl text-center p-3">
                 <Clock className="w-5 h-5 text-slate-300 mx-auto mb-1.5" />
-                <p className="text-xs font-medium text-slate-500">All activities scheduled!</p>
+                <p className="text-xs font-medium text-slate-500">
+                  {dayActivities.length === 0 ? 'Nothing on this day yet.' : 'All activities scheduled!'}
+                </p>
               </div>
             ) : (
               unscheduledActivities.map((act) => {
@@ -333,7 +333,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                   {hourActivities.length === 0 ? (
                     <div
                       onClick={() => onOpenNewTaskModal('in_progress', hour)}
-                      className={`min-h-[44px] border border-dashed rounded-xl flex items-center justify-between px-3 cursor-pointer transition-colors ${
+                      className={`min-h-11 border border-dashed rounded-xl flex items-center justify-between px-3 cursor-pointer transition-colors ${
                         isDropActive
                           ? 'border-indigo-400 bg-indigo-100/50'
                           : 'border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/50'
@@ -390,7 +390,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                             <button
                               type="button"
                               onClick={() => onStartFocus(act)}
-                              className="min-h-[40px] px-3 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-1 active:scale-95 shrink-0 ml-2"
+                              className="min-h-10 px-3 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-1 active:scale-95 shrink-0 ml-2"
                             >
                               <span>Focus</span>
                             </button>

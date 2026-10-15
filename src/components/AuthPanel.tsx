@@ -28,8 +28,8 @@ export const AuthPanel: React.FC<AuthPanelProps> = ({ onGoogleSignIn, compact = 
           void handleClick();
         }}
         disabled={busy}
-        className={`inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white text-slate-800 font-semibold hover:bg-slate-50 disabled:opacity-60 ${
-          compact ? 'h-9 px-3 text-xs' : 'h-10 w-full px-4 text-sm'
+        className={`inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold hover:bg-slate-50 disabled:opacity-60 min-h-11 ${
+          compact ? 'px-3 text-xs' : 'w-full px-4 text-sm'
         }`}
       >
         <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
@@ -50,7 +50,7 @@ export const AuthPanel: React.FC<AuthPanelProps> = ({ onGoogleSignIn, compact = 
             d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"
           />
         </svg>
-        {busy ? 'Redirecting…' : 'Continue with Google'}
+        {busy ? 'Redirecting…' : compact ? 'Sign in' : 'Continue with Google'}
       </button>
       {error && <p className="text-[11px] text-rose-600">{error}</p>}
     </div>

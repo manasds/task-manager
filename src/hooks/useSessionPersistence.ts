@@ -4,8 +4,10 @@ import { fetchDocument, fetchMe, putDocument, putDocumentBeacon } from '../api/c
 import { CloudUser, FlushReason, PersistedDocument } from '../types/document';
 import {
   guestScope,
+  loadLocalDirty,
   loadLocalDocument,
   loadLocalRevision,
+  saveLocalDirty,
   saveLocalDocument,
   saveLocalRevision,
 } from '../utils/localDocument';
@@ -13,6 +15,7 @@ import {
   emptyDocument,
   isLikelyDemoDocument,
   mergeDocuments,
+  resolveBootDocument,
   SAFETY_FLUSH_MS,
   shouldFlushOnSessionEnd,
   shouldSafetyFlush,
@@ -29,6 +32,8 @@ interface PersistenceState {
   lastError: string | null;
   lastFlushReason: FlushReason | null;
   lastSyncedAt: string | null;
+  /** Bumps when the hook replaced the document with a server merge the UI has not seen. */
+  remoteVersion: number;
 }
 
 export function useSessionPersistence() {
@@ -41,6 +46,7 @@ export function useSessionPersistence() {
     lastError: null,
     lastFlushReason: null,
     lastSyncedAt: null,
+    remoteVersion: 0,
   });
 
   const documentRef = useRef<PersistedDocument>(emptyDocument());
@@ -67,6 +73,7 @@ export function useSessionPersistence() {
     }
     if (markDirty && userRef.current) {
       dirtyRef.current = true;
+      saveLocalDirty(userRef.current.id, true);
       setState((prev) => ({ ...prev, dirty: true, phase: 'dirty', lastError: null }));
     }
   }, []);
@@ -104,9 +111,21 @@ export function useSessionPersistence() {
       const { record } = await putDocument(payload);
       revisionRef.current = record.revision;
       saveLocalRevision(user.id, record.revision);
+      inFlightRef.current = false;
+      if (documentRef.current !== payload.document) {
+        setState((prev) => ({
+          ...prev,
+          revision: record.revision,
+          lastSyncedAt: record.updatedAt,
+          lastError: null,
+          lastFlushReason: reason,
+        }));
+        return flush(reason);
+      }
       saveLocalDocument(user.id, record.document);
       documentRef.current = record.document;
       dirtyRef.current = false;
+      saveLocalDirty(user.id, false);
       setState((prev) => ({
         ...prev,
         revision: record.revision,
@@ -133,6 +152,7 @@ export function useSessionPersistence() {
           dirty: true,
           phase: 'dirty',
           lastError: 'Merged changes from another device, syncing again',
+          remoteVersion: prev.remoteVersion + 1,
         }));
         return flush('explicit');
       }
@@ -170,7 +190,8 @@ export function useSessionPersistence() {
         saveLocalDocument(user.id, documentRef.current);
         if (documentRef.current.activities.length > 0) {
           dirtyRef.current = true;
-          setState({
+          setState((prev) => ({
+            ...prev,
             user,
             authReady: true,
             revision: 0,
@@ -179,10 +200,11 @@ export function useSessionPersistence() {
             lastError: null,
             lastFlushReason: null,
             lastSyncedAt: null,
-          });
+          }));
           await flush('sign_in_promote');
         } else {
-          setState({
+          setState((prev) => ({
+            ...prev,
             user,
             authReady: true,
             revision: 0,
@@ -191,29 +213,30 @@ export function useSessionPersistence() {
             lastError: null,
             lastFlushReason: null,
             lastSyncedAt: null,
-          });
+          }));
         }
         return documentRef.current;
       }
 
-      const useLocal = localRevision === record.revision && local.activities.length > 0
-        ? local
-        : record.document;
-      documentRef.current = useLocal;
+      const resolved = resolveBootDocument(local, localRevision, loadLocalDirty(user.id), record);
+      documentRef.current = resolved.document;
       revisionRef.current = record.revision;
-      saveLocalDocument(user.id, useLocal);
+      dirtyRef.current = resolved.dirty;
+      saveLocalDocument(user.id, resolved.document);
       saveLocalRevision(user.id, record.revision);
-      setState({
+      setState((prev) => ({
+        ...prev,
         user,
         authReady: true,
         revision: record.revision,
-        dirty: false,
-        phase: 'synced',
+        dirty: resolved.dirty,
+        phase: resolved.dirty ? 'dirty' : 'synced',
         lastError: null,
         lastFlushReason: null,
         lastSyncedAt: record.updatedAt,
-      });
-      return useLocal;
+      }));
+      if (resolved.dirty) await flush('sign_in_promote');
+      return documentRef.current;
     } catch {
       const fallbackUser = userRef.current;
       const local = loadLocalDocument(scopeFor(fallbackUser));
@@ -288,7 +311,8 @@ export function useSessionPersistence() {
     revisionRef.current = 0;
     const guest = loadLocalDocument(guestScope());
     documentRef.current = guest;
-    setState({
+    setState((prev) => ({
+      ...prev,
       user: null,
       authReady: true,
       revision: 0,
@@ -297,7 +321,7 @@ export function useSessionPersistence() {
       lastError: null,
       lastFlushReason: null,
       lastSyncedAt: null,
-    });
+    }));
     return guest;
   }, [flush]);
 

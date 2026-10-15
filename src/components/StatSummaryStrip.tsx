@@ -1,18 +1,16 @@
 import React from 'react';
-import { CheckCircle2, Clock, Target, Flame, ArrowUpRight } from 'lucide-react';
+import { CheckCircle2, Clock, Target, Flame } from 'lucide-react';
 import { Activity } from '../types/activity';
 import { getTodayDateString } from '../utils/storage';
 
 interface StatSummaryStripProps {
   activities: Activity[];
   dailyGoalMinutes: number;
-  onOpenAnalytics: () => void;
 }
 
 export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
   activities,
   dailyGoalMinutes,
-  onOpenAnalytics,
 }) => {
   const today = getTodayDateString();
   const todayActivities = activities.filter((a) => a.date === today);
@@ -110,28 +108,18 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
           </div>
 
           {/* Stat 4: Active Streak */}
-          <div className="flex items-center justify-between p-2 sm:p-0 bg-slate-50/80 sm:bg-transparent rounded-xl border sm:border-0 border-slate-100">
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
-                <Flame className="w-4 h-4" />
+          <div className="flex items-center gap-2.5 sm:gap-3 p-2 sm:p-0 bg-slate-50/80 sm:bg-transparent rounded-xl border sm:border-0 border-slate-100">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+              <Flame className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Streak
               </div>
-              <div>
-                <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  Streak
-                </div>
-                <div className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
-                  {currentStreak} <span className="text-xs font-normal text-slate-500">days</span>
-                </div>
+              <div className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
+                {currentStreak} <span className="text-xs font-normal text-slate-500">days</span>
               </div>
             </div>
-
-            <button
-              onClick={onOpenAnalytics}
-              className="min-h-[36px] min-w-[36px] flex items-center justify-center text-indigo-600 hover:text-indigo-800 rounded-lg hover:bg-indigo-50/60 p-1"
-              title="View Charts"
-            >
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
           </div>
 
         </div>

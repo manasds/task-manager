@@ -16,6 +16,7 @@ import {
 } from '../types/activity';
 import { TaskCard } from './TaskCard';
 import { soundManager } from '../utils/audio';
+import { getTodayDateString } from '../utils/storage';
 
 interface BoardViewProps {
   activities: Activity[];
@@ -139,7 +140,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
       status,
       estimatedMinutes: 30,
       actualMinutes: 0,
-      date: selectedDate === 'all' ? new Date().toISOString().split('T')[0] : selectedDate,
+      date: selectedDate === 'all' ? getTodayDateString() : selectedDate,
       subtasks: [],
       tags: [],
       createdAt: new Date().toISOString(),
@@ -155,8 +156,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
       
       {/* Filtering Toolbar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
-        {/* Search Input with min-h-[44px] */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
+        {/* Search Input with min-h-11 */}
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -164,12 +165,12 @@ export const BoardView: React.FC<BoardViewProps> = ({
             placeholder="Search activities or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-9 min-h-[44px] text-xs bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
+            className="w-full pl-10 pr-9 min-h-11 text-xs bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 min-h-[36px] min-w-[36px] flex items-center justify-center"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 min-h-9 min-w-9 flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>
@@ -177,11 +178,11 @@ export const BoardView: React.FC<BoardViewProps> = ({
         </div>
 
         {/* Filter Controls (Thumb targets >= 44px) */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as ActivityCategory | 'all')}
-            className="min-h-[44px] text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            className="flex-1 min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >
             <option value="all">All Categories</option>
             {Object.values(CATEGORIES).map((cat) => (
@@ -194,7 +195,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
           <select
             value={selectedPriority}
             onChange={(e) => setSelectedPriority(e.target.value as ActivityPriority | 'all')}
-            className="min-h-[44px] text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            className="flex-1 min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >
             <option value="all">All Priorities</option>
             <option value="urgent">Urgent</option>
@@ -206,9 +207,18 @@ export const BoardView: React.FC<BoardViewProps> = ({
           <select
             value={selectedDate}
             onChange={(e) => onSelectDate(e.target.value)}
-            className="min-h-[44px] text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            className="flex-1 min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >
-            <option value={new Date().toISOString().split('T')[0]}>Today</option>
+            <option value={getTodayDateString()}>Today</option>
+            {selectedDate !== 'all' && selectedDate !== getTodayDateString() && (
+              <option value={selectedDate}>
+                {new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </option>
+            )}
             <option value="all">All Dates</option>
           </select>
         </div>
@@ -229,14 +239,14 @@ export const BoardView: React.FC<BoardViewProps> = ({
               }}
               role="tab"
               aria-selected={isActive}
-              className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center justify-center gap-1.5 border ${
+              className={`flex-1 min-h-11 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center justify-center gap-1.5 border ${
                 isActive
                   ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
               }`}
             >
               <span>{col.title.split(' ')[0]}</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums ${
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full tabular-nums ${
                 isActive ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'
               }`}>
                 {count}
@@ -247,7 +257,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
       </div>
 
       {/* Kanban Drag & Drop Columns (Responsive: 1 selected column on mobile, 4-col grid on sm+) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 items-stretch">
         {STATUS_COLUMNS.map((col) => {
           const colActivities = filteredActivities.filter((a) => a.status === col.id);
           const colMinutes = colActivities.reduce((acc, c) => acc + (c.estimatedMinutes || 0), 0);
@@ -266,7 +276,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                 }
               }}
               onDrop={(e) => handleDropOnColumn(e, col.id)}
-              className={`flex flex-col bg-slate-100/70 border rounded-2xl p-3 sm:p-3.5 min-h-[500px] sm:min-h-[620px] transition-all duration-200 ${
+              className={`flex flex-col bg-slate-100/70 border rounded-2xl p-3 sm:p-3.5 min-h-125 sm:min-h-155 h-full transition-all duration-200 ${
                 isHiddenOnMobile ? 'hidden sm:flex' : 'flex'
               } ${
                 isDropActive
@@ -295,7 +305,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                       setQuickAddTitle('');
                     }}
                     title={`Add activity to ${col.title}`}
-                    className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white rounded-lg transition-colors"
+                    className="min-h-9 min-w-9 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white rounded-lg transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -320,20 +330,20 @@ export const BoardView: React.FC<BoardViewProps> = ({
                       if (e.key === 'Enter') handleQuickAddSubmit(col.id);
                       if (e.key === 'Escape') setQuickAddColumn(null);
                     }}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 min-h-[40px]"
+                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 min-h-10"
                   />
                   <div className="flex items-center justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setQuickAddColumn(null)}
-                      className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 rounded-lg min-h-[36px]"
+                      className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 rounded-lg min-h-9"
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickAddSubmit(col.id)}
-                      className="px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg shadow-2xs min-h-[36px]"
+                      className="px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg shadow-2xs min-h-9"
                     >
                       Add Activity
                     </button>
@@ -342,7 +352,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
               )}
 
               {/* Activities List */}
-              <div className="flex-1 space-y-2.5 overflow-y-auto">
+              <div className="flex-1 space-y-2.5 overflow-y-auto overflow-x-hidden p-0.5 -m-0.5">
                 {colActivities.length === 0 ? (
                   <div className="h-40 border-2 border-dashed border-slate-200/90 rounded-2xl flex flex-col items-center justify-center p-4 text-center">
                     <Layers className="w-5 h-5 text-slate-300 mb-1.5" />
@@ -350,7 +360,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                       No activities in {col.title.toLowerCase()}
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Tap + below to add an activity
+                      Add an activity below
                     </p>
                   </div>
                 ) : (
@@ -383,7 +393,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                   setQuickAddColumn(col.id);
                   setQuickAddTitle('');
                 }}
-                className="mt-3 min-h-[44px] py-2.5 px-3 border border-dashed border-slate-300/80 hover:border-slate-400 hover:bg-white/80 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5 transition-colors active:scale-98"
+                className="mt-3 min-h-11 py-2.5 px-3 border border-dashed border-slate-300/80 hover:border-slate-400 hover:bg-white/80 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5 transition-colors active:scale-98"
               >
                 <Plus className="w-4 h-4 text-slate-400" />
                 <span>Add Activity</span>

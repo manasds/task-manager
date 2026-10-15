@@ -11,6 +11,17 @@ interface SyncStatusProps {
   lastSyncedAt: string | null;
   onFlush: () => void;
   onSignOut: () => void;
+  /** Icon and a short status only. Account actions live elsewhere. */
+  compact?: boolean;
+}
+
+function shortPhaseLabel(phase: SyncPhase): string {
+  if (phase === 'dirty') return 'Unsynced';
+  if (phase === 'flushing') return 'Syncing';
+  if (phase === 'synced') return 'Synced';
+  if (phase === 'offline') return 'Offline';
+  if (phase === 'error') return 'Paused';
+  return 'Signed in';
 }
 
 function phaseLabel(phase: SyncPhase, user: CloudUser | null): string {
@@ -31,6 +42,7 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({
   lastSyncedAt,
   onFlush,
   onSignOut,
+  compact = false,
 }) => {
   const Icon =
     phase === 'flushing' ? Loader2 : !user || phase === 'offline' || phase === 'error' ? CloudOff : phase === 'synced' ? Check : Cloud;
@@ -39,14 +51,33 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({
     ? new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null;
 
+  const statusTitle =
+    lastError ||
+    (lastFlushReason
+      ? `Last flush: ${lastFlushReason}`
+      : 'Edits stay local until the tab hides, you sign out, or 60s passes.');
+
+  if (compact) {
+    if (!user) return null;
+    return (
+      <div
+        className="flex items-center gap-1.5 text-[11px] text-slate-500 whitespace-nowrap"
+        title={statusTitle}
+      >
+        <Icon className={`w-3.5 h-3.5 shrink-0 ${phase === 'flushing' ? 'animate-spin' : ''}`} />
+        <span>
+          {shortPhaseLabel(phase)}
+          {syncedLabel && phase === 'synced' ? ` ${syncedLabel}` : ''}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 min-w-0">
       <div
-        className="hidden md:flex items-center gap-1.5 max-w-[220px] text-[11px] text-slate-500"
-        title={
-          lastError ||
-          (lastFlushReason ? `Last flush: ${lastFlushReason}` : 'Edits stay local until the tab hides, you sign out, or 60s passes.')
-        }
+        className="hidden md:flex items-center gap-1.5 max-w-55 text-[11px] text-slate-500"
+        title={statusTitle}
       >
         <Icon className={`w-3.5 h-3.5 shrink-0 ${phase === 'flushing' ? 'animate-spin' : ''}`} />
         <span className="truncate">
@@ -56,7 +87,7 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({
       </div>
       {user ? (
         <div className="flex items-center gap-1">
-          <span className="hidden lg:inline text-[11px] text-slate-400 truncate max-w-[140px]">{user.email}</span>
+          <span className="hidden lg:inline text-[11px] text-slate-400 truncate max-w-35">{user.email}</span>
           {phase === 'dirty' && (
             <button
               type="button"

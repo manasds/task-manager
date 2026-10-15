@@ -63,6 +63,11 @@ export default function App() {
   }, [persistence.authReady, persistence.user?.id]);
 
   useEffect(() => {
+    if (persistence.remoteVersion === 0) return;
+    applyDocument(persistence.currentDocument());
+  }, [persistence.remoteVersion]);
+
+  useEffect(() => {
     if (!hydrated) return;
     const doc: PersistedDocument = {
       schemaVersion: DOCUMENT_SCHEMA_VERSION,
@@ -214,10 +219,23 @@ export default function App() {
           const parsed = JSON.parse(event.target?.result as string);
           if (Array.isArray(parsed)) {
             const now = new Date().toISOString();
-            setDeletedIds((prev) => [...prev, ...activities.map((a) => a.id)]);
-            setActivities(parsed.map((item: Activity) => ({ ...item, updatedAt: item.updatedAt || now })));
+            const imported: Activity[] = parsed
+              .filter(
+                (item): item is Activity =>
+                  !!item &&
+                  typeof item.id === 'string' &&
+                  typeof item.title === 'string' &&
+                  typeof item.status === 'string'
+              )
+              .map((item) => ({ ...item, updatedAt: now }));
+            const importedIds = new Set(imported.map((a) => a.id));
+            setDeletedIds((prev) => {
+              const replaced = activities.map((a) => a.id).filter((id) => !importedIds.has(id));
+              return Array.from(new Set([...prev, ...replaced])).filter((id) => !importedIds.has(id));
+            });
+            setActivities(imported);
             soundManager.playDrop();
-            showToast(`Imported ${parsed.length} activities`);
+            showToast(`Imported ${imported.length} activities`);
           } else {
             showToast('Invalid JSON file format');
           }
@@ -272,23 +290,19 @@ export default function App() {
       />
 
       {!persistence.user && persistence.authReady && (
-        <div className="bg-indigo-50 border-b border-indigo-100">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <p className="text-xs text-indigo-900 flex-1">
-              Signed-out work stays on this browser. Continue with Google to keep a personal board
-              in Neon — edits save here instantly and sync when you leave the tab, go offline, or
-              tap Sync now.
+        <div className="lg:hidden bg-indigo-50 border-b border-indigo-100">
+          <div className="max-w-7xl mx-auto px-3 py-2 flex items-center gap-3">
+            <p className="text-xs text-indigo-900 flex-1 min-w-0 leading-snug">
+              Work stays on this browser until you sign in.
             </p>
-            <div className="lg:hidden">
-              <AuthPanel onGoogleSignIn={handleGoogleSignIn} />
-            </div>
+            <AuthPanel compact onGoogleSignIn={handleGoogleSignIn} />
           </div>
         </div>
       )}
 
       {persistence.user && (
         <div className="xl:hidden bg-white border-b border-slate-200">
-          <div className="max-w-7xl mx-auto px-3 py-1.5">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5">
             <SyncStatus
               user={persistence.user}
               phase={persistence.phase}
@@ -309,10 +323,9 @@ export default function App() {
       <StatSummaryStrip
         activities={activities}
         dailyGoalMinutes={dailyGoalMinutes}
-        onOpenAnalytics={() => setActiveTab('analytics')}
       />
 
-      <main className="flex-1 pb-28 sm:pb-24">
+      <main className="flex-1 pb-24 md:pb-8">
         {activeTab === 'board' && (
           <BoardView
             activities={activities}

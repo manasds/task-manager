@@ -12,11 +12,23 @@ function appOrigin(): string {
 
 const origin = appOrigin();
 
+function authSecret(): string {
+  const secret = process.env.BETTER_AUTH_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('BETTER_AUTH_SECRET must be set in production.');
+  }
+  return 'orbittask-dev-secret-change-me';
+}
+
 export const auth = betterAuth({
   baseURL: origin,
-  secret: process.env.BETTER_AUTH_SECRET || 'orbittask-dev-secret-change-me',
+  secret: authSecret(),
   database: pool,
   trustedOrigins: [origin, 'http://localhost:3000', 'http://127.0.0.1:3000'],
+  onAPIError: {
+    errorURL: `${origin}/auth/error`,
+  },
   socialProviders:
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? {
