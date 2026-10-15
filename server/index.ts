@@ -2,27 +2,17 @@ import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import { toNodeHandler } from 'better-auth/node';
 import { migrate } from './db.js';
-import {
-  allowAuthAttempt,
-  clearSessionCookie,
-  createSession,
-  createUser,
-  destroySession,
-  normalizeEmail,
-  readSessionToken,
-  requireUser,
-  setSessionCookie,
-  userFromToken,
-  validateCredentials,
-  verifyUser,
-} from './auth.js';
+import { auth, requireUser, sessionUser } from './auth.js';
 import { getDocument, saveDocument } from './documents.js';
 import { isValidDocument } from '../src/utils/syncPolicy.ts';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
 
+// Better Auth must read the raw body. Do not mount express.json() first.
+app.all('/api/auth/*', toNodeHandler(auth));
 app.use(express.json({ limit: '2mb' }));
 
 app.get('/api/health', (_req, res) => {
@@ -31,76 +21,11 @@ app.get('/api/health', (_req, res) => {
 
 app.get('/api/me', async (req, res) => {
   try {
-    const user = await userFromToken(readSessionToken(req));
-    if (!user) {
-      res.json({ user: null });
-      return;
-    }
+    const user = await sessionUser(req);
     res.json({ user });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Could not read session' });
-  }
-});
-
-app.post('/api/auth/signup', async (req, res) => {
-  try {
-    if (!allowAuthAttempt(req.ip || 'unknown')) {
-      res.status(429).json({ error: 'Too many attempts. Try again later.' });
-      return;
-    }
-    const email = normalizeEmail(String(req.body?.email || ''));
-    const password = String(req.body?.password || '');
-    const invalid = validateCredentials(email, password);
-    if (invalid) {
-      res.status(400).json({ error: invalid });
-      return;
-    }
-    const user = await createUser(email, password);
-    const token = await createSession(user.id);
-    setSessionCookie(res, token);
-    res.status(201).json({ user: { id: user.id, email: user.email } });
-  } catch (error: unknown) {
-    const pgError = error as { code?: string };
-    if (pgError.code === '23505') {
-      res.status(409).json({ error: 'An account with that email already exists' });
-      return;
-    }
-    console.error(error);
-    res.status(500).json({ error: 'Could not create account' });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    if (!allowAuthAttempt(req.ip || 'unknown')) {
-      res.status(429).json({ error: 'Too many attempts. Try again later.' });
-      return;
-    }
-    const email = normalizeEmail(String(req.body?.email || ''));
-    const password = String(req.body?.password || '');
-    const user = await verifyUser(email, password);
-    if (!user) {
-      res.status(401).json({ error: 'Email or password is incorrect' });
-      return;
-    }
-    const token = await createSession(user.id);
-    setSessionCookie(res, token);
-    res.json({ user });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Could not sign in' });
-  }
-});
-
-app.post('/api/auth/logout', async (req, res) => {
-  try {
-    await destroySession(readSessionToken(req));
-    clearSessionCookie(res);
-    res.json({ ok: true });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Could not sign out' });
   }
 });
 
@@ -152,6 +77,12 @@ async function start() {
   if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL is required');
     process.exit(1);
+  }
+  if (!process.env.BETTER_AUTH_SECRET) {
+    console.warn('BETTER_AUTH_SECRET is unset; using a development default');
+  }
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    console.warn('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are unset; Google sign-in will fail');
   }
   await migrate();
   app.listen(PORT, '0.0.0.0', () => {

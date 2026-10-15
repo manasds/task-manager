@@ -26,23 +26,6 @@ export function fetchMe(): Promise<{ user: CloudUser | null }> {
   return request('/api/me');
 }
 
-export function signUp(email: string, password: string): Promise<{ user: CloudUser }> {
-  return request('/api/auth/signup', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-}
-
-export function signIn(email: string, password: string): Promise<{ user: CloudUser }> {
-  return request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-}
-
-export function signOut(): Promise<{ ok: boolean }> {
-  return request('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
-}
 
 export function fetchDocument(): Promise<{ record: DocumentRecord | null }> {
   return request('/api/document');

@@ -233,9 +233,8 @@ export default function App() {
     if (!next) soundManager.playDragStart();
   };
 
-  const handleAuth = async (mode: 'signin' | 'signup', email: string, password: string) => {
-    await persistence.authenticate(mode, email, password);
-    showToast(mode === 'signup' ? 'Account created' : 'Signed in');
+  const handleGoogleSignIn = async () => {
+    await persistence.startGoogleSignIn();
   };
 
   const handleSignOut = async () => {
@@ -260,7 +259,7 @@ export default function App() {
         lastError={persistence.lastError}
         lastFlushReason={persistence.lastFlushReason}
         lastSyncedAt={persistence.lastSyncedAt}
-        onAuth={handleAuth}
+        onGoogleSignIn={handleGoogleSignIn}
         onFlush={() => {
           void persistence.flush('explicit');
         }}
@@ -274,12 +273,12 @@ export default function App() {
         <div className="bg-indigo-50 border-b border-indigo-100">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <p className="text-xs text-indigo-900 flex-1">
-              Signed-out work stays on this browser. Create an account to keep a personal board in
-              Postgres — edits save here instantly and sync when you leave the tab, go offline, or
+              Signed-out work stays on this browser. Continue with Google to keep a personal board
+              in Neon — edits save here instantly and sync when you leave the tab, go offline, or
               tap Sync now.
             </p>
             <div className="lg:hidden">
-              <AuthPanel onSubmit={handleAuth} />
+              <AuthPanel onGoogleSignIn={handleGoogleSignIn} />
             </div>
           </div>
         </div>

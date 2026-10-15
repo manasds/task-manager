@@ -29,6 +29,8 @@ export interface PersistedDocument {
 export interface CloudUser {
   id: string;
   email: string;
+  name?: string;
+  image?: string;
 }
 
 export type FlushReason =

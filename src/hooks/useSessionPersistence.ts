@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchDocument, fetchMe, putDocument, putDocumentBeacon, signIn, signOut, signUp } from '../api/client';
+import { signInWithGoogle, signOutGoogle } from '../auth/client';
+import { fetchDocument, fetchMe, putDocument, putDocumentBeacon } from '../api/client';
 import { CloudUser, FlushReason, PersistedDocument } from '../types/document';
 import {
   guestScope,
@@ -273,21 +274,15 @@ export function useSessionPersistence() {
     };
   }, [flush]);
 
-  const authenticate = useCallback(
-    async (mode: 'signin' | 'signup', email: string, password: string) => {
-      const result = mode === 'signup' ? await signUp(email, password) : await signIn(email, password);
-      userRef.current = result.user;
-      await bootstrap();
-      return result.user;
-    },
-    [bootstrap]
-  );
+  const startGoogleSignIn = useCallback(async () => {
+    await signInWithGoogle();
+  }, []);
 
   const logout = useCallback(async () => {
     if (dirtyRef.current) {
       await flush('explicit');
     }
-    await signOut();
+    await signOutGoogle();
     userRef.current = null;
     dirtyRef.current = false;
     revisionRef.current = 0;
@@ -311,7 +306,7 @@ export function useSessionPersistence() {
     currentDocument: () => documentRef.current,
     persistLocal,
     flush,
-    authenticate,
+    startGoogleSignIn,
     logout,
     bootstrap,
   };

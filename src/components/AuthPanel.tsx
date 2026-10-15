@@ -1,73 +1,58 @@
 import React, { useState } from 'react';
 
 interface AuthPanelProps {
-  onSubmit: (mode: 'signin' | 'signup', email: string, password: string) => Promise<void>;
+  onGoogleSignIn: () => Promise<void>;
   compact?: boolean;
 }
 
-export const AuthPanel: React.FC<AuthPanelProps> = ({ onSubmit, compact = false }) => {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export const AuthPanel: React.FC<AuthPanelProps> = ({ onGoogleSignIn, compact = false }) => {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleClick = async () => {
     setError('');
     setBusy(true);
     try {
-      await onSubmit(mode, email, password);
+      await onGoogleSignIn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not authenticate');
-    } finally {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
       setBusy(false);
     }
   };
 
-  const fieldClass = compact
-    ? 'h-9 w-36 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-900 placeholder:text-slate-400'
-    : 'h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm';
-
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={compact ? 'flex flex-wrap items-center gap-2' : 'space-y-3'}
-    >
-      <input
-        type="email"
-        required
-        autoComplete="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className={fieldClass}
-      />
-      <input
-        type="password"
-        required
-        minLength={8}
-        autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-        placeholder={compact ? 'Password' : 'Password (8+ characters)'}
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className={fieldClass}
-      />
-      {error && <p className="text-[11px] text-rose-600 w-full">{error}</p>}
-      <button
-        type="submit"
-        disabled={busy}
-        className="h-9 px-3 rounded-lg bg-indigo-600 text-white text-xs font-semibold disabled:opacity-60"
-      >
-        {busy ? 'Working…' : mode === 'signup' ? 'Create account' : 'Sign in'}
-      </button>
+    <div className={compact ? 'flex flex-col items-end gap-1' : 'space-y-2'}>
       <button
         type="button"
-        onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}
-        className="text-[11px] text-slate-500 hover:text-slate-800"
+        onClick={() => {
+          void handleClick();
+        }}
+        disabled={busy}
+        className={`inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white text-slate-800 font-semibold hover:bg-slate-50 disabled:opacity-60 ${
+          compact ? 'h-9 px-3 text-xs' : 'h-10 w-full px-4 text-sm'
+        }`}
       >
-        {mode === 'signup' ? 'Have an account?' : 'New here?'}
+        <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
+          <path
+            fill="#4285F4"
+            d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"
+          />
+          <path
+            fill="#34A853"
+            d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"
+          />
+          <path
+            fill="#EA4335"
+            d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"
+          />
+        </svg>
+        {busy ? 'Redirecting…' : 'Continue with Google'}
       </button>
-    </form>
+      {error && <p className="text-[11px] text-rose-600">{error}</p>}
+    </div>
   );
 };

@@ -33,7 +33,7 @@ interface NavbarProps {
   lastError: string | null;
   lastFlushReason: FlushReason | null;
   lastSyncedAt: string | null;
-  onAuth: (mode: 'signin' | 'signup', email: string, password: string) => Promise<void>;
+  onGoogleSignIn: () => Promise<void>;
   onFlush: () => void;
   onSignOut: () => void;
   showResetDemo: boolean;
@@ -53,7 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   lastError,
   lastFlushReason,
   lastSyncedAt,
-  onAuth,
+  onGoogleSignIn,
   onFlush,
   onSignOut,
   showResetDemo,
@@ -151,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {!user && (
               <div className="hidden lg:block">
-                <AuthPanel compact onSubmit={onAuth} />
+                <AuthPanel compact onGoogleSignIn={onGoogleSignIn} />
               </div>
             )}
 

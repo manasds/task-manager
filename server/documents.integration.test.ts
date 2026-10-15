@@ -11,7 +11,7 @@ describe('postgres document writes', () => {
     }
 
     const { migrate, pool } = await import('./db.ts');
-    const { createUser } = await import('./auth.ts');
+    const { insertTestUser } = await import('./auth.ts');
     const { saveDocument, getDocument } = await import('./documents.ts');
 
     try {
@@ -21,7 +21,7 @@ describe('postgres document writes', () => {
       return;
     }
     const email = `flush-test-${Date.now()}@example.com`;
-    const user = await createUser(email, 'password123');
+    const user = await insertTestUser(email);
     const first = emptyDocument();
     first.activities = [];
     first.updatedAt = '2026-10-15T10:00:00.000Z';
@@ -43,6 +43,6 @@ describe('postgres document writes', () => {
     const loaded = await getDocument(user.id);
     assert.equal(loaded?.revision, saved.record.revision);
 
-    await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
+    await pool.query('DELETE FROM "user" WHERE id = $1', [user.id]);
   });
 });
