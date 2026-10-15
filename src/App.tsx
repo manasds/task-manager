@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Activity, ActivityStatus } from './types/activity';
 import { DOCUMENT_SCHEMA_VERSION, PersistedDocument } from './types/document';

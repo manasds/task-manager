@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { emptyDocument } from '../src/utils/syncPolicy.ts';
+import { emptyDocument } from '../utils/syncPolicy';
 
 describe('postgres document writes', () => {
   it('rejects a stale revision so session flushes cannot silently clobber', async (t) => {
@@ -10,9 +10,9 @@ describe('postgres document writes', () => {
       return;
     }
 
-    const { migrate, pool } = await import('./db.ts');
-    const { insertTestUser } = await import('./auth.ts');
-    const { saveDocument, getDocument } = await import('./documents.ts');
+    const { migrate, pool } = await import('./db');
+    const { insertTestUser } = await import('./auth');
+    const { saveDocument, getDocument } = await import('./documents');
 
     try {
       await migrate();

@@ -1,6 +1,9 @@
 node_modules/
 build/
 dist/
+.next/
+.pnpm-store/
+*.tsbuildinfo
 coverage/
 .DS_Store
 *.log

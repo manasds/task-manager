@@ -1,8 +1,0 @@
-{
-  "name": "Remix OrbitTask - Drag \u0026 Drop Activity \u0026 Progress Tracker",
-  "description": "Intuitive drag-and-drop activity and daily task tracker with custom progress visualization charts, time blocking, and focus metrics.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

@@ -1,6 +1,6 @@
-import { pool } from './db.js';
-import type { DocumentRecord, PersistedDocument } from '../src/types/document.ts';
-import { emptyDocument, isValidDocument } from '../src/utils/syncPolicy.ts';
+import { pool } from './db';
+import type { DocumentRecord, PersistedDocument } from '../types/document';
+import { emptyDocument, isValidDocument } from '../utils/syncPolicy';
 
 export async function getDocument(userId: string): Promise<DocumentRecord | null> {
   const result = await pool.query<{

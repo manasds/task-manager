@@ -38,3 +38,15 @@ export async function migrate(): Promise<void> {
   const sql = fs.readFileSync(path.join(here, 'schema.sql'), 'utf8');
   await pool.query(sql);
 }
+
+let migrating: Promise<void> | null = null;
+
+export function ensureMigrated(): Promise<void> {
+  if (!migrating) {
+    migrating = migrate().catch((error) => {
+      migrating = null;
+      throw error;
+    });
+  }
+  return migrating;
+}

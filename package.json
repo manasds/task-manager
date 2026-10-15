@@ -1,45 +1,34 @@
 {
-  "name": "react-example",
+  "name": "orbittask",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"pnpm dev:api\" \"pnpm dev:web\"",
-    "dev:web": "vite --port=3000 --host=0.0.0.0",
-    "dev:api": "tsx watch server/index.ts",
-    "build": "vite build",
-    "preview": "vite preview",
-    "start": "NODE_ENV=production tsx server/index.ts",
-    "clean": "rm -rf dist server.js",
+    "dev": "next dev --port 3000 --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --port 3000 --hostname 0.0.0.0",
+    "clean": "rm -rf .next dist",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/utils/syncPolicy.test.ts server/documents.integration.test.ts"
+    "test": "tsx --test src/utils/syncPolicy.test.ts src/lib/documents.integration.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
-    "@tailwindcss/vite": "^4.3.3",
-    "@vitejs/plugin-react": "^6.1.1",
-    "better-auth": "^1.7.9",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
+    "better-auth": "1.3.34",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "next": "15.5.28",
     "pg": "^8.16.3",
     "react": "^19.0.1",
-    "react-dom": "^19.0.1",
-    "vite": "^8.3.0"
+    "react-dom": "^19.0.1"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.14.0",
     "@types/pg": "^8.15.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "autoprefixer": "^10.4.21",
-    "concurrently": "^9.2.1",
-    "esbuild": "^0.25.0",
+    "dotenv": "^17.2.3",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
-    "typescript": "^7.0.2",
-    "vite-plugin-pwa": "^2.0.0"
+    "typescript": "^5.9.2"
   }
 }
