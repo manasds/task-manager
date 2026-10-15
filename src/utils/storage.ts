@@ -1,4 +1,4 @@
-import { Activity } from '../types/activity';
+import { Activity, WorkSession } from '../types/activity';
 
 export const STORAGE_KEY = 'orbittask_activities_v1';
 export const GOAL_STORAGE_KEY = 'orbittask_daily_goal_minutes';
@@ -9,6 +9,18 @@ export function getTodayDateString(): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function demoSession(
+  id: string,
+  activityId: string,
+  date: string,
+  startTime: string,
+  minutes: number
+): WorkSession {
+  const start = new Date(`${date}T${startTime}:00`);
+  const end = new Date(start.getTime() + minutes * 60 * 1000);
+  return { id, activityId, start: start.toISOString(), end: end.toISOString(), minutes };
 }
 
 export function getDateOffset(daysOffset: number): string {
@@ -49,6 +61,10 @@ export function generateInitialActivities(): Activity[] {
       ],
       tags: ['Figma', 'UX', 'Growth'],
       createdAt: `${today}T08:00:00Z`,
+      workSessions: [
+        demoSession('ws-1a', 'act-1', today, '09:30', 35),
+        demoSession('ws-1b', 'act-1', today, '14:00', 10),
+      ],
     },
     {
       id: 'act-2',
@@ -69,6 +85,7 @@ export function generateInitialActivities(): Activity[] {
       tags: ['Fitness', 'Morning'],
       completedAt: `${today}T08:20:00Z`,
       createdAt: `${today}T07:15:00Z`,
+      workSessions: [demoSession('ws-2', 'act-2', today, '07:30', 48)],
     },
     {
       id: 'act-3',
@@ -88,6 +105,7 @@ export function generateInitialActivities(): Activity[] {
       tags: ['Engineering', 'Sync'],
       completedAt: `${today}T12:05:00Z`,
       createdAt: `${today}T09:00:00Z`,
+      workSessions: [demoSession('ws-3', 'act-3', today, '11:00', 65)],
     },
     {
       id: 'act-4',
@@ -107,6 +125,7 @@ export function generateInitialActivities(): Activity[] {
       ],
       tags: ['Frontend', 'Charts'],
       createdAt: `${today}T10:00:00Z`,
+      workSessions: [demoSession('ws-4', 'act-4', today, '13:30', 75)],
     },
     {
       id: 'act-5',

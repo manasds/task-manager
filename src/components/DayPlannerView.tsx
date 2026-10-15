@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { 
-  ChevronLeft, 
-  ChevronRight, 
   Clock, 
   Plus, 
   GripVertical,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { Activity, CATEGORIES, PRIORITY_CONFIG } from '../types/activity';
+import { Activity, CATEGORIES } from '../types/activity';
 import { soundManager } from '../utils/audio';
+import { DayDateNav } from './DayDateNav';
+import { TIMELINE_HOURS } from '../utils/workSessions';
 
 interface DayPlannerViewProps {
   activities: Activity[];
@@ -21,12 +21,6 @@ interface DayPlannerViewProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
 }
-
-const HOURS = [
-  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', 
-  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', 
-  '19:00', '20:00', '21:00', '22:00'
-];
 
 export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   activities,
@@ -48,28 +42,6 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   const unscheduledActivities = dayActivities.filter((a) => !a.scheduledTime);
 
   const totalScheduledMinutes = scheduledActivities.reduce((acc, c) => acc + (c.estimatedMinutes || 0), 0);
-
-  const handlePrevDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 1);
-    onSelectDate(d.toISOString().split('T')[0]);
-  };
-
-  const handleNextDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 1);
-    onSelectDate(d.toISOString().split('T')[0]);
-  };
-
-  const handleToday = () => {
-    onSelectDate(new Date().toISOString().split('T')[0]);
-  };
-
-  const formattedDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, activityId: string) => {
     e.dataTransfer.setData('text/plain', activityId);
@@ -140,59 +112,28 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
       
-      {/* Date Header Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs">
-        <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-            <button
-              onClick={handlePrevDay}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-600 hover:text-slate-900 active:bg-white rounded-lg transition-colors"
-              title="Previous Day"
-              aria-label="Previous Day"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleToday}
-              className="min-h-[44px] px-3 text-xs font-bold text-slate-800 hover:text-slate-900 active:bg-white rounded-lg transition-colors"
-            >
-              Today
-            </button>
-            <button
-              onClick={handleNextDay}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-600 hover:text-slate-900 active:bg-white rounded-lg transition-colors"
-              title="Next Day"
-              aria-label="Next Day"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-          <div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-              {formattedDate}
-            </h2>
-            <p className="text-[11px] text-slate-500 hidden sm:block">
-              Drag activities into hourly time blocks
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-          <div className="text-left sm:text-right">
-            <span className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider font-semibold">Scheduled</span>
-            <div className="text-xs sm:text-sm font-bold text-slate-900 tabular-nums">
-              {Math.floor(totalScheduledMinutes / 60)}h {totalScheduledMinutes % 60}m
+      <DayDateNav
+        selectedDate={selectedDate}
+        onSelectDate={onSelectDate}
+        subtitle="Drag activities into hourly time blocks"
+        trailing={
+          <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+            <div className="text-left sm:text-right">
+              <span className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider font-semibold">Scheduled</span>
+              <div className="text-xs sm:text-sm font-bold text-slate-900 tabular-nums">
+                {Math.floor(totalScheduledMinutes / 60)}h {totalScheduledMinutes % 60}m
+              </div>
             </div>
+            <button
+              onClick={() => onOpenNewTaskModal('in_progress', '09:00')}
+              className="min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 rounded-xl shadow-xs transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Schedule Slot</span>
+            </button>
           </div>
-          <button
-            onClick={() => onOpenNewTaskModal('in_progress', '09:00')}
-            className="min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 rounded-xl shadow-xs transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Schedule Slot</span>
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* 2-Column Split: Left Unscheduled Queue & Right Hourly Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
@@ -300,7 +241,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
 
         {/* Right: Hourly Time Slots Grid */}
         <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs divide-y divide-slate-100">
-          {HOURS.map((hour) => {
+          {TIMELINE_HOURS.map((hour) => {
             const hourActivities = scheduledActivities.filter((a) => {
               if (!a.scheduledTime) return false;
               const h = a.scheduledTime.split(':')[0];

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { Activity } from '../types/activity';
+import { Activity, WorkSession } from '../types/activity';
 import { PersistedDocument } from '../types/document';
 import {
   emptyDocument,
@@ -78,6 +78,48 @@ describe('document merge', () => {
     assert.deepEqual(titles, ['Local newer', 'Only local', 'Only server']);
     assert.equal(merged.deletedIds.includes('gone'), true);
     assert.equal(merged.dailyGoalMinutes, 240);
+  });
+
+  it('merges work sessions from both sides when the same activity was edited', () => {
+    const session = (partial: Partial<WorkSession> & Pick<WorkSession, 'id'>): WorkSession => ({
+      activityId: 'a',
+      start: '2026-10-15T09:00:00.000Z',
+      end: '2026-10-15T09:30:00.000Z',
+      minutes: 30,
+      ...partial,
+    });
+
+    const local = doc({
+      updatedAt: '2026-10-15T13:00:00.000Z',
+      activities: [
+        activity({
+          id: 'a',
+          actualMinutes: 30,
+          updatedAt: '2026-10-15T13:00:00.000Z',
+          workSessions: [session({ id: 's-local' })],
+        }),
+      ],
+    });
+    const server = doc({
+      updatedAt: '2026-10-15T12:00:00.000Z',
+      activities: [
+        activity({
+          id: 'a',
+          actualMinutes: 25,
+          updatedAt: '2026-10-15T12:00:00.000Z',
+          workSessions: [session({ id: 's-server', minutes: 25, end: '2026-10-15T09:25:00.000Z' })],
+        }),
+      ],
+    });
+
+    const merged = mergeDocuments(local, server);
+    const mergedActivity = merged.activities.find((a) => a.id === 'a');
+    assert.equal(mergedActivity?.actualMinutes, 30);
+    assert.equal(mergedActivity?.workSessions?.length, 2);
+    assert.deepEqual(
+      mergedActivity?.workSessions?.map((s) => s.id).sort(),
+      ['s-local', 's-server']
+    );
   });
 
   it('treats seeded act-* boards as demo data', () => {

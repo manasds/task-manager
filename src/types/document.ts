@@ -2,7 +2,7 @@ import { Activity } from './activity';
 
 export const DOCUMENT_SCHEMA_VERSION = 2;
 
-export type SavedTab = 'board' | 'planner' | 'analytics';
+export type SavedTab = 'board' | 'planner' | 'activity' | 'analytics';
 
 export interface AppSettings {
   muted: boolean;

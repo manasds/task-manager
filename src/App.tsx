@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, ActivityStatus } from './types/activity';
+import { Activity, ActivityStatus, WorkSession } from './types/activity';
 import { DOCUMENT_SCHEMA_VERSION, PersistedDocument } from './types/document';
 import { generateInitialActivities, getTodayDateString } from './utils/storage';
 import { soundManager } from './utils/audio';
@@ -9,6 +9,7 @@ import { Navbar, ActiveTab } from './components/Navbar';
 import { StatSummaryStrip } from './components/StatSummaryStrip';
 import { BoardView } from './components/BoardView';
 import { DayPlannerView } from './components/DayPlannerView';
+import { DayActivityView } from './components/DayActivityView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { TaskModal } from './components/TaskModal';
 import { FocusTimerBar } from './components/FocusTimerBar';
@@ -148,14 +149,16 @@ export default function App() {
     showToast(`Focus session: ${act.title}`);
   };
 
-  const handleLogTime = (activityId: string, minutesToAdd: number) => {
+  const handleLogTime = (activityId: string, minutesToAdd: number, session: WorkSession) => {
     const now = new Date().toISOString();
     setActivities((prev) =>
       prev.map((a) => {
         if (a.id !== activityId) return a;
+        const workSessions = [...(a.workSessions ?? []), session];
         return {
           ...a,
           actualMinutes: (a.actualMinutes || 0) + minutesToAdd,
+          workSessions,
           updatedAt: now,
         };
       })
@@ -338,6 +341,15 @@ export default function App() {
             onDeleteActivity={handleDeleteActivity}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
+          />
+        )}
+
+        {activeTab === 'activity' && (
+          <DayActivityView
+            activities={activities}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onEditActivity={handleEditActivity}
           />
         )}
 

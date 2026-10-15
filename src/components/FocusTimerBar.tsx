@@ -7,12 +7,13 @@ import {
   X, 
   Check 
 } from 'lucide-react';
-import { Activity, CATEGORIES } from '../types/activity';
+import { Activity, CATEGORIES, WorkSession } from '../types/activity';
 import { soundManager } from '../utils/audio';
+import { createWorkSession } from '../utils/workSessions';
 
 interface FocusTimerBarProps {
   activity: Activity | null;
-  onLogTime: (activityId: string, minutesToAdd: number) => void;
+  onLogTime: (activityId: string, minutesToAdd: number, session: WorkSession) => void;
   onCompleteActivity: (activityId: string) => void;
   onClose: () => void;
 }
@@ -63,14 +64,14 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   const handleCommitLoggedTime = () => {
     const minsToLog = Math.max(1, Math.round(secondsElapsed / 60));
     soundManager.playDrop();
-    onLogTime(activity.id, minsToLog);
+    onLogTime(activity.id, minsToLog, createWorkSession(activity.id, minsToLog));
     setSecondsElapsed(0);
   };
 
   const handleCompleteAndLog = () => {
     const minsToLog = Math.max(0, Math.round(secondsElapsed / 60));
     if (minsToLog > 0) {
-      onLogTime(activity.id, minsToLog);
+      onLogTime(activity.id, minsToLog, createWorkSession(activity.id, minsToLog));
     }
     soundManager.playComplete();
     onCompleteActivity(activity.id);

@@ -1,5 +1,6 @@
 import { Activity } from '../types/activity';
 import { DOCUMENT_SCHEMA_VERSION, PersistedDocument } from '../types/document';
+import { mergeWorkSessions } from './workSessions';
 
 /** Safety net: mobile and crashed tabs often skip pagehide. */
 export const SAFETY_FLUSH_MS = 60_000;
@@ -47,6 +48,19 @@ function activityTimestamp(activity: Activity): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+function mergeActivity(a: Activity, b: Activity): Activity {
+  const aTs = activityTimestamp(a);
+  const bTs = activityTimestamp(b);
+  const newer = aTs >= bTs ? a : b;
+  const mergedSessions = mergeWorkSessions(a.workSessions, b.workSessions);
+
+  return {
+    ...newer,
+    actualMinutes: Math.max(a.actualMinutes || 0, b.actualMinutes || 0),
+    workSessions: mergedSessions.length > 0 ? mergedSessions : undefined,
+  };
+}
+
 /**
  * Merge two session snapshots. Newer activity wins per id.
  * IDs listed in either deletedIds stay deleted so a stale device
@@ -66,8 +80,10 @@ export function mergeDocuments(
   for (const activity of local.activities) {
     if (deleted.has(activity.id)) continue;
     const existing = byId.get(activity.id);
-    if (!existing || activityTimestamp(activity) >= activityTimestamp(existing)) {
+    if (!existing) {
       byId.set(activity.id, activity);
+    } else {
+      byId.set(activity.id, mergeActivity(activity, existing));
     }
   }
 
