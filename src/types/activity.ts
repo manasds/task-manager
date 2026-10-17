@@ -16,6 +16,14 @@ export interface Subtask {
   completed: boolean;
 }
 
+export interface WorkSession {
+  id: string;
+  activityId: string;
+  start: string;
+  end: string;
+  minutes: number;
+}
+
 export interface Activity {
   id: string;
   title: string;
@@ -33,6 +41,7 @@ export interface Activity {
   completedAt?: string;
   createdAt: string;
   updatedAt?: string;
+  workSessions?: WorkSession[];
 }
 
 export interface CategoryMeta {

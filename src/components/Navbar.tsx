@@ -9,7 +9,8 @@ import {
   Calendar,
   Kanban,
   BarChart3,
-  MoreHorizontal
+  MoreHorizontal,
+  Activity as ActivityIcon
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -18,7 +19,7 @@ import { SyncStatus } from './SyncStatus';
 import { CloudUser, FlushReason } from '../types/document';
 import { SyncPhase } from '../hooks/useSessionPersistence';
 
-export type ActiveTab = 'board' | 'planner' | 'analytics';
+export type ActiveTab = 'board' | 'planner' | 'activity' | 'analytics';
 
 const menuItemClass =
   'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100';
@@ -243,6 +244,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Calendar className="w-3.5 h-3.5" />
               <span>Planner</span>
+            </button>
+            <button
+              onClick={() => handleTabClick('activity')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 min-h-9 ${
+                activeTab === 'activity'
+                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-900/5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              <ActivityIcon className="w-3.5 h-3.5" />
+              <span>Activity</span>
             </button>
             <button
               onClick={() => handleTabClick('analytics')}
