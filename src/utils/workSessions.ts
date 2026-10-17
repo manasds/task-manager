@@ -242,8 +242,14 @@ const MIN_TIMELINE_HOURS = 3;
 /**
  * Sessions on a date, with side-by-side lanes for overlaps and an hour range
  * that fits the work actually logged (08:00-18:00 when there is none).
+ * `minVisualMinutes` is how much time a block occupies on screen at minimum,
+ * so short blocks drawn taller than their duration still get their own lane.
  */
-export function layoutDayTimeline(activities: Activity[], date: string): DayTimeline {
+export function layoutDayTimeline(
+  activities: Activity[],
+  date: string,
+  minVisualMinutes = 0
+): DayTimeline {
   const dayStart = parseLocalDate(date);
   const blocks: TimelineBlock[] = [];
   for (const activity of activities) {
@@ -263,6 +269,7 @@ export function layoutDayTimeline(activities: Activity[], date: string): DayTime
   if (blocks.length === 0) return { blocks, startHour: 8, endHour: 18 };
 
   blocks.sort((a, b) => a.startMin - b.startMin || b.endMin - a.endMin);
+  const visualEnd = (b: TimelineBlock) => Math.max(b.endMin, b.startMin + minVisualMinutes);
 
   let cluster: TimelineBlock[] = [];
   let laneEnds: number[] = [];
@@ -276,15 +283,15 @@ export function layoutDayTimeline(activities: Activity[], date: string): DayTime
     if (block.startMin >= clusterEnd) closeCluster();
     let lane = laneEnds.findIndex((end) => end <= block.startMin);
     if (lane === -1) lane = laneEnds.push(0) - 1;
-    laneEnds[lane] = block.endMin;
+    laneEnds[lane] = visualEnd(block);
     block.lane = lane;
     cluster.push(block);
-    clusterEnd = Math.max(clusterEnd, block.endMin);
+    clusterEnd = Math.max(clusterEnd, visualEnd(block));
   }
   closeCluster();
 
   let startHour = Math.floor(Math.min(...blocks.map((b) => b.startMin)) / 60);
-  let endHour = Math.ceil(Math.max(...blocks.map((b) => b.endMin)) / 60);
+  let endHour = Math.ceil(Math.max(...blocks.map(visualEnd)) / 60);
   startHour = Math.max(0, startHour);
   endHour = Math.min(24, Math.max(endHour, startHour + 1));
   if (endHour - startHour < MIN_TIMELINE_HOURS) {
@@ -294,4 +301,37 @@ export function layoutDayTimeline(activities: Activity[], date: string): DayTime
     startHour = Math.max(0, endHour - MIN_TIMELINE_HOURS);
   }
   return { blocks, startHour, endHour };
+}
+
+export interface TimelineAxis {
+  /** Pixel offset of each hour boundary from startHour to endHour inclusive. */
+  hourTops: number[];
+  height: number;
+  /** Pixel offset for minutes from local midnight. */
+  toPx: (minutes: number) => number;
+}
+
+/** Hours with work get tall rows so blocks show their real span; empty hours collapse to a slim gap. */
+export function buildTimelineAxis(
+  { blocks, startHour, endHour }: DayTimeline,
+  activeRowPx: number,
+  emptyRowPx: number
+): TimelineAxis {
+  const rowHeights: number[] = [];
+  for (let hour = startHour; hour < endHour; hour++) {
+    const from = hour * 60;
+    const to = from + 60;
+    const busy = blocks.some((b) => b.startMin < to && Math.max(b.endMin, b.startMin + 1) > from);
+    rowHeights.push(busy ? activeRowPx : emptyRowPx);
+  }
+  const hourTops = [0];
+  for (const h of rowHeights) hourTops.push(hourTops[hourTops.length - 1] + h);
+  const height = hourTops[hourTops.length - 1];
+
+  const toPx = (minutes: number) => {
+    const offset = minutes / 60 - startHour;
+    const row = Math.min(Math.max(Math.floor(offset), 0), rowHeights.length - 1);
+    return Math.min(height, Math.max(0, hourTops[row] + (offset - row) * rowHeights[row]));
+  };
+  return { hourTops, height, toPx };
 }

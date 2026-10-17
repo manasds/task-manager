@@ -3,6 +3,7 @@ import { Clock } from 'lucide-react';
 import { Activity, CATEGORIES } from '../types/activity';
 import { DayDateNav } from './DayDateNav';
 import {
+  buildTimelineAxis,
   formatMinutes,
   layoutDayTimeline,
   sessionDate,
@@ -17,10 +18,12 @@ interface DayActivityViewProps {
   onEditActivity: (activity: Activity) => void;
 }
 
-const ROW_HEIGHT_PX = 56;
-const MIN_BLOCK_PX = 24;
-/** Blocks shorter than this show a single line. */
-const TWO_LINE_BLOCK_PX = 42;
+/** Row height for an hour that has logged work (2px per minute). */
+const ACTIVE_ROW_PX = 120;
+/** Row height for an hour with nothing logged. */
+const EMPTY_ROW_PX = 28;
+/** Enough for the title and time range on two lines. */
+const MIN_BLOCK_PX = 44;
 
 function formatClock(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-US', {
@@ -39,10 +42,18 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
   const taskStats = taskStatsForDate(activities, selectedDate);
   const totalMinutes = taskStats.reduce((sum, t) => sum + t.totalMinutes, 0);
 
-  const { blocks, startHour, endHour } = layoutDayTimeline(activities, selectedDate);
+  const timeline = layoutDayTimeline(
+    activities,
+    selectedDate,
+    (MIN_BLOCK_PX / ACTIVE_ROW_PX) * 60
+  );
+  const { blocks, startHour, endHour } = timeline;
+  const { hourTops, height: timelineHeight, toPx } = buildTimelineAxis(
+    timeline,
+    ACTIVE_ROW_PX,
+    EMPTY_ROW_PX
+  );
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
-  const timelineHeight = (endHour - startHour) * ROW_HEIGHT_PX;
-  const toPx = (minutes: number) => ((minutes - startHour * 60) / 60) * ROW_HEIGHT_PX;
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
@@ -153,7 +164,7 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
                   <span
                     key={hour}
                     className="absolute right-2 sm:right-3 -translate-y-1/2 font-mono text-[11px] font-semibold text-slate-400 tabular-nums"
-                    style={{ top: (hour - startHour) * ROW_HEIGHT_PX }}
+                    style={{ top: hourTops[hour - startHour] }}
                   >
                     {String(hour % 24).padStart(2, '0')}:00
                   </span>
@@ -166,7 +177,7 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
                   <div
                     key={hour}
                     className="absolute left-0 right-0 border-t border-slate-100"
-                    style={{ top: (hour - startHour) * ROW_HEIGHT_PX }}
+                    style={{ top: hourTops[hour - startHour] }}
                   />
                 ))}
 
@@ -174,7 +185,6 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
                   const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
                   const top = toPx(startMin);
                   const height = Math.max(toPx(endMin) - top, MIN_BLOCK_PX);
-                  const compact = height < TWO_LINE_BLOCK_PX;
                   const fromPrevDay = sessionDate(session) !== selectedDate;
                   const intoNextDay = sessionEndDate(session) !== selectedDate;
                   const range = `${formatClock(session.start)}–${formatClock(session.end)}`;
@@ -190,9 +200,7 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
                       key={`${session.id}-${selectedDate}`}
                       type="button"
                       onClick={() => onEditActivity(activity)}
-                      className={`absolute rounded-lg pl-2.5 pr-2 text-left overflow-hidden border shadow-xs transition-shadow hover:shadow-md hover:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 ${
-                        compact ? 'flex items-center gap-1.5' : 'py-1.5'
-                      } ${fromPrevDay || intoNextDay ? 'border-dashed' : ''}`}
+                      className={`absolute rounded-lg pl-2.5 pr-2 text-left overflow-hidden border shadow-xs transition-shadow hover:shadow-md hover:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 py-1.5 ${fromPrevDay || intoNextDay ? 'border-dashed' : ''}`}
                       style={{
                         top: top + 1,
                         height: height - 2,
@@ -210,12 +218,9 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
                       <span className="block min-w-0 truncate text-[11px] font-semibold text-slate-900 leading-tight">
                         {activity.title}
                       </span>
-                      <span
-                        className={`block shrink-0 text-[10px] text-slate-500 tabular-nums leading-tight ${
-                          compact ? '' : 'mt-0.5 truncate'
-                        }`}
-                      >
-                        {compact ? minutesLabel : `${range} · ${minutesLabel}${crossLabel}`}
+                      <span className="block mt-0.5 truncate text-[10px] text-slate-500 tabular-nums leading-tight">
+                        {range} · {minutesLabel}
+                        {crossLabel}
                       </span>
                     </button>
                   );

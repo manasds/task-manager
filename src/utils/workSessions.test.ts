@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Activity } from '../types/activity';
 import {
+  buildTimelineAxis,
   focusMinutesByHour,
   layoutDayTimeline,
   localDateString,
@@ -212,5 +213,29 @@ describe('day timeline layout', () => {
     const { blocks, startHour, endHour } = layoutDayTimeline([], '2026-10-15');
     assert.equal(blocks.length, 0);
     assert.deepEqual([startHour, endHour], [8, 18]);
+  });
+});
+
+describe('adaptive timeline axis', () => {
+  const at = (h: number, m = 0) => new Date(2026, 9, 15, h, m);
+
+  it('gives busy hours tall rows and empty hours slim gaps', () => {
+    const acts = [activity({ id: 'a', workSessions: [session('s1', at(15, 30), at(15, 32), 2)] })];
+    const timeline = layoutDayTimeline(acts, '2026-10-15');
+    const axis = buildTimelineAxis(timeline, 120, 28);
+    assert.deepEqual([timeline.startHour, timeline.endHour], [14, 17]);
+    assert.deepEqual(axis.hourTops, [0, 28, 148, 176]);
+    assert.equal(axis.toPx(15 * 60 + 30), 88);
+  });
+
+  it('gives short blocks drawn at minimum height their own lane', () => {
+    const acts = [
+      activity({ id: 'a', workSessions: [session('s1', at(9, 0), at(9, 5), 5)] }),
+      activity({ id: 'b', workSessions: [session('s2', at(9, 10), at(9, 20), 10)] }),
+    ];
+    const plain = layoutDayTimeline(acts, '2026-10-15');
+    assert.equal(plain.blocks[0].lanes, 1);
+    const padded = layoutDayTimeline(acts, '2026-10-15', 25);
+    assert.equal(padded.blocks[0].lanes, 2);
   });
 });
