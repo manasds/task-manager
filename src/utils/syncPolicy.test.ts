@@ -2,14 +2,21 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Activity } from '../types/activity';
 import { PersistedDocument } from '../types/document';
+import { PullResponse } from '../types/sync';
 import {
+  applyPull,
+  applyPushResult,
+  buildPush,
+  diffActivities,
   emptyDocument,
+  emptySyncMeta,
+  hasPending,
   isLikelyDemoDocument,
-  mergeDocuments,
-  resolveBootDocument,
-  shouldFlushOnSessionEnd,
+  recordLocalEdits,
+  seedPendingFromLocal,
   shouldSafetyFlush,
   SAFETY_FLUSH_MS,
+  SyncMeta,
 } from './syncPolicy';
 
 function activity(partial: Partial<Activity> & Pick<Activity, 'id'>): Activity {
@@ -32,18 +39,16 @@ function doc(overrides: Partial<PersistedDocument>): PersistedDocument {
   return { ...emptyDocument('2026-10-15T12:00:00.000Z'), ...overrides };
 }
 
-describe('session flush policy', () => {
-  it('does not flush while the tab is visible or clean', () => {
-    assert.equal(shouldFlushOnSessionEnd(false, true, false), false);
-    assert.equal(shouldFlushOnSessionEnd(true, false, false), false);
-    assert.equal(shouldFlushOnSessionEnd(true, true, true), false);
-  });
+function meta(overrides: Partial<SyncMeta>): SyncMeta {
+  return { ...emptySyncMeta(), initialized: true, ...overrides };
+}
 
-  it('flushes a dirty document when the session ends', () => {
-    assert.equal(shouldFlushOnSessionEnd(true, true, false), true);
-  });
+function pull(rows: PullResponse['rows'], cursor: number, goal: PullResponse['goal'] = null): PullResponse {
+  return { rows, goal, cursor, hasMore: false };
+}
 
-  it('safety-flushes only after the interval while dirty', () => {
+describe('safety interval', () => {
+  it('fires only after the interval and when wanted', () => {
     assert.equal(shouldSafetyFlush(60_000, 0, true, false), true);
     assert.equal(shouldSafetyFlush(SAFETY_FLUSH_MS - 1, 0, true, false), false);
     assert.equal(shouldSafetyFlush(120_000, 0, false, false), false);
@@ -51,76 +56,186 @@ describe('session flush policy', () => {
   });
 });
 
-describe('document merge', () => {
-  it('keeps the newer activity and honors deletes from either side', () => {
-    const local = doc({
-      updatedAt: '2026-10-15T13:00:00.000Z',
-      dailyGoalMinutes: 240,
-      deletedIds: ['gone'],
-      activities: [
-        activity({ id: 'a', title: 'Local newer', updatedAt: '2026-10-15T13:00:00.000Z' }),
-        activity({ id: 'b', title: 'Only local', updatedAt: '2026-10-15T12:30:00.000Z' }),
-        activity({ id: 'gone', title: 'Should drop' }),
-      ],
-    });
-    const server = doc({
-      updatedAt: '2026-10-15T12:00:00.000Z',
-      dailyGoalMinutes: 360,
-      deletedIds: [],
-      activities: [
-        activity({ id: 'a', title: 'Server older', updatedAt: '2026-10-15T11:00:00.000Z' }),
-        activity({ id: 'c', title: 'Only server', updatedAt: '2026-10-15T11:30:00.000Z' }),
-        activity({ id: 'gone', title: 'Server still has it' }),
-      ],
-    });
-
-    const merged = mergeDocuments(local, server);
-    const titles = merged.activities.map((a) => a.title).sort();
-    assert.deepEqual(titles, ['Local newer', 'Only local', 'Only server']);
-    assert.equal(merged.deletedIds.includes('gone'), true);
-    assert.equal(merged.dailyGoalMinutes, 240);
+describe('local edit tracking', () => {
+  it('reports added, edited and removed tasks but not untouched ones', () => {
+    const same = activity({ id: 'same' });
+    const prev = [same, activity({ id: 'edit' }), activity({ id: 'gone' })];
+    const next = [same, activity({ id: 'edit', title: 'Edited' }), activity({ id: 'new' })];
+    assert.deepEqual(diffActivities(prev, next).sort(), ['edit', 'gone', 'new']);
   });
 
-  it('treats seeded act-* boards as demo data', () => {
-    const demo = doc({
-      activities: [activity({ id: 'act-1' }), activity({ id: 'act-hist-2' })],
-    });
-    assert.equal(isLikelyDemoDocument(demo), true);
-    assert.equal(isLikelyDemoDocument(emptyDocument()), false);
+  it('ignores a copy with identical content', () => {
+    const a = activity({ id: 'a' });
+    assert.deepEqual(diffActivities([a], [{ ...a }]), []);
+  });
+
+  it('does not sync UI-only settings', () => {
+    const prev = doc({});
+    const next = doc({ settings: { muted: true, lastTab: 'analytics', selectedDate: '2026-10-01' } });
+    const m = meta({});
+    assert.equal(recordLocalEdits(m, prev, next), m);
+  });
+
+  it('gives each quick edit a strictly newer marker', () => {
+    const now = '2026-10-15T12:00:00.000Z';
+    const first = recordLocalEdits(meta({}), doc({}), doc({ activities: [activity({ id: 'a' })] }), now);
+    const second = recordLocalEdits(
+      first,
+      doc({ activities: [activity({ id: 'a' })] }),
+      doc({ activities: [activity({ id: 'a', title: 'again' })] }),
+      now
+    );
+    assert.ok(Date.parse(second.pending.a.at) > Date.parse(first.pending.a.at));
+  });
+
+  it('pushes deletes as null data with the last seen seq', () => {
+    const m = meta({ seqs: { gone: 7 }, pending: { gone: { at: '2026-10-15T12:00:00.000Z' } } });
+    const push = buildPush(doc({}), m);
+    assert.deepEqual(push?.changes, [
+      { id: 'gone', data: null, updatedAt: '2026-10-15T12:00:00.000Z', baseSeq: 7 },
+    ]);
   });
 });
 
-describe('boot document resolution', () => {
-  const server = {
-    revision: 5,
-    document: doc({
-      activities: [activity({ id: 'beaconed', updatedAt: '2026-10-15T11:00:00.000Z' })],
-    }),
-  };
+describe('push results', () => {
+  it('clears confirmed edits but keeps ones made while the push was in flight', () => {
+    const a = activity({ id: 'a' });
+    const b = activity({ id: 'b' });
+    const local = doc({ activities: [a, b] });
+    const before = meta({
+      pending: { a: { at: '2026-10-15T12:00:00.000Z' }, b: { at: '2026-10-15T12:00:00.000Z' } },
+    });
+    const sent = buildPush(local, before)!;
+    const during = { ...before, pending: { ...before.pending, b: { at: '2026-10-15T12:00:01.000Z' } } };
 
-  it('keeps edits made after a beacon whose new revision was never seen', () => {
+    const result = applyPushResult(local, during, sent, {
+      applied: [{ id: 'a', seq: 3 }, { id: 'b', seq: 4 }],
+      rejected: [],
+      goalApplied: null,
+      goalRejected: null,
+    });
+    assert.deepEqual(Object.keys(result.meta.pending), ['b']);
+    assert.equal(result.meta.seqs.a, 3);
+    assert.equal(result.meta.seqs.b, 4);
+  });
+
+  it('adopts the server copy when the push loses', () => {
+    const local = doc({ activities: [activity({ id: 'a', title: 'Mine' })] });
+    const m = meta({ pending: { a: { at: '2026-10-15T11:00:00.000Z' } } });
+    const sent = buildPush(local, m)!;
+    const server = activity({ id: 'a', title: 'Theirs' });
+    const result = applyPushResult(local, m, sent, {
+      applied: [],
+      rejected: [{ id: 'a', data: server, updatedAt: '2026-10-15T11:30:00.000Z', seq: 9 }],
+      goalApplied: null,
+      goalRejected: null,
+    });
+    assert.equal(result.doc.activities[0].title, 'Theirs');
+    assert.equal(hasPending(result.meta), false);
+    assert.equal(result.meta.seqs.a, 9);
+  });
+});
+
+describe('pull', () => {
+  it('applies remote upserts and deletes and advances the cursor', () => {
+    const local = doc({ activities: [activity({ id: 'old' }), activity({ id: 'removed' })] });
+    const incoming = activity({ id: 'new' });
+    const result = applyPull(
+      local,
+      meta({ cursor: 2, seqs: { removed: 1 } }),
+      pull(
+        [
+          { id: 'new', data: incoming, updatedAt: '2026-10-15T12:00:00.000Z', seq: 3 },
+          { id: 'removed', data: null, updatedAt: '2026-10-15T12:00:00.000Z', seq: 4 },
+        ],
+        4
+      )
+    );
+    assert.deepEqual(result.doc.activities.map((a) => a.id).sort(), ['new', 'old']);
+    assert.deepEqual(result.update.deletes, ['removed']);
+    assert.equal(result.meta.cursor, 4);
+    assert.equal(result.meta.seqs.removed, undefined);
+  });
+
+  it('keeps a newer local edit and its old baseSeq so the server compares timestamps', () => {
+    const local = doc({ activities: [activity({ id: 'a', title: 'Mine' })] });
+    const m = meta({ seqs: { a: 1 }, pending: { a: { at: '2026-10-15T12:00:00.000Z' } } });
+    const result = applyPull(
+      local,
+      m,
+      pull([{ id: 'a', data: activity({ id: 'a', title: 'Theirs' }), updatedAt: '2026-10-15T11:00:00.000Z', seq: 5 }], 5)
+    );
+    assert.equal(result.doc.activities[0].title, 'Mine');
+    assert.equal(result.meta.seqs.a, 1);
+    assert.ok(result.meta.pending.a);
+  });
+
+  it('drops a local edit that a newer remote edit beat', () => {
+    const local = doc({ activities: [activity({ id: 'a', title: 'Mine' })] });
+    const m = meta({ pending: { a: { at: '2026-10-15T11:00:00.000Z' } } });
+    const result = applyPull(
+      local,
+      m,
+      pull([{ id: 'a', data: activity({ id: 'a', title: 'Theirs' }), updatedAt: '2026-10-15T12:00:00.000Z', seq: 5 }], 5)
+    );
+    assert.equal(result.doc.activities[0].title, 'Theirs');
+    assert.equal(hasPending(result.meta), false);
+  });
+
+  it('treats its own tab-close beacon coming back as confirmed', () => {
+    const mine = activity({ id: 'a', title: 'Mine' });
+    const local = doc({ activities: [mine] });
+    const m = meta({ pending: { a: { at: '2026-10-15T12:00:00.000Z' } } });
+    const result = applyPull(local, m, pull([{ id: 'a', data: mine, updatedAt: '2026-10-15T12:00:00.000Z', seq: 6 }], 6));
+    assert.equal(hasPending(result.meta), false);
+    assert.equal(result.meta.seqs.a, 6);
+    assert.equal(result.doc, local);
+  });
+
+  it('takes a newer remote daily goal', () => {
+    const result = applyPull(
+      doc({ dailyGoalMinutes: 360 }),
+      meta({}),
+      pull([], 2, { dailyGoalMinutes: 240, updatedAt: '2026-10-15T12:00:00.000Z', seq: 2 })
+    );
+    assert.equal(result.doc.dailyGoalMinutes, 240);
+    assert.equal(result.update.dailyGoalMinutes, 240);
+  });
+});
+
+describe('first sync on a device', () => {
+  it('merges local tasks with the server copy by timestamp', () => {
     const local = doc({
       activities: [
-        activity({ id: 'beaconed', updatedAt: '2026-10-15T11:00:00.000Z' }),
-        activity({ id: 'after-beacon', updatedAt: '2026-10-15T11:05:00.000Z' }),
+        activity({ id: 'local-newer', title: 'Local', updatedAt: '2026-10-15T13:00:00.000Z' }),
+        activity({ id: 'server-newer', title: 'Local', updatedAt: '2026-10-15T09:00:00.000Z' }),
+        activity({ id: 'only-local', updatedAt: '2026-10-15T09:00:00.000Z' }),
       ],
     });
-    const resolved = resolveBootDocument(local, 4, true, server);
-    assert.equal(resolved.dirty, true);
-    assert.deepEqual(resolved.document.activities.map((a) => a.id).sort(), ['after-beacon', 'beaconed']);
+    const seeded = seedPendingFromLocal(local, meta({}));
+    const result = applyPull(
+      local,
+      seeded,
+      pull(
+        [
+          { id: 'local-newer', data: activity({ id: 'local-newer', title: 'Server' }), updatedAt: '2026-10-15T12:00:00.000Z', seq: 1 },
+          { id: 'server-newer', data: activity({ id: 'server-newer', title: 'Server' }), updatedAt: '2026-10-15T12:00:00.000Z', seq: 2 },
+          { id: 'only-server', data: activity({ id: 'only-server' }), updatedAt: '2026-10-15T12:00:00.000Z', seq: 3 },
+        ],
+        3
+      )
+    );
+    const byId = new Map(result.doc.activities.map((a) => [a.id, a.title]));
+    assert.equal(byId.get('local-newer'), 'Local');
+    assert.equal(byId.get('server-newer'), 'Server');
+    assert.ok(byId.has('only-local'));
+    assert.ok(byId.has('only-server'));
+    assert.deepEqual(Object.keys(result.meta.pending).sort(), ['local-newer', 'only-local']);
   });
 
-  it('re-flushes unconfirmed edits even when the revision still matches', () => {
-    const local = doc({ activities: [activity({ id: 'offline-edit' })] });
-    const resolved = resolveBootDocument(local, 5, true, server);
-    assert.equal(resolved.dirty, true);
-    assert.equal(resolved.document, local);
-  });
-
-  it('takes the server copy when local is clean and behind', () => {
-    const local = doc({ activities: [activity({ id: 'old' })] });
-    const resolved = resolveBootDocument(local, 3, false, server);
-    assert.equal(resolved.dirty, false);
-    assert.equal(resolved.document, server.document);
+  it('treats seeded act-* boards as demo data', () => {
+    const demo = doc({ activities: [activity({ id: 'act-1' }), activity({ id: 'act-hist-2' })] });
+    assert.equal(isLikelyDemoDocument(demo), true);
+    assert.equal(isLikelyDemoDocument(emptyDocument()), false);
   });
 });

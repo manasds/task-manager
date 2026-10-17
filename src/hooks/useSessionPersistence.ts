@@ -1,321 +1,340 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { signInWithGoogle, signOutGoogle } from '../auth/client';
-import { fetchDocument, fetchMe, putDocument, putDocumentBeacon } from '../api/client';
+import { fetchMe, pullChanges, pushChanges, pushChangesBeacon } from '../api/client';
 import { CloudUser, FlushReason, PersistedDocument } from '../types/document';
 import {
   guestScope,
-  loadLocalDirty,
   loadLocalDocument,
-  loadLocalRevision,
-  saveLocalDirty,
+  loadSyncMeta,
   saveLocalDocument,
-  saveLocalRevision,
+  saveSyncMeta,
 } from '../utils/localDocument';
 import {
+  applyPull,
+  applyPushResult,
+  buildPush,
   emptyDocument,
+  emptySyncMeta,
+  hasPending,
+  isEmptyRemoteUpdate,
   isLikelyDemoDocument,
-  mergeDocuments,
-  resolveBootDocument,
+  recordLocalEdits,
+  RemoteUpdate,
   SAFETY_FLUSH_MS,
-  shouldFlushOnSessionEnd,
+  seedPendingFromLocal,
   shouldSafetyFlush,
+  SYNC_DEBOUNCE_MS,
+  SyncMeta,
 } from '../utils/syncPolicy';
 
 export type SyncPhase = 'idle' | 'dirty' | 'flushing' | 'synced' | 'offline' | 'error';
 
+/** Local-only mode. Flip to true to resume /api/me and /api/sync. */
+const CLOUD_SYNC_ENABLED = false;
+
+/** Lets a signed-in user keep working on their own data when the app opens offline. */
+const LAST_USER_KEY = 'orbittask_last_user';
+/** Upper bound on push batches per sync so a busy editor cannot pin the loop. */
+const MAX_PUSH_BATCHES = 20;
+
+function loadLastUser(): CloudUser | null {
+  try {
+    const raw = localStorage.getItem(LAST_USER_KEY);
+    return raw ? (JSON.parse(raw) as CloudUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastUser(user: CloudUser | null) {
+  try {
+    if (user) localStorage.setItem(LAST_USER_KEY, JSON.stringify(user));
+    else localStorage.removeItem(LAST_USER_KEY);
+  } catch {
+    // storage full or blocked; offline sign-in memory is best effort
+  }
+}
+
 interface PersistenceState {
   user: CloudUser | null;
   authReady: boolean;
-  revision: number;
   dirty: boolean;
   phase: SyncPhase;
   lastError: string | null;
   lastFlushReason: FlushReason | null;
   lastSyncedAt: string | null;
-  /** Bumps when the hook replaced the document with a server merge the UI has not seen. */
-  remoteVersion: number;
 }
 
-export function useSessionPersistence() {
+/**
+ * Local-first persistence with per-task cloud sync. Edits save to this device at
+ * once, push about 1.5s later, and other devices' changes are pulled when the tab
+ * regains focus, comes back online, or once a minute while visible.
+ * `onRemoteUpdate` receives server changes so the UI can merge them into its state.
+ */
+export function useSessionPersistence(onRemoteUpdate: (update: RemoteUpdate) => void) {
   const [state, setState] = useState<PersistenceState>({
     user: null,
     authReady: false,
-    revision: 0,
     dirty: false,
     phase: 'idle',
     lastError: null,
     lastFlushReason: null,
     lastSyncedAt: null,
-    remoteVersion: 0,
   });
 
   const documentRef = useRef<PersistedDocument>(emptyDocument());
-  const revisionRef = useRef(0);
-  const dirtyRef = useRef(false);
-  const inFlightRef = useRef(false);
-  const lastAttemptRef = useRef(0);
+  const metaRef = useRef<SyncMeta>(emptySyncMeta());
   const userRef = useRef<CloudUser | null>(null);
+  const inFlightRef = useRef(false);
+  const rerunRef = useRef<FlushReason | null>(null);
+  const lastAttemptRef = useRef(0);
+  const debounceRef = useRef<number | null>(null);
+  const onRemoteRef = useRef(onRemoteUpdate);
+  onRemoteRef.current = onRemoteUpdate;
 
   const scopeFor = (user: CloudUser | null) => user?.id ?? guestScope();
 
-  const persistLocal = useCallback((document: PersistedDocument, markDirty: boolean) => {
-    documentRef.current = document;
-    const scope = scopeFor(userRef.current);
-    try {
-      saveLocalDocument(scope, document);
-    } catch {
-      setState((prev) => ({
-        ...prev,
-        lastError: 'This device could not save locally (storage full?)',
-        phase: 'error',
-      }));
-      return;
-    }
-    if (markDirty && userRef.current) {
-      dirtyRef.current = true;
-      saveLocalDirty(userRef.current.id, true);
-      setState((prev) => ({ ...prev, dirty: true, phase: 'dirty', lastError: null }));
-    }
-  }, []);
+  const saveMeta = (meta: SyncMeta) => {
+    metaRef.current = meta;
+    if (userRef.current) saveSyncMeta(userRef.current.id, meta);
+  };
 
-  const flush = useCallback(async (reason: FlushReason, useBeacon = false) => {
+  /** Store a sync result and hand any server changes to the UI in the same tick. */
+  const commit = (step: { doc: PersistedDocument; meta: SyncMeta; update: RemoteUpdate }) => {
     const user = userRef.current;
-    if (!user || !dirtyRef.current || inFlightRef.current) return false;
+    if (!user) return;
+    documentRef.current = step.doc;
+    saveLocalDocument(user.id, step.doc);
+    saveMeta(step.meta);
+    if (!isEmptyRemoteUpdate(step.update)) onRemoteRef.current(step.update);
+  };
+
+  const sync = useCallback(async (reason: FlushReason): Promise<boolean> => {
+    if (!CLOUD_SYNC_ENABLED) return false;
+    const user = userRef.current;
+    if (!user) return false;
+    if (inFlightRef.current) {
+      rerunRef.current = reason;
+      return false;
+    }
+    if (debounceRef.current !== null) {
+      window.clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
 
     inFlightRef.current = true;
     lastAttemptRef.current = Date.now();
     setState((prev) => ({ ...prev, phase: 'flushing', lastFlushReason: reason }));
 
-    const payload = {
-      document: documentRef.current,
-      baseRevision: revisionRef.current,
-    };
-
-    if (useBeacon) {
-      const queued = await putDocumentBeacon(payload);
-      inFlightRef.current = false;
-      // Do not clear dirty: beacon cannot confirm the new revision.
-      // A later explicit/safety flush reconciles if the tab survives.
-      if (queued) {
-        setState((prev) => ({
-          ...prev,
-          phase: 'dirty',
-          lastFlushReason: reason,
-          lastError: null,
-        }));
-      }
-      return queued;
-    }
-
+    let ok = false;
     try {
-      const { record } = await putDocument(payload);
-      revisionRef.current = record.revision;
-      saveLocalRevision(user.id, record.revision);
-      inFlightRef.current = false;
-      if (documentRef.current !== payload.document) {
-        setState((prev) => ({
-          ...prev,
-          revision: record.revision,
-          lastSyncedAt: record.updatedAt,
-          lastError: null,
-          lastFlushReason: reason,
-        }));
-        return flush(reason);
+      for (let batch = 0; batch < MAX_PUSH_BATCHES; batch += 1) {
+        const push = buildPush(documentRef.current, metaRef.current);
+        if (!push) break;
+        const result = await pushChanges(push);
+        if (userRef.current?.id !== user.id) return false;
+        commit(applyPushResult(documentRef.current, metaRef.current, push, result));
       }
-      saveLocalDocument(user.id, record.document);
-      documentRef.current = record.document;
-      dirtyRef.current = false;
-      saveLocalDirty(user.id, false);
+
+      for (;;) {
+        const pull = await pullChanges(metaRef.current.cursor);
+        if (userRef.current?.id !== user.id) return false;
+        commit(applyPull(documentRef.current, metaRef.current, pull));
+        if (!pull.hasMore) break;
+      }
+
+      const dirty = hasPending(metaRef.current);
       setState((prev) => ({
         ...prev,
-        revision: record.revision,
-        dirty: false,
-        phase: 'synced',
-        lastSyncedAt: record.updatedAt,
+        dirty,
+        phase: dirty ? 'dirty' : 'synced',
+        lastSyncedAt: new Date().toISOString(),
         lastError: null,
-        lastFlushReason: reason,
       }));
-      return true;
+      ok = true;
     } catch (error) {
-      const err = error as Error & { status?: number; payload?: { record?: { document: PersistedDocument; revision: number } } };
-      if (err.status === 409 && err.payload?.record) {
-        const merged = mergeDocuments(documentRef.current, err.payload.record.document);
-        documentRef.current = merged;
-        revisionRef.current = err.payload.record.revision;
-        saveLocalDocument(user.id, merged);
-        saveLocalRevision(user.id, err.payload.record.revision);
-        dirtyRef.current = true;
-        inFlightRef.current = false;
-        setState((prev) => ({
-          ...prev,
-          revision: err.payload!.record!.revision,
-          dirty: true,
-          phase: 'dirty',
-          lastError: 'Merged changes from another device, syncing again',
-          remoteVersion: prev.remoteVersion + 1,
-        }));
-        return flush('explicit');
-      }
-      inFlightRef.current = false;
+      const err = error as Error & { status?: number };
+      const message =
+        err.status === 401
+          ? 'Your session expired. Sign in again to sync.'
+          : err.message || 'Cloud sync failed. Work is still on this device.';
       setState((prev) => ({
         ...prev,
+        dirty: hasPending(metaRef.current),
         phase: navigator.onLine ? 'error' : 'offline',
-        lastError: err.message || 'Cloud save failed. Work is still on this device.',
+        lastError: navigator.onLine ? message : 'Offline · changes are saved on this device',
       }));
-      return false;
+    } finally {
+      inFlightRef.current = false;
     }
+
+    const rerun = rerunRef.current;
+    rerunRef.current = null;
+    if (rerun && ok) void sync(rerun);
+    return ok;
+  }, []);
+
+  const persistLocal = useCallback(
+    (document: PersistedDocument, markDirty: boolean) => {
+      const previous = documentRef.current;
+      documentRef.current = document;
+      const user = userRef.current;
+      try {
+        saveLocalDocument(scopeFor(user), document);
+      } catch {
+        setState((prev) => ({
+          ...prev,
+          lastError: 'This device could not save locally (storage full?)',
+          phase: 'error',
+        }));
+        return;
+      }
+      if (!markDirty || !user) return;
+
+      const meta = recordLocalEdits(metaRef.current, previous, document);
+      if (meta === metaRef.current) return;
+      saveMeta(meta);
+      setState((prev) => ({
+        ...prev,
+        dirty: true,
+        phase: prev.phase === 'flushing' ? prev.phase : 'dirty',
+      }));
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        debounceRef.current = null;
+        void sync('edit');
+      }, SYNC_DEBOUNCE_MS);
+    },
+    [sync]
+  );
+
+  /** Tab is closing or hiding: best-effort push without waiting for an answer. */
+  const beaconPush = useCallback(() => {
+    if (!CLOUD_SYNC_ENABLED) return;
+    if (!userRef.current) return;
+    const push = buildPush(documentRef.current, metaRef.current);
+    if (push) pushChangesBeacon(push);
   }, []);
 
   const bootstrap = useCallback(async () => {
-    try {
-      const { user } = await fetchMe();
-      userRef.current = user;
-      if (!user) {
-        const guest = loadLocalDocument(guestScope());
-        documentRef.current = guest;
-        setState((prev) => ({ ...prev, user: null, authReady: true, phase: 'idle' }));
-        return guest;
+    let user: CloudUser | null;
+    let online = true;
+    if (!CLOUD_SYNC_ENABLED) {
+      user = loadLastUser();
+      online = false;
+    } else {
+      try {
+        user = (await fetchMe()).user;
+        saveLastUser(user);
+      } catch {
+        online = false;
+        user = loadLastUser();
       }
-
-      const local = loadLocalDocument(user.id);
-      const localRevision = loadLocalRevision(user.id);
-      const { record } = await fetchDocument();
-
-      if (!record) {
-        const guest = loadLocalDocument(guestScope());
-        const promote =
-          guest.activities.length > 0 && !isLikelyDemoDocument(guest) ? guest : emptyDocument();
-        documentRef.current = promote.activities.length ? promote : local;
-        revisionRef.current = 0;
-        saveLocalDocument(user.id, documentRef.current);
-        if (documentRef.current.activities.length > 0) {
-          dirtyRef.current = true;
-          setState((prev) => ({
-            ...prev,
-            user,
-            authReady: true,
-            revision: 0,
-            dirty: true,
-            phase: 'dirty',
-            lastError: null,
-            lastFlushReason: null,
-            lastSyncedAt: null,
-          }));
-          await flush('sign_in_promote');
-        } else {
-          setState((prev) => ({
-            ...prev,
-            user,
-            authReady: true,
-            revision: 0,
-            dirty: false,
-            phase: 'synced',
-            lastError: null,
-            lastFlushReason: null,
-            lastSyncedAt: null,
-          }));
-        }
-        return documentRef.current;
-      }
-
-      const resolved = resolveBootDocument(local, localRevision, loadLocalDirty(user.id), record);
-      documentRef.current = resolved.document;
-      revisionRef.current = record.revision;
-      dirtyRef.current = resolved.dirty;
-      saveLocalDocument(user.id, resolved.document);
-      saveLocalRevision(user.id, record.revision);
-      setState((prev) => ({
-        ...prev,
-        user,
-        authReady: true,
-        revision: record.revision,
-        dirty: resolved.dirty,
-        phase: resolved.dirty ? 'dirty' : 'synced',
-        lastError: null,
-        lastFlushReason: null,
-        lastSyncedAt: record.updatedAt,
-      }));
-      if (resolved.dirty) await flush('sign_in_promote');
-      return documentRef.current;
-    } catch {
-      const fallbackUser = userRef.current;
-      const local = loadLocalDocument(scopeFor(fallbackUser));
-      documentRef.current = local;
-      setState((prev) => ({
-        ...prev,
-        user: fallbackUser,
-        authReady: true,
-        phase: 'offline',
-        lastError: 'Working offline from this device',
-      }));
-      return local;
     }
-  }, [flush]);
+    userRef.current = user;
+
+    if (!user) {
+      const guest = loadLocalDocument(guestScope());
+      documentRef.current = guest;
+      setState((prev) => ({
+        ...prev,
+        user: null,
+        authReady: true,
+        phase: online ? 'idle' : 'offline',
+      }));
+      return guest;
+    }
+
+    let local = loadLocalDocument(user.id);
+    let meta = loadSyncMeta(user.id);
+    if (!meta.initialized) {
+      if (local.activities.length === 0) {
+        const guest = loadLocalDocument(guestScope());
+        if (guest.activities.length > 0 && !isLikelyDemoDocument(guest)) {
+          local = {
+            ...local,
+            activities: guest.activities,
+            dailyGoalMinutes: guest.dailyGoalMinutes,
+            updatedAt: guest.updatedAt,
+          };
+        }
+      }
+      meta = { ...seedPendingFromLocal(local, emptySyncMeta()), initialized: true };
+    }
+
+    documentRef.current = local;
+    saveLocalDocument(user.id, local);
+    saveMeta(meta);
+    const dirty = hasPending(meta);
+    setState((prev) => ({
+      ...prev,
+      user,
+      authReady: true,
+      dirty,
+      phase: online ? (dirty ? 'dirty' : 'idle') : 'offline',
+      lastError: online ? null : 'Offline · changes are saved on this device',
+    }));
+    if (online) void sync('sign_in');
+    return local;
+  }, [sync]);
 
   useEffect(() => {
-    bootstrap();
+    void bootstrap();
   }, [bootstrap]);
 
   useEffect(() => {
-    const onHidden = () => {
-      if (
-        shouldFlushOnSessionEnd(
-          document.visibilityState === 'hidden',
-          dirtyRef.current,
-          inFlightRef.current
-        )
-      ) {
-        void flush('session_end', true);
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (hasPending(metaRef.current)) beaconPush();
+      } else {
+        void sync('focus');
       }
     };
     const onPageHide = () => {
-      if (dirtyRef.current && userRef.current) {
-        void flush('session_end', true);
-      }
+      if (hasPending(metaRef.current)) beaconPush();
     };
     const onOnline = () => {
-      if (dirtyRef.current) void flush('online');
+      void sync('online');
     };
 
-    document.addEventListener('visibilitychange', onHidden);
+    document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pagehide', onPageHide);
     window.addEventListener('online', onOnline);
 
     const interval = window.setInterval(() => {
-      if (
-        shouldSafetyFlush(Date.now(), lastAttemptRef.current, dirtyRef.current, inFlightRef.current)
-      ) {
-        void flush('safety_interval');
+      const wanted = hasPending(metaRef.current) || document.visibilityState === 'visible';
+      if (shouldSafetyFlush(Date.now(), lastAttemptRef.current, wanted, inFlightRef.current)) {
+        void sync('safety_interval');
       }
     }, SAFETY_FLUSH_MS);
 
     return () => {
-      document.removeEventListener('visibilitychange', onHidden);
+      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('online', onOnline);
       window.clearInterval(interval);
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
     };
-  }, [flush]);
+  }, [sync, beaconPush]);
 
   const startGoogleSignIn = useCallback(async () => {
     await signInWithGoogle();
   }, []);
 
   const logout = useCallback(async () => {
-    if (dirtyRef.current) {
-      await flush('explicit');
+    if (hasPending(metaRef.current)) {
+      await sync('explicit');
     }
     await signOutGoogle();
+    saveLastUser(null);
     userRef.current = null;
-    dirtyRef.current = false;
-    revisionRef.current = 0;
+    metaRef.current = emptySyncMeta();
     const guest = loadLocalDocument(guestScope());
     documentRef.current = guest;
     setState((prev) => ({
       ...prev,
       user: null,
       authReady: true,
-      revision: 0,
       dirty: false,
       phase: 'idle',
       lastError: null,
@@ -323,13 +342,13 @@ export function useSessionPersistence() {
       lastSyncedAt: null,
     }));
     return guest;
-  }, [flush]);
+  }, [sync]);
 
   return {
     ...state,
     currentDocument: () => documentRef.current,
     persistLocal,
-    flush,
+    flush: sync,
     startGoogleSignIn,
     logout,
     bootstrap,

@@ -163,6 +163,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
           <input
             type="text"
             placeholder="Search activities or tags..."
+            aria-label="Search activities"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-9 min-h-11 text-xs bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
@@ -170,6 +171,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 min-h-9 min-w-9 flex items-center justify-center"
             >
               <X className="w-4 h-4" />
@@ -182,9 +184,10 @@ export const BoardView: React.FC<BoardViewProps> = ({
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as ActivityCategory | 'all')}
-            className="flex-1 min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            aria-label="Filter by category"
+            className="flex-1 sm:flex-none min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >
-            <option value="all">All Categories</option>
+            <option value="all">Category</option>
             {Object.values(CATEGORIES).map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.label}
@@ -195,9 +198,10 @@ export const BoardView: React.FC<BoardViewProps> = ({
           <select
             value={selectedPriority}
             onChange={(e) => setSelectedPriority(e.target.value as ActivityPriority | 'all')}
-            className="flex-1 min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            aria-label="Filter by priority"
+            className="flex-1 sm:flex-none min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >
-            <option value="all">All Priorities</option>
+            <option value="all">Priority</option>
             <option value="urgent">Urgent</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
@@ -207,7 +211,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
           <select
             value={selectedDate}
             onChange={(e) => onSelectDate(e.target.value)}
-            className="flex-1 min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            aria-label="Filter by date"
+            className="flex-1 sm:flex-none min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >
             <option value={getTodayDateString()}>Today</option>
             {selectedDate !== 'all' && selectedDate !== getTodayDateString() && (
@@ -239,13 +244,13 @@ export const BoardView: React.FC<BoardViewProps> = ({
               }}
               role="tab"
               aria-selected={isActive}
-              className={`flex-1 min-h-11 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center justify-center gap-1.5 border ${
+              className={`flex-1 min-h-11 px-2.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center justify-center gap-1.5 border ${
                 isActive
                   ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
               }`}
             >
-              <span>{col.title.split(' ')[0]}</span>
+              <span>{col.shortTitle}</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full tabular-nums ${
                 isActive ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'
               }`}>
@@ -276,12 +281,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
                 }
               }}
               onDrop={(e) => handleDropOnColumn(e, col.id)}
-              className={`flex flex-col bg-slate-100/70 border rounded-2xl p-3 sm:p-3.5 min-h-125 sm:min-h-155 h-full transition-all duration-200 ${
+              className={`flex flex-col bg-slate-100/70 rounded-2xl p-3 sm:p-3.5 min-h-125 sm:min-h-155 h-full transition-all duration-200 ${
                 isHiddenOnMobile ? 'hidden sm:flex' : 'flex'
-              } ${
-                isDropActive
-                  ? 'border-indigo-400 bg-indigo-50/40 ring-2 ring-indigo-400/20 shadow-sm'
-                  : 'border-slate-200/80'
               }`}
             >
               {/* Column Header */}
@@ -305,6 +306,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                       setQuickAddTitle('');
                     }}
                     title={`Add activity to ${col.title}`}
+                    aria-label={`Add activity to ${col.title}`}
                     className="min-h-9 min-w-9 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white rounded-lg transition-colors"
                   >
                     <Plus className="w-4 h-4" />

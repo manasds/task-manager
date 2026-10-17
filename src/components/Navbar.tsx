@@ -204,7 +204,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-14 sm:h-16 gap-3">
+        <div className="flex justify-between md:grid md:grid-cols-[1fr_auto_1fr] items-center h-14 sm:h-16 gap-3">
           
           {/* Zone 1: Brand Wordmark */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0 justify-self-start">

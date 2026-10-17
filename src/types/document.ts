@@ -34,19 +34,10 @@ export interface CloudUser {
 }
 
 export type FlushReason =
+  | 'edit'
+  | 'focus'
   | 'session_end'
   | 'safety_interval'
   | 'explicit'
   | 'online'
-  | 'sign_in_promote';
-
-export interface FlushPayload {
-  document: PersistedDocument;
-  baseRevision: number;
-}
-
-export interface DocumentRecord {
-  document: PersistedDocument;
-  revision: number;
-  updatedAt: string;
-}
+  | 'sign_in';

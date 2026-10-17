@@ -1,4 +1,5 @@
-import { CloudUser, DocumentRecord, FlushPayload } from '../types/document';
+import { CloudUser } from '../types/document';
+import { PullResponse, PushRequest, PushResponse } from '../types/sync';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -26,34 +27,33 @@ export function fetchMe(): Promise<{ user: CloudUser | null }> {
   return request('/api/me');
 }
 
-
-export function fetchDocument(): Promise<{ record: DocumentRecord | null }> {
-  return request('/api/document');
+export function pullChanges(since: number): Promise<PullResponse> {
+  return request(`/api/sync?since=${since}`);
 }
 
-export function putDocument(payload: FlushPayload): Promise<{ record: DocumentRecord }> {
-  return request('/api/document', {
-    method: 'PUT',
+export function pushChanges(payload: PushRequest): Promise<PushResponse> {
+  return request('/api/sync', {
+    method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-export async function putDocumentBeacon(payload: FlushPayload): Promise<boolean> {
+/** Browsers cap keepalive/beacon bodies at 64 KiB in flight. */
+const BEACON_LIMIT_BYTES = 60_000;
+
+/** Best-effort push while the tab closes. The response is never seen. */
+export function pushChangesBeacon(payload: PushRequest): boolean {
   const body = JSON.stringify(payload);
+  if (new Blob([body]).size > BEACON_LIMIT_BYTES) return false;
   if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-    const blob = new Blob([body], { type: 'application/json' });
-    return navigator.sendBeacon('/api/document', blob);
+    return navigator.sendBeacon('/api/sync', new Blob([body], { type: 'application/json' }));
   }
-  try {
-    await fetch('/api/document', {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      keepalive: true,
-    });
-    return true;
-  } catch {
-    return false;
-  }
+  void fetch('/api/sync', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+    keepalive: true,
+  }).catch(() => {});
+  return true;
 }

@@ -95,11 +95,11 @@ export const CATEGORIES: Record<ActivityCategory, CategoryMeta> = {
   },
 };
 
-export const STATUS_COLUMNS: { id: ActivityStatus; title: string; hint: string }[] = [
-  { id: 'backlog', title: 'Planned & Queued', hint: 'Ready to be prioritized' },
-  { id: 'in_progress', title: 'In Progress', hint: 'Currently actively focused' },
-  { id: 'review', title: 'Review / Verify', hint: 'Almost ready or verifying results' },
-  { id: 'completed', title: 'Completed', hint: 'Finished & logged' },
+export const STATUS_COLUMNS: { id: ActivityStatus; title: string; shortTitle: string; hint: string }[] = [
+  { id: 'backlog', title: 'Planned & Queued', shortTitle: 'Planned', hint: 'Ready to be prioritized' },
+  { id: 'in_progress', title: 'In Progress', shortTitle: 'Doing', hint: 'Currently actively focused' },
+  { id: 'review', title: 'Review / Verify', shortTitle: 'Review', hint: 'Almost ready or verifying results' },
+  { id: 'completed', title: 'Completed', shortTitle: 'Done', hint: 'Finished & logged' },
 ];
 
 export const PRIORITY_CONFIG: Record<ActivityPriority, { label: string; dotColor: string; textColor: string }> = {

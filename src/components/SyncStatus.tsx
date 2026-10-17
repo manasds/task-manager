@@ -16,7 +16,7 @@ interface SyncStatusProps {
 }
 
 function shortPhaseLabel(phase: SyncPhase): string {
-  if (phase === 'dirty') return 'Unsynced';
+  if (phase === 'dirty') return 'Saving';
   if (phase === 'flushing') return 'Syncing';
   if (phase === 'synced') return 'Synced';
   if (phase === 'offline') return 'Offline';
@@ -26,8 +26,8 @@ function shortPhaseLabel(phase: SyncPhase): string {
 
 function phaseLabel(phase: SyncPhase, user: CloudUser | null): string {
   if (!user) return 'On this device only';
-  if (phase === 'dirty') return 'Saved here · syncs when you leave';
-  if (phase === 'flushing') return 'Syncing to Postgres…';
+  if (phase === 'dirty') return 'Saved here · syncing shortly';
+  if (phase === 'flushing') return 'Syncing…';
   if (phase === 'synced') return 'Synced to your account';
   if (phase === 'offline') return 'Offline · queued on this device';
   if (phase === 'error') return 'Cloud sync paused';
@@ -54,8 +54,8 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({
   const statusTitle =
     lastError ||
     (lastFlushReason
-      ? `Last flush: ${lastFlushReason}`
-      : 'Edits stay local until the tab hides, you sign out, or 60s passes.');
+      ? `Last sync: ${lastFlushReason}`
+      : 'Edits save on this device and sync a moment later.');
 
   if (compact) {
     if (!user) return null;

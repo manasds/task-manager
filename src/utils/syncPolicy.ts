@@ -1,15 +1,41 @@
 import { Activity } from '../types/activity';
 import { DOCUMENT_SCHEMA_VERSION, PersistedDocument } from '../types/document';
+import {
+  ActivityRow,
+  MAX_CHANGES_PER_PUSH,
+  PullResponse,
+  PushRequest,
+  PushResponse,
+} from '../types/sync';
 
-/** Safety net: mobile and crashed tabs often skip pagehide. */
+/** Push this long after the last edit. */
+export const SYNC_DEBOUNCE_MS = 1_500;
+/** Safety net push, and a pull while the tab is visible. */
 export const SAFETY_FLUSH_MS = 60_000;
 
-export function shouldFlushOnSessionEnd(
-  pageHidden: boolean,
-  dirty: boolean,
-  inFlight: boolean
-): boolean {
-  return pageHidden && dirty && !inFlight;
+/** A local edit not yet confirmed by the server. `at` is unique and increasing per task. */
+export interface PendingEdit {
+  at: string;
+}
+
+/** Per-user sync bookkeeping kept next to the local document. */
+export interface SyncMeta {
+  initialized: boolean;
+  /** Last pulled server seq. */
+  cursor: number;
+  /** Server seq last seen per live task, sent back as baseSeq. */
+  seqs: Record<string, number>;
+  pending: Record<string, PendingEdit>;
+  goalSeq: number;
+  goalPending: PendingEdit | null;
+}
+
+export function emptySyncMeta(): SyncMeta {
+  return { initialized: false, cursor: 0, seqs: {}, pending: {}, goalSeq: 0, goalPending: null };
+}
+
+export function hasPending(meta: SyncMeta): boolean {
+  return meta.goalPending !== null || Object.keys(meta.pending).length > 0;
 }
 
 export function shouldSafetyFlush(
@@ -41,69 +67,224 @@ export function isLikelyDemoDocument(doc: PersistedDocument): boolean {
   );
 }
 
-function activityTimestamp(activity: Activity): number {
-  const raw = activity.updatedAt || activity.completedAt || activity.createdAt;
-  const parsed = Date.parse(raw);
-  return Number.isNaN(parsed) ? 0 : parsed;
+export function activityTimestamp(activity: Activity): string {
+  return activity.updatedAt || activity.completedAt || activity.createdAt;
 }
 
-/**
- * Merge two session snapshots. Newer activity wins per id.
- * IDs listed in either deletedIds stay deleted so a stale device
- * cannot resurrect a completed delete after a later flush.
- */
-export function mergeDocuments(
-  local: PersistedDocument,
-  server: PersistedDocument
-): PersistedDocument {
-  const deleted = new Set([...local.deletedIds, ...server.deletedIds]);
-  const byId = new Map<string, Activity>();
+/** Strictly after `previous` so two quick edits never share a marker. */
+function nextEditMarker(nowIso: string, previous?: PendingEdit | null): PendingEdit {
+  if (!previous) return { at: nowIso };
+  const prevMs = Date.parse(previous.at);
+  const nowMs = Date.parse(nowIso);
+  return { at: new Date(Math.max(nowMs, prevMs + 1)).toISOString() };
+}
 
-  for (const activity of server.activities) {
-    if (!deleted.has(activity.id)) byId.set(activity.id, activity);
+/** Task ids added, edited or removed between two local snapshots. */
+export function diffActivities(prev: Activity[], next: Activity[]): string[] {
+  const before = new Map(prev.map((a) => [a.id, a]));
+  const changed: string[] = [];
+  for (const activity of next) {
+    const old = before.get(activity.id);
+    before.delete(activity.id);
+    if (old === activity) continue;
+    if (old && JSON.stringify(old) === JSON.stringify(activity)) continue;
+    changed.push(activity.id);
   }
+  for (const id of before.keys()) changed.push(id);
+  return changed;
+}
 
-  for (const activity of local.activities) {
-    if (deleted.has(activity.id)) continue;
-    const existing = byId.get(activity.id);
-    if (!existing || activityTimestamp(activity) >= activityTimestamp(existing)) {
-      byId.set(activity.id, activity);
-    }
-  }
+/** Record local edits. UI-only settings (tab, date, mute) never sync. */
+export function recordLocalEdits(
+  meta: SyncMeta,
+  prev: PersistedDocument,
+  next: PersistedDocument,
+  nowIso = new Date().toISOString()
+): SyncMeta {
+  const changed = diffActivities(prev.activities, next.activities);
+  const goalChanged = prev.dailyGoalMinutes !== next.dailyGoalMinutes;
+  if (changed.length === 0 && !goalChanged) return meta;
 
-  const localNewer = Date.parse(local.updatedAt) >= Date.parse(server.updatedAt);
-  const newer = localNewer ? local : server;
-
+  const pending = { ...meta.pending };
+  for (const id of changed) pending[id] = nextEditMarker(nowIso, pending[id]);
   return {
-    schemaVersion: DOCUMENT_SCHEMA_VERSION,
-    dailyGoalMinutes: newer.dailyGoalMinutes,
-    settings: newer.settings,
-    activities: Array.from(byId.values()),
-    deletedIds: Array.from(deleted),
-    timer: newer.timer,
-    updatedAt: new Date().toISOString(),
+    ...meta,
+    pending,
+    goalPending: goalChanged ? nextEditMarker(nowIso, meta.goalPending) : meta.goalPending,
   };
 }
 
+/** First sync on this device: every local task is a candidate edit at its own timestamp. */
+export function seedPendingFromLocal(doc: PersistedDocument, meta: SyncMeta): SyncMeta {
+  const pending: Record<string, PendingEdit> = {};
+  for (const activity of doc.activities) pending[activity.id] = { at: activityTimestamp(activity) };
+  const goalPending = doc.dailyGoalMinutes !== emptyDocument().dailyGoalMinutes ? { at: doc.updatedAt } : null;
+  return { ...meta, pending, goalPending };
+}
+
+/** Next push batch, or null when there is nothing to send. */
+export function buildPush(doc: PersistedDocument, meta: SyncMeta): PushRequest | null {
+  const byId = new Map(doc.activities.map((a) => [a.id, a]));
+  const changes = Object.entries(meta.pending)
+    .slice(0, MAX_CHANGES_PER_PUSH)
+    .map(([id, edit]) => ({
+      id,
+      data: byId.get(id) ?? null,
+      updatedAt: edit.at,
+      baseSeq: meta.seqs[id] ?? 0,
+    }));
+  const goal = meta.goalPending
+    ? { dailyGoalMinutes: doc.dailyGoalMinutes, updatedAt: meta.goalPending.at, baseSeq: meta.goalSeq }
+    : undefined;
+  if (changes.length === 0 && !goal) return null;
+  return goal ? { changes, goal } : { changes };
+}
+
+export interface RemoteUpdate {
+  upserts: Activity[];
+  deletes: string[];
+  dailyGoalMinutes?: number;
+}
+
+export function isEmptyRemoteUpdate(update: RemoteUpdate): boolean {
+  return update.upserts.length === 0 && update.deletes.length === 0 && update.dailyGoalMinutes === undefined;
+}
+
+/** Apply a remote update to a list of tasks. Same function for the hook and the UI state. */
+export function applyRemoteActivities(activities: Activity[], update: RemoteUpdate): Activity[] {
+  if (update.upserts.length === 0 && update.deletes.length === 0) return activities;
+  const removed = new Set(update.deletes);
+  const upserts = new Map(update.upserts.map((a) => [a.id, a]));
+  const next: Activity[] = [];
+  for (const activity of activities) {
+    if (removed.has(activity.id)) continue;
+    const replacement = upserts.get(activity.id);
+    if (replacement) {
+      next.push(replacement);
+      upserts.delete(activity.id);
+    } else {
+      next.push(activity);
+    }
+  }
+  return [...upserts.values(), ...next];
+}
+
+interface SyncStep {
+  doc: PersistedDocument;
+  meta: SyncMeta;
+  update: RemoteUpdate;
+}
+
+function adoptRow(meta: SyncMeta, update: RemoteUpdate, row: ActivityRow) {
+  if (row.data) {
+    update.upserts.push(row.data);
+    meta.seqs[row.id] = row.seq;
+  } else {
+    update.deletes.push(row.id);
+    delete meta.seqs[row.id];
+  }
+  delete meta.pending[row.id];
+}
+
+function finish(doc: PersistedDocument, meta: SyncMeta, update: RemoteUpdate): SyncStep {
+  const activities = applyRemoteActivities(doc.activities, update);
+  const dailyGoalMinutes = update.dailyGoalMinutes ?? doc.dailyGoalMinutes;
+  if (activities === doc.activities && dailyGoalMinutes === doc.dailyGoalMinutes) {
+    return { doc, meta, update };
+  }
+  return { doc: { ...doc, activities, dailyGoalMinutes }, meta, update };
+}
+
 /**
- * Pick the document to show after sign-in when the server already has one.
- * Unconfirmed local edits (a beacon whose result was never seen, an offline
- * close) are merged on top of the server copy and must be flushed again.
+ * Merge a pull page. A task with a pending local edit keeps the local copy unless
+ * the server copy is newer. An exact timestamp match is this device's own write
+ * coming back (for example a tab-close beacon), so it counts as confirmed.
  */
-export function resolveBootDocument(
-  local: PersistedDocument,
-  localRevision: number,
-  localDirty: boolean,
-  server: { document: PersistedDocument; revision: number }
-): { document: PersistedDocument; dirty: boolean } {
-  if (localDirty && local.activities.length + local.deletedIds.length > 0) {
-    if (localRevision === server.revision) return { document: local, dirty: true };
-    return { document: mergeDocuments(local, server.document), dirty: true };
+export function applyPull(doc: PersistedDocument, current: SyncMeta, pull: PullResponse): SyncStep {
+  const meta: SyncMeta = {
+    ...current,
+    seqs: { ...current.seqs },
+    pending: { ...current.pending },
+    cursor: pull.cursor,
+  };
+  const update: RemoteUpdate = { upserts: [], deletes: [] };
+
+  for (const row of pull.rows) {
+    const edit = meta.pending[row.id];
+    if (edit) {
+      const serverMs = Date.parse(row.updatedAt);
+      const localMs = Date.parse(edit.at);
+      if (serverMs < localMs) continue;
+      if (serverMs === localMs) {
+        if (row.data) meta.seqs[row.id] = row.seq;
+        else delete meta.seqs[row.id];
+        delete meta.pending[row.id];
+        continue;
+      }
+    }
+    adoptRow(meta, update, row);
   }
-  if (localRevision === server.revision && local.activities.length > 0) {
-    return { document: local, dirty: false };
+
+  if (pull.goal) {
+    const goalEdit = meta.goalPending;
+    const serverMs = Date.parse(pull.goal.updatedAt);
+    if (!goalEdit || serverMs >= Date.parse(goalEdit.at)) {
+      if (!goalEdit || serverMs > Date.parse(goalEdit.at)) {
+        update.dailyGoalMinutes = pull.goal.dailyGoalMinutes;
+      }
+      meta.goalSeq = pull.goal.seq;
+      meta.goalPending = null;
+    }
   }
-  return { document: server.document, dirty: false };
+
+  return finish(doc, meta, update);
+}
+
+/**
+ * Settle a push. An edit made after the batch was built keeps its newer marker
+ * and stays pending, so it goes out in the next push.
+ */
+export function applyPushResult(
+  doc: PersistedDocument,
+  current: SyncMeta,
+  sent: PushRequest,
+  result: PushResponse
+): SyncStep {
+  const meta: SyncMeta = { ...current, seqs: { ...current.seqs }, pending: { ...current.pending } };
+  const update: RemoteUpdate = { upserts: [], deletes: [] };
+  const sentAt = new Map(sent.changes.map((c) => [c.id, c]));
+
+  for (const { id, seq } of result.applied) {
+    const change = sentAt.get(id);
+    if (change?.data) meta.seqs[id] = seq;
+    else delete meta.seqs[id];
+    if (change && meta.pending[id]?.at === change.updatedAt) delete meta.pending[id];
+  }
+
+  for (const row of result.rejected) {
+    const change = sentAt.get(row.id);
+    if (change && meta.pending[row.id]?.at === change.updatedAt) {
+      adoptRow(meta, update, row);
+    } else {
+      meta.seqs[row.id] = row.seq;
+    }
+  }
+
+  const goalSentAt = sent.goal?.updatedAt;
+  const goalUnchanged = goalSentAt !== undefined && meta.goalPending?.at === goalSentAt;
+  if (result.goalApplied) {
+    meta.goalSeq = result.goalApplied.seq;
+    if (goalUnchanged) meta.goalPending = null;
+  }
+  if (result.goalRejected) {
+    meta.goalSeq = result.goalRejected.seq;
+    if (goalUnchanged) {
+      meta.goalPending = null;
+      update.dailyGoalMinutes = result.goalRejected.dailyGoalMinutes;
+    }
+  }
+
+  return finish(doc, meta, update);
 }
 
 export function isValidDocument(value: unknown): value is PersistedDocument {
@@ -116,5 +297,19 @@ export function isValidDocument(value: unknown): value is PersistedDocument {
     Array.isArray(doc.deletedIds) &&
     !!doc.settings &&
     typeof doc.updatedAt === 'string'
+  );
+}
+
+export function isValidSyncMeta(value: unknown): value is SyncMeta {
+  if (!value || typeof value !== 'object') return false;
+  const meta = value as SyncMeta;
+  return (
+    typeof meta.initialized === 'boolean' &&
+    typeof meta.cursor === 'number' &&
+    !!meta.seqs &&
+    typeof meta.seqs === 'object' &&
+    !!meta.pending &&
+    typeof meta.pending === 'object' &&
+    typeof meta.goalSeq === 'number'
   );
 }

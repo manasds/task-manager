@@ -17,13 +17,20 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { AuthPanel } from './components/AuthPanel';
 import { SyncStatus } from './components/SyncStatus';
 import { useSessionPersistence } from './hooks/useSessionPersistence';
+import { applyRemoteActivities } from './utils/syncPolicy';
 
 function withUpdatedAt(activity: Activity): Activity {
   return { ...activity, updatedAt: new Date().toISOString() };
 }
 
 export default function App() {
-  const persistence = useSessionPersistence();
+  const persistence = useSessionPersistence((update) => {
+    setActivities((prev) => applyRemoteActivities(prev, update));
+    if (update.deletes.length > 0) {
+      setActiveTimerTask((current) => (current && update.deletes.includes(current.id) ? null : current));
+    }
+    if (update.dailyGoalMinutes !== undefined) setDailyGoalMinutes(update.dailyGoalMinutes);
+  });
   const [hydrated, setHydrated] = useState(false);
   const skipDirtyRef = useRef(true);
 
@@ -38,11 +45,18 @@ export default function App() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [modalDefaultStatus, setModalDefaultStatus] = useState<ActivityStatus>('backlog');
   const [modalDefaultTime, setModalDefaultTime] = useState<string | undefined>(undefined);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3200);
+  const showToast = (message: string, undo?: () => void) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, undo });
+    toastTimerRef.current = setTimeout(() => setToast(null), undo ? 6000 : 3200);
+  };
+
+  const dismissToast = () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(null);
   };
 
   const applyDocument = (doc: PersistedDocument) => {
@@ -61,11 +75,6 @@ export default function App() {
     if (!persistence.authReady) return;
     applyDocument(persistence.currentDocument());
   }, [persistence.authReady, persistence.user?.id]);
-
-  useEffect(() => {
-    if (persistence.remoteVersion === 0) return;
-    applyDocument(persistence.currentDocument());
-  }, [persistence.remoteVersion]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -110,13 +119,22 @@ export default function App() {
   };
 
   const handleDeleteActivity = (activityId: string) => {
+    const removed = activities.find((a) => a.id === activityId);
     soundManager.playDrop();
     setActivities((prev) => prev.filter((a) => a.id !== activityId));
     setDeletedIds((prev) => (prev.includes(activityId) ? prev : [...prev, activityId]));
     if (activeTimerTask && activeTimerTask.id === activityId) {
       setActiveTimerTask(null);
     }
-    showToast('Activity removed');
+    showToast(
+      'Activity deleted',
+      removed
+        ? () => {
+            handleUpdateActivity(removed);
+            dismissToast();
+          }
+        : undefined
+    );
   };
 
   const handleMoveActivityStatus = (activityId: string, newStatus: ActivityStatus) => {
@@ -260,7 +278,7 @@ export default function App() {
   const handleSignOut = async () => {
     const guest = await persistence.logout();
     applyDocument(guest);
-    showToast('Signed out. Cloud changes were flushed first when possible.');
+    showToast('Signed out. Pending changes were synced first when possible.');
   };
 
   return (
@@ -387,9 +405,22 @@ export default function App() {
 
       <OfflineIndicator />
 
-      {toastMessage && (
-        <div className="fixed top-16 sm:top-20 right-4 sm:right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xl border border-slate-800 animate-in fade-in slide-in-from-top-2 duration-150 flex items-center gap-2">
-          <span>{toastMessage}</span>
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-16 sm:top-20 right-4 sm:right-6 z-50 bg-slate-900 text-white text-xs font-semibold pl-4 pr-2 py-2 min-h-10 rounded-xl shadow-xl border border-slate-800 animate-in flex items-center gap-3"
+        >
+          <span className="py-0.5">{toast.message}</span>
+          {toast.undo && (
+            <button
+              type="button"
+              onClick={toast.undo}
+              className="px-2.5 py-1 rounded-lg text-indigo-300 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              Undo
+            </button>
+          )}
         </div>
       )}
     </div>

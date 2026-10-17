@@ -1,10 +1,9 @@
 import { DOCUMENT_SCHEMA_VERSION, PersistedDocument } from '../types/document';
-import { emptyDocument, isValidDocument } from './syncPolicy';
+import { emptyDocument, emptySyncMeta, isValidDocument, isValidSyncMeta, SyncMeta } from './syncPolicy';
 import { loadActivities, loadDailyGoalMinutes, STORAGE_KEY, GOAL_STORAGE_KEY } from './storage';
 
 const DOC_KEY_PREFIX = 'orbittask_doc_v2_';
-const REVISION_KEY_PREFIX = 'orbittask_revision_v2_';
-const DIRTY_KEY_PREFIX = 'orbittask_dirty_v2_';
+const SYNC_KEY_PREFIX = 'orbittask_sync_v3_';
 
 export function guestScope(): string {
   return 'guest';
@@ -14,33 +13,24 @@ export function documentKey(scope: string): string {
   return `${DOC_KEY_PREFIX}${scope}`;
 }
 
-export function revisionKey(scope: string): string {
-  return `${REVISION_KEY_PREFIX}${scope}`;
+/** Per-user sync bookkeeping. Survives reloads so unconfirmed edits are pushed later. */
+export function loadSyncMeta(userId: string): SyncMeta {
+  if (typeof window === 'undefined') return emptySyncMeta();
+  try {
+    const raw = localStorage.getItem(`${SYNC_KEY_PREFIX}${userId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (isValidSyncMeta(parsed)) return parsed;
+    }
+  } catch {
+    // fall through
+  }
+  return emptySyncMeta();
 }
 
-export function loadLocalRevision(scope: string): number {
-  if (typeof window === 'undefined') return 0;
-  const raw = localStorage.getItem(revisionKey(scope));
-  const value = raw ? Number(raw) : 0;
-  return Number.isFinite(value) && value >= 0 ? value : 0;
-}
-
-export function saveLocalRevision(scope: string, revision: number): void {
+export function saveSyncMeta(userId: string, meta: SyncMeta): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(revisionKey(scope), String(revision));
-}
-
-/** Survives reloads so edits the server never confirmed are merged, not replaced. */
-export function loadLocalDirty(scope: string): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem(`${DIRTY_KEY_PREFIX}${scope}`) === '1';
-}
-
-export function saveLocalDirty(scope: string, dirty: boolean): void {
-  if (typeof window === 'undefined') return;
-  const key = `${DIRTY_KEY_PREFIX}${scope}`;
-  if (dirty) localStorage.setItem(key, '1');
-  else localStorage.removeItem(key);
+  localStorage.setItem(`${SYNC_KEY_PREFIX}${userId}`, JSON.stringify(meta));
 }
 
 export function loadLocalDocument(scope: string): PersistedDocument {
