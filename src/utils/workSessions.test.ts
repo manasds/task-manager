@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Activity } from '../types/activity';
 import {
+  focusMinutesByHour,
+  layoutDayTimeline,
   localDateString,
+  loggedMinutesOnDate,
   parseLocalDate,
   sessionBlockStyleForDate,
   sessionDate,
@@ -144,5 +147,70 @@ describe('task stats untimed minutes', () => {
     assert.equal(onSessionDay.length, 1);
     assert.equal(onSessionDay[0].untimedMinutes, 0);
     assert.equal(onSessionDay[0].timedMinutes, 60);
+  });
+});
+
+describe('real day stats', () => {
+  const at = (h: number, m = 0) => new Date(2026, 9, 15, h, m);
+
+  it('counts logged minutes by the day the work happened', () => {
+    const acts = [
+      activity({
+        id: 'a',
+        date: '2026-10-14',
+        actualMinutes: 50,
+        workSessions: [session('s1', at(9), at(9, 50), 50)],
+      }),
+      activity({ id: 'b', actualMinutes: 15 }),
+    ];
+    assert.equal(loggedMinutesOnDate(acts, '2026-10-15'), 65);
+    assert.equal(loggedMinutesOnDate(acts, '2026-10-14'), 0);
+  });
+
+  it('splits session minutes across local hours', () => {
+    const acts = [
+      activity({ id: 'a', workSessions: [session('s1', at(9, 30), at(11, 0), 90)] }),
+    ];
+    const byHour = focusMinutesByHour(acts, ['2026-10-15']);
+    assert.equal(byHour[9], 30);
+    assert.equal(byHour[10], 60);
+    assert.equal(byHour.reduce((a, b) => a + b, 0), 90);
+  });
+});
+
+describe('day timeline layout', () => {
+  const at = (h: number, m = 0) => new Date(2026, 9, 15, h, m);
+
+  it('puts overlapping sessions in separate lanes', () => {
+    const acts = [
+      activity({ id: 'a', workSessions: [session('s1', at(9), at(10), 60)] }),
+      activity({ id: 'b', workSessions: [session('s2', at(9, 30), at(10, 30), 60)] }),
+      activity({ id: 'c', workSessions: [session('s3', at(12), at(12, 30), 30)] }),
+    ];
+    const { blocks } = layoutDayTimeline(acts, '2026-10-15');
+    const byId = Object.fromEntries(blocks.map((b) => [b.session.id, b]));
+    assert.equal(byId.s1.lanes, 2);
+    assert.equal(byId.s2.lanes, 2);
+    assert.notEqual(byId.s1.lane, byId.s2.lane);
+    assert.equal(byId.s3.lanes, 1);
+  });
+
+  it('fits the hour range to logged work, including early mornings', () => {
+    const acts = [activity({ id: 'a', workSessions: [session('s1', at(5, 15), at(6), 45)] })];
+    const { startHour, endHour } = layoutDayTimeline(acts, '2026-10-15');
+    assert.equal(startHour, 4);
+    assert.equal(endHour, 7);
+  });
+
+  it('keeps a short session in a tight window around it', () => {
+    const acts = [activity({ id: 'a', workSessions: [session('s1', at(15, 30), at(15, 32), 2)] })];
+    const { startHour, endHour } = layoutDayTimeline(acts, '2026-10-15');
+    assert.deepEqual([startHour, endHour], [14, 17]);
+  });
+
+  it('defaults to a working-day range when nothing is logged', () => {
+    const { blocks, startHour, endHour } = layoutDayTimeline([], '2026-10-15');
+    assert.equal(blocks.length, 0);
+    assert.deepEqual([startHour, endHour], [8, 18]);
   });
 });

@@ -192,3 +192,106 @@ export function formatMinutes(minutes: number): string {
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
 }
+
+/** Minutes logged on a local date: timed sessions plus untimed minutes on the task's own date. */
+export function loggedMinutesOnDate(activities: Activity[], date: string): number {
+  return taskStatsForDate(activities, date).reduce((sum, t) => sum + t.totalMinutes, 0);
+}
+
+/** Timed minutes per local hour of day (index 0-23), summed across the given dates. */
+export function focusMinutesByHour(activities: Activity[], dates: string[]): number[] {
+  const buckets = new Array<number>(24).fill(0);
+  for (const date of dates) {
+    const dayStart = parseLocalDate(date);
+    for (const activity of activities) {
+      for (const session of activity.workSessions ?? []) {
+        const clipped = clipSessionToDate(session, date);
+        if (!clipped) continue;
+        let cursor = minutesFromDayStart(clipped.start, dayStart);
+        const end = minutesFromDayStart(clipped.end, dayStart);
+        while (cursor < end) {
+          const hour = Math.min(23, Math.floor(cursor / 60));
+          const next = hour === 23 ? end : Math.min(end, (hour + 1) * 60);
+          buckets[hour] += next - cursor;
+          cursor = next;
+        }
+      }
+    }
+  }
+  return buckets.map((m) => Math.round(m));
+}
+
+export interface TimelineBlock {
+  session: WorkSession;
+  activity: Activity;
+  /** Minutes from local midnight, clipped to the date. */
+  startMin: number;
+  endMin: number;
+  lane: number;
+  lanes: number;
+}
+
+export interface DayTimeline {
+  blocks: TimelineBlock[];
+  startHour: number;
+  endHour: number;
+}
+
+const MIN_TIMELINE_HOURS = 3;
+
+/**
+ * Sessions on a date, with side-by-side lanes for overlaps and an hour range
+ * that fits the work actually logged (08:00-18:00 when there is none).
+ */
+export function layoutDayTimeline(activities: Activity[], date: string): DayTimeline {
+  const dayStart = parseLocalDate(date);
+  const blocks: TimelineBlock[] = [];
+  for (const activity of activities) {
+    for (const session of activity.workSessions ?? []) {
+      const clipped = clipSessionToDate(session, date);
+      if (!clipped) continue;
+      blocks.push({
+        session,
+        activity,
+        startMin: minutesFromDayStart(clipped.start, dayStart),
+        endMin: minutesFromDayStart(clipped.end, dayStart),
+        lane: 0,
+        lanes: 1,
+      });
+    }
+  }
+  if (blocks.length === 0) return { blocks, startHour: 8, endHour: 18 };
+
+  blocks.sort((a, b) => a.startMin - b.startMin || b.endMin - a.endMin);
+
+  let cluster: TimelineBlock[] = [];
+  let laneEnds: number[] = [];
+  let clusterEnd = -Infinity;
+  const closeCluster = () => {
+    for (const block of cluster) block.lanes = laneEnds.length;
+    cluster = [];
+    laneEnds = [];
+  };
+  for (const block of blocks) {
+    if (block.startMin >= clusterEnd) closeCluster();
+    let lane = laneEnds.findIndex((end) => end <= block.startMin);
+    if (lane === -1) lane = laneEnds.push(0) - 1;
+    laneEnds[lane] = block.endMin;
+    block.lane = lane;
+    cluster.push(block);
+    clusterEnd = Math.max(clusterEnd, block.endMin);
+  }
+  closeCluster();
+
+  let startHour = Math.floor(Math.min(...blocks.map((b) => b.startMin)) / 60);
+  let endHour = Math.ceil(Math.max(...blocks.map((b) => b.endMin)) / 60);
+  startHour = Math.max(0, startHour);
+  endHour = Math.min(24, Math.max(endHour, startHour + 1));
+  if (endHour - startHour < MIN_TIMELINE_HOURS) {
+    const extra = MIN_TIMELINE_HOURS - (endHour - startHour);
+    startHour = Math.max(0, startHour - Math.floor(extra / 2));
+    endHour = Math.min(24, startHour + MIN_TIMELINE_HOURS);
+    startHour = Math.max(0, endHour - MIN_TIMELINE_HOURS);
+  }
+  return { blocks, startHour, endHour };
+}

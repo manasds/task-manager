@@ -9,6 +9,12 @@ import {
 } from 'lucide-react';
 import { Activity, CATEGORIES, ActivityCategory } from '../types/activity';
 import { getDateOffset, getTodayDateString } from '../utils/storage';
+import { focusMinutesByHour, formatMinutes, loggedMinutesOnDate, taskStatsForDate } from '../utils/workSessions';
+
+function hourLabel(hour: number): string {
+  const h = hour % 24;
+  return `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? 'a' : 'p'}`;
+}
 
 interface AnalyticsViewProps {
   activities: Activity[];
@@ -33,18 +39,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     const dateStr = getDateOffset(offset);
     const dayActs = activities.filter((a) => a.date === dateStr);
     
-    const totalMinutes = dayActs.reduce((acc, c) => acc + (c.actualMinutes || 0), 0);
+    const totalMinutes = loggedMinutesOnDate(activities, dateStr);
     const completedTasks = dayActs.filter((a) => a.status === 'completed').length;
     const totalTasks = dayActs.length;
 
     const dateObj = new Date(dateStr + 'T00:00:00');
     const label = dateObj.toLocaleDateString('en-US', { weekday: 'narrow' });
     const fullDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-    const catMinutes: Partial<Record<ActivityCategory, number>> = {};
-    dayActs.forEach((a) => {
-      catMinutes[a.category] = (catMinutes[a.category] || 0) + (a.actualMinutes || 0);
-    });
 
     return {
       dateStr,
@@ -54,7 +55,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       hours: Math.round((totalMinutes / 60) * 10) / 10,
       completedTasks,
       totalTasks,
-      catMinutes,
     };
   });
 
@@ -67,13 +67,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     personal: 0,
   };
 
-  const relevantDateStrings = new Set(daySeries.map((d) => d.dateStr));
-  const relevantActs = activities.filter((a) => relevantDateStrings.has(a.date));
-
-  relevantActs.forEach((a) => {
-    const mins = a.actualMinutes > 0 ? a.actualMinutes : (a.status === 'completed' ? a.estimatedMinutes : 0);
-    categoryTotals[a.category] += mins;
-  });
+  for (const day of daySeries) {
+    for (const stat of taskStatsForDate(activities, day.dateStr)) {
+      categoryTotals[stat.activity.category] += stat.totalMinutes;
+    }
+  }
 
   const grandTotalMinutes = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
 
@@ -98,26 +96,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     };
   });
 
-  const hourlyCounts = Array.from({ length: 16 }).map((_, i) => {
-    const hourInt = i + 7;
-    const hourPad = String(hourInt).padStart(2, '0');
-    const count = activities.filter((a) => {
-      if (!a.scheduledTime) return false;
-      return a.scheduledTime.startsWith(hourPad);
-    }).length;
-
-    return {
-      hourLabel: `${hourInt > 12 ? hourInt - 12 : hourInt}${hourInt >= 12 ? 'p' : 'a'}`,
-      count,
-    };
+  const minutesByHour = focusMinutesByHour(activities, daySeries.map((d) => d.dateStr));
+  const firstHour = minutesByHour.findIndex((m) => m > 0);
+  const lastHour = 23 - [...minutesByHour].reverse().findIndex((m) => m > 0);
+  const hourRangeStart = firstHour === -1 ? 7 : Math.min(7, firstHour);
+  const hourRangeEnd = firstHour === -1 ? 22 : Math.max(22, lastHour);
+  const hourlyFocus = Array.from({ length: hourRangeEnd - hourRangeStart + 1 }, (_, i) => {
+    const hour = hourRangeStart + i;
+    return { hour, hourLabel: hourLabel(hour), minutes: minutesByHour[hour] };
   });
-
-  const maxHourlyCount = Math.max(1, ...hourlyCounts.map((h) => h.count));
+  const maxHourlyMinutes = Math.max(1, ...hourlyFocus.map((h) => h.minutes));
+  const peakHour = firstHour === -1 ? null : minutesByHour.indexOf(Math.max(...minutesByHour));
 
   const today = getTodayDateString();
-  const todayActs = activities.filter((a) => a.date === today);
-  const todayLoggedMinutes = todayActs.reduce((acc, c) => acc + (c.actualMinutes || 0), 0);
+  const todayLoggedMinutes = loggedMinutesOnDate(activities, today);
   const todayGoalPercent = Math.min(100, Math.round((todayLoggedMinutes / (dailyGoalMinutes || 360)) * 100));
+  const primaryCategory = grandTotalMinutes > 0
+    ? (Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0][0] as ActivityCategory)
+    : null;
 
   const maxHours = Math.max(8, ...daySeries.map((d) => d.hours));
   const maxTasks = Math.max(5, ...daySeries.map((d) => d.totalTasks));
@@ -147,7 +143,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <span>Productivity & Velocity</span>
           </h2>
           <p className="text-xs text-slate-500">
-            Real-time interactive charts tracking completion consistency
+            Built from the time you log with the focus timer and on tasks
           </p>
         </div>
 
@@ -498,7 +494,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between">
             <span>Primary Focus:</span>
             <span className="font-bold text-indigo-600">
-              {Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0] ? CATEGORIES[Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0][0] as ActivityCategory]?.label : 'None'}
+              {primaryCategory ? CATEGORIES[primaryCategory].label : 'None yet'}
             </span>
           </div>
         </div>
@@ -509,34 +505,34 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  24-Hour Focus Density
+                  Focus by Hour
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Activity frequency across hourly blocks
+                  Timed work per hour of day, last {daysCount} days
                 </p>
               </div>
               <Clock className="w-4 h-4 text-indigo-600" />
             </div>
 
             <div className="space-y-1.5 my-2">
-              {hourlyCounts.map((slot) => {
-                const widthPercent = (slot.count / maxHourlyCount) * 100;
+              {hourlyFocus.map((slot) => {
+                const widthPercent = (slot.minutes / maxHourlyMinutes) * 100;
 
                 return (
-                  <div key={slot.hourLabel} className="flex items-center gap-2 sm:gap-3 text-xs">
+                  <div key={slot.hour} className="flex items-center gap-2 sm:gap-3 text-xs">
                     <span className="w-8 text-right text-slate-500 font-mono tabular-nums text-[10px] sm:text-[11px] shrink-0 font-medium">
                       {slot.hourLabel}
                     </span>
                     <div className="flex-1 bg-slate-100 rounded-full h-2 sm:h-2.5 overflow-hidden relative">
-                      {slot.count > 0 && (
+                      {slot.minutes > 0 && (
                         <div
                           className="h-full bg-indigo-500 rounded-full transition-all duration-500"
                           style={{ width: `${Math.max(10, widthPercent)}%` }}
                         />
                       )}
                     </div>
-                    <span className="w-6 text-right text-slate-600 font-mono tabular-nums font-semibold shrink-0 text-[11px]">
-                      {slot.count > 0 ? slot.count : '-'}
+                    <span className="w-12 text-right text-slate-600 font-mono tabular-nums font-semibold shrink-0 text-[11px]">
+                      {slot.minutes > 0 ? formatMinutes(slot.minutes) : '-'}
                     </span>
                   </div>
                 );
@@ -546,7 +542,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between">
             <span>Peak focus:</span>
-            <span className="font-bold text-indigo-600">09:00 AM – 11:30 AM</span>
+            <span className="font-bold text-indigo-600">
+              {peakHour === null ? 'No timed sessions yet' : `${hourLabel(peakHour)}m – ${hourLabel(peakHour + 1)}m`}
+            </span>
           </div>
         </div>
 

@@ -1,7 +1,24 @@
 import React from 'react';
 import { CheckCircle2, Clock, Target, Flame } from 'lucide-react';
 import { Activity } from '../types/activity';
-import { getTodayDateString } from '../utils/storage';
+import { getTodayDateString, shiftIsoDate } from '../utils/storage';
+import { localDateString, loggedMinutesOnDate } from '../utils/workSessions';
+
+/** Consecutive days with logged work or a completed task, ending today (or yesterday if today is still empty). */
+function currentStreak(activities: Activity[], today: string): number {
+  const completedDates = new Set(
+    activities.filter((a) => a.completedAt).map((a) => localDateString(new Date(a.completedAt as string)))
+  );
+  const active = (date: string) => completedDates.has(date) || loggedMinutesOnDate(activities, date) > 0;
+
+  let date = active(today) ? today : shiftIsoDate(today, -1);
+  let streak = 0;
+  while (streak < 366 && active(date)) {
+    streak++;
+    date = shiftIsoDate(date, -1);
+  }
+  return streak;
+}
 
 interface StatSummaryStripProps {
   activities: Activity[];
@@ -17,30 +34,13 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
   const totalTasks = todayActivities.length;
   const completedTasks = todayActivities.filter((a) => a.status === 'completed').length;
   
-  const totalMinutesLogged = todayActivities.reduce((acc, curr) => acc + (curr.actualMinutes || 0), 0);
+  const totalMinutesLogged = loggedMinutesOnDate(activities, today);
   const loggedHours = Math.floor(totalMinutesLogged / 60);
   const loggedRemMinutes = totalMinutesLogged % 60;
 
   const goalPercent = Math.min(100, Math.round((totalMinutesLogged / (dailyGoalMinutes || 360)) * 100));
 
-  const datesWithActivity = new Set(
-    activities.filter((a) => a.actualMinutes > 0 || a.status === 'completed').map((a) => a.date)
-  );
-  
-  let currentStreak = 0;
-  for (let i = 0; i < 30; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    if (datesWithActivity.has(dateStr)) {
-      currentStreak++;
-    } else if (i === 0) {
-      continue;
-    } else {
-      break;
-    }
-  }
-  if (currentStreak === 0 && datesWithActivity.size > 0) currentStreak = 1;
+  const streak = currentStreak(activities, today);
 
   return (
     <div className="bg-white border-b border-slate-200">
@@ -117,7 +117,7 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
                 Streak
               </div>
               <div className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
-                {currentStreak} <span className="text-xs font-normal text-slate-500">days</span>
+                {streak} <span className="text-xs font-normal text-slate-500">{streak === 1 ? 'day' : 'days'}</span>
               </div>
             </div>
           </div>

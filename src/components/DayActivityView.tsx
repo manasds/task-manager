@@ -3,10 +3,10 @@ import { Clock } from 'lucide-react';
 import { Activity, CATEGORIES } from '../types/activity';
 import { DayDateNav } from './DayDateNav';
 import {
-  TIMELINE_HOURS,
   formatMinutes,
-  sessionBlockStyleForDate,
-  sessionOnLocalDate,
+  layoutDayTimeline,
+  sessionDate,
+  sessionEndDate,
   taskStatsForDate,
 } from '../utils/workSessions';
 
@@ -17,7 +17,18 @@ interface DayActivityViewProps {
   onEditActivity: (activity: Activity) => void;
 }
 
-const ROW_HEIGHT_PX = 48;
+const ROW_HEIGHT_PX = 56;
+const MIN_BLOCK_PX = 24;
+/** Blocks shorter than this show a single line. */
+const TWO_LINE_BLOCK_PX = 42;
+
+function formatClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
 
 export const DayActivityView: React.FC<DayActivityViewProps> = ({
   activities,
@@ -28,13 +39,10 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
   const taskStats = taskStatsForDate(activities, selectedDate);
   const totalMinutes = taskStats.reduce((sum, t) => sum + t.totalMinutes, 0);
 
-  const timelineSessions = activities.flatMap((activity) =>
-    (activity.workSessions ?? [])
-      .filter((s) => sessionOnLocalDate(s, selectedDate))
-      .map((session) => ({ session, activity }))
-  );
-
-  const timelineHeight = TIMELINE_HOURS.length * ROW_HEIGHT_PX;
+  const { blocks, startHour, endHour } = layoutDayTimeline(activities, selectedDate);
+  const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
+  const timelineHeight = (endHour - startHour) * ROW_HEIGHT_PX;
+  const toPx = (minutes: number) => ((minutes - startHour * 60) / 60) * ROW_HEIGHT_PX;
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
@@ -56,156 +64,165 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
         }
       />
 
-      {/* Per-task breakdown */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-        <div className="px-4 py-3 border-b border-slate-100">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-            By activity
-          </h3>
-        </div>
-        {taskStats.length === 0 ? (
-          <div className="py-12 text-center">
-            <Clock className="w-5 h-5 text-slate-300 mx-auto mb-1.5" />
-            <p className="text-xs font-medium text-slate-500">No work logged this day</p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
+        {/* Per-task breakdown */}
+        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              By activity
+            </h3>
           </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {taskStats.map(({ activity, untimedMinutes, totalMinutes: taskTotal }) => {
-              const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
-              const pct = totalMinutes > 0 ? Math.round((taskTotal / totalMinutes) * 100) : 0;
-
-              return (
-                <button
-                  key={activity.id}
-                  type="button"
-                  onClick={() => onEditActivity(activity)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50/80 transition-colors text-left"
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: categoryMeta.color }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-semibold text-slate-900 truncate">
-                      {activity.title}
-                    </h4>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
-                      <span>{categoryMeta.label}</span>
-                      {untimedMinutes > 0 && (
-                        <>
-                          <span>·</span>
-                          <span className="text-amber-600 font-medium">
-                            {formatMinutes(untimedMinutes)} untimed
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-bold text-slate-900 tabular-nums">
-                      {formatMinutes(taskTotal)}
-                    </div>
-                    <div className="text-[10px] text-slate-500 tabular-nums">{pct}%</div>
-                  </div>
-                  <div className="hidden sm:block w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${pct}%`,
-                        backgroundColor: categoryMeta.color,
-                      }}
-                    />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Hour-by-hour timeline */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-        <div className="px-4 py-3 border-b border-slate-100">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-            Timeline
-          </h3>
-        </div>
-        <div className="relative">
-          {TIMELINE_HOURS.map((hour) => (
-            <div
-              key={hour}
-              className="flex items-start gap-2.5 sm:gap-4 px-3 sm:px-4 border-b border-slate-100 last:border-b-0"
-              style={{ height: ROW_HEIGHT_PX }}
-            >
-              <div className="w-12 sm:w-16 shrink-0 text-right pt-2">
-                <span className="font-mono text-[11px] sm:text-xs font-semibold text-slate-500 tabular-nums">
-                  {hour}
-                </span>
-              </div>
-              <div className="flex-1 border-l border-slate-100 h-full" />
+          {taskStats.length === 0 ? (
+            <div className="py-12 text-center">
+              <Clock className="w-5 h-5 text-slate-300 mx-auto mb-1.5" />
+              <p className="text-xs font-medium text-slate-500">No work logged this day</p>
             </div>
-          ))}
-
-          {/* Session blocks overlay */}
-          <div
-            className="absolute top-0 left-0 right-0 pointer-events-none"
-            style={{ height: timelineHeight }}
-          >
-            <div className="relative ml-[4.5rem] sm:ml-20 mr-3 sm:mr-4 h-full pointer-events-auto">
-              {timelineSessions.map(({ session, activity }) => {
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {taskStats.map(({ activity, untimedMinutes, totalMinutes: taskTotal }) => {
                 const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
-                const block = sessionBlockStyleForDate(session, selectedDate, ROW_HEIGHT_PX);
-                if (!block) return null;
-
-                const { top, height, clippedStart, clippedEnd } = block;
-                const startTime = new Date(session.start).toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false,
-                });
-                const clipLabel =
-                  clippedStart && clippedEnd
-                    ? ' · outside grid'
-                    : clippedStart
-                      ? ' · starts earlier'
-                      : clippedEnd
-                        ? ' · continues later'
-                        : '';
+                const pct = totalMinutes > 0 ? Math.round((taskTotal / totalMinutes) * 100) : 0;
 
                 return (
                   <button
-                    key={`${session.id}-${selectedDate}`}
+                    key={activity.id}
                     type="button"
                     onClick={() => onEditActivity(activity)}
-                    className={`absolute left-0 right-0 rounded-lg px-2 py-1 text-left overflow-hidden border shadow-xs transition-opacity hover:opacity-90 ${
-                      clippedStart || clippedEnd ? 'border-dashed' : ''
-                    }`}
-                    style={{
-                      top,
-                      height,
-                      backgroundColor: categoryMeta.lightBg,
-                      borderColor: categoryMeta.borderColor,
-                    }}
-                    title={`${activity.title} · ${session.minutes}m${clipLabel}`}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50/80 transition-colors text-left"
                   >
-                    <div
-                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: categoryMeta.color }}
                     />
-                    <p className="text-[10px] font-bold text-slate-900 truncate pl-1.5">
-                      {activity.title}
-                      {(clippedStart || clippedEnd) && (
-                        <span className="text-slate-400 font-normal"> ···</span>
-                      )}
-                    </p>
-                    <p className="text-[9px] text-slate-500 tabular-nums pl-1.5">
-                      {startTime} · {session.minutes}m
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-semibold text-slate-900 truncate">
+                        {activity.title}
+                      </h4>
+                      <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+                        <span>{categoryMeta.label}</span>
+                        {untimedMinutes > 0 && (
+                          <>
+                            <span>·</span>
+                            <span className="text-amber-600 font-medium">
+                              {formatMinutes(untimedMinutes)} untimed
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-bold text-slate-900 tabular-nums">
+                        {formatMinutes(taskTotal)}
+                      </div>
+                      <div className="text-[10px] text-slate-500 tabular-nums">{pct}%</div>
+                    </div>
+                    <div className="hidden sm:block w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: categoryMeta.color,
+                        }}
+                      />
+                    </div>
                   </button>
                 );
               })}
             </div>
+          )}
+        </div>
+
+        {/* Hour-by-hour timeline */}
+        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              Timeline
+            </h3>
           </div>
+          {blocks.length === 0 ? (
+            <div className="py-12 text-center">
+              <Clock className="w-5 h-5 text-slate-300 mx-auto mb-1.5" />
+              <p className="text-xs font-medium text-slate-500">No timed sessions this day</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Start a focus timer on a task to fill the timeline</p>
+            </div>
+          ) : (
+            <div className="flex px-3 sm:px-4 py-4">
+              {/* Hour labels, centered on their grid lines */}
+              <div className="relative w-11 sm:w-14 shrink-0" style={{ height: timelineHeight }}>
+                {hours.map((hour) => (
+                  <span
+                    key={hour}
+                    className="absolute right-2 sm:right-3 -translate-y-1/2 font-mono text-[11px] font-semibold text-slate-400 tabular-nums"
+                    style={{ top: (hour - startHour) * ROW_HEIGHT_PX }}
+                  >
+                    {String(hour % 24).padStart(2, '0')}:00
+                  </span>
+                ))}
+              </div>
+
+              {/* Track: grid lines and session blocks share one coordinate system */}
+              <div className="relative flex-1 min-w-0 border-l border-slate-200" style={{ height: timelineHeight }}>
+                {hours.map((hour) => (
+                  <div
+                    key={hour}
+                    className="absolute left-0 right-0 border-t border-slate-100"
+                    style={{ top: (hour - startHour) * ROW_HEIGHT_PX }}
+                  />
+                ))}
+
+                {blocks.map(({ session, activity, startMin, endMin, lane, lanes }) => {
+                  const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
+                  const top = toPx(startMin);
+                  const height = Math.max(toPx(endMin) - top, MIN_BLOCK_PX);
+                  const compact = height < TWO_LINE_BLOCK_PX;
+                  const fromPrevDay = sessionDate(session) !== selectedDate;
+                  const intoNextDay = sessionEndDate(session) !== selectedDate;
+                  const range = `${formatClock(session.start)}–${formatClock(session.end)}`;
+                  const minutesLabel = formatMinutes(Math.round(endMin - startMin));
+                  const crossLabel = fromPrevDay
+                    ? ' · from previous day'
+                    : intoNextDay
+                      ? ' · continues next day'
+                      : '';
+
+                  return (
+                    <button
+                      key={`${session.id}-${selectedDate}`}
+                      type="button"
+                      onClick={() => onEditActivity(activity)}
+                      className={`absolute rounded-lg pl-2.5 pr-2 text-left overflow-hidden border shadow-xs transition-shadow hover:shadow-md hover:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 ${
+                        compact ? 'flex items-center gap-1.5' : 'py-1.5'
+                      } ${fromPrevDay || intoNextDay ? 'border-dashed' : ''}`}
+                      style={{
+                        top: top + 1,
+                        height: height - 2,
+                        left: `calc(${(lane / lanes) * 100}% + 6px)`,
+                        width: `calc(${100 / lanes}% - 10px)`,
+                        backgroundColor: categoryMeta.lightBg,
+                        borderColor: categoryMeta.borderColor,
+                      }}
+                      title={`${activity.title} · ${range} · ${minutesLabel}${crossLabel}`}
+                    >
+                      <span
+                        className="absolute left-0 top-0 bottom-0 w-1"
+                        style={{ backgroundColor: categoryMeta.color }}
+                      />
+                      <span className="block min-w-0 truncate text-[11px] font-semibold text-slate-900 leading-tight">
+                        {activity.title}
+                      </span>
+                      <span
+                        className={`block shrink-0 text-[10px] text-slate-500 tabular-nums leading-tight ${
+                          compact ? '' : 'mt-0.5 truncate'
+                        }`}
+                      >
+                        {compact ? minutesLabel : `${range} · ${minutesLabel}${crossLabel}`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
