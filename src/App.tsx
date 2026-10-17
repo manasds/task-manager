@@ -457,7 +457,7 @@ export default function App() {
         onOpenNewTaskModal={() => handleOpenNewTaskModal('backlog')}
       />
 
-      <OfflineIndicator />
+      <OfflineIndicator signedIn={!!persistence.user} />
 
       {toast && (
         <div

@@ -29,7 +29,7 @@ function phaseLabel(phase: SyncPhase, user: CloudUser | null): string {
   if (phase === 'dirty') return 'Saved here · syncing shortly';
   if (phase === 'flushing') return 'Syncing…';
   if (phase === 'synced') return 'Synced to your account';
-  if (phase === 'offline') return 'Offline · queued on this device';
+  if (phase === 'offline') return 'Offline · will sync when back online';
   if (phase === 'error') return 'Cloud sync paused';
   return 'Signed in';
 }
@@ -76,7 +76,7 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({
   return (
     <div className="flex items-center gap-2 min-w-0">
       <div
-        className="hidden md:flex items-center gap-1.5 max-w-55 text-[11px] text-slate-500"
+        className="flex items-center gap-1.5 min-w-0 md:max-w-55 text-[11px] text-slate-500"
         title={statusTitle}
       >
         <Icon className={`w-3.5 h-3.5 shrink-0 ${phase === 'flushing' ? 'animate-spin' : ''}`} />
@@ -86,15 +86,16 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({
         </span>
       </div>
       {user ? (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0 ml-auto">
           <span className="hidden lg:inline text-[11px] text-slate-400 truncate max-w-35">{user.email}</span>
-          {phase === 'dirty' && (
+          {/* Syncing is automatic; a manual nudge only helps after it failed. */}
+          {phase === 'error' && (
             <button
               type="button"
               onClick={onFlush}
               className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 px-1.5 py-1 rounded-lg"
             >
-              Sync now
+              Retry
             </button>
           )}
           <button

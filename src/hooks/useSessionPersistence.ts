@@ -296,10 +296,19 @@ export function useSessionPersistence(onRemoteUpdate: (update: RemoteUpdate) => 
     const onOnline = () => {
       void sync('online');
     };
+    const onOffline = () => {
+      if (!userRef.current) return;
+      setState((prev) => ({
+        ...prev,
+        phase: 'offline',
+        lastError: 'Offline · changes are saved on this device',
+      }));
+    };
 
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pagehide', onPageHide);
     window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
 
     const interval = window.setInterval(() => {
       const wanted = hasPending(metaRef.current) || document.visibilityState === 'visible';
@@ -312,6 +321,7 @@ export function useSessionPersistence(onRemoteUpdate: (update: RemoteUpdate) => 
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
       window.clearInterval(interval);
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
     };

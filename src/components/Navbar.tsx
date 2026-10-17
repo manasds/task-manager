@@ -106,9 +106,9 @@ function UtilityMenu({
           {user && (
             <div className="hidden xl:block">
               <p className="truncate px-2.5 py-1.5 text-[11px] text-slate-400">{user.email}</p>
-              {syncPhase === 'dirty' && (
+              {syncPhase === 'error' && (
                 <button type="button" role="menuitem" className={menuItemClass} onClick={() => closeAnd(onFlush)}>
-                  Sync now
+                  Retry sync
                 </button>
               )}
               <button type="button" role="menuitem" className={menuItemClass} onClick={() => closeAnd(onSignOut)}>
