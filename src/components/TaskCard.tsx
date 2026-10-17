@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Clock, 
   CheckCircle2, 
@@ -44,7 +45,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   isTimerActiveForTask,
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
+  const [menuPos, setMenuPos] = React.useState<{ top: number; left: number } | null>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
+  const menuButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
   const priorityMeta = PRIORITY_CONFIG[activity.priority] || PRIORITY_CONFIG.medium;
@@ -56,21 +59,53 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target) || menuButtonRef.current?.contains(target)) return;
+      setShowMenu(false);
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setShowMenu(false);
     };
+    // The menu is fixed to the viewport, so close it rather than let it drift on scroll.
+    const handleScrollOrResize = (e: Event) => {
+      if (menuRef.current?.contains(e.target as Node)) return;
+      setShowMenu(false);
+    };
     if (showMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('scroll', handleScrollOrResize, true);
+      window.addEventListener('resize', handleScrollOrResize);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
     };
+  }, [showMenu]);
+
+  // Place the menu in the viewport: below the button, or above it when there is no room
+  // (the mobile bottom nav covers the last ~80px), and never past the side edges.
+  React.useLayoutEffect(() => {
+    if (!showMenu) {
+      setMenuPos(null);
+      return;
+    }
+    const button = menuButtonRef.current;
+    const menu = menuRef.current;
+    if (!button || !menu) return;
+    const rect = button.getBoundingClientRect();
+    const { offsetWidth: width, offsetHeight: height } = menu;
+    const gap = 4;
+    const edge = 8;
+    const bottomLimit = window.innerHeight - (window.innerWidth < 768 ? 80 : edge);
+    const fitsBelow = rect.bottom + gap + height <= bottomLimit;
+    const top = fitsBelow || rect.top - gap - height < edge
+      ? Math.min(rect.bottom + gap, Math.max(edge, bottomLimit - height))
+      : rect.top - gap - height;
+    const left = Math.min(Math.max(rect.right - width, edge), window.innerWidth - width - edge);
+    setMenuPos({ top, left });
   }, [showMenu]);
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
@@ -143,8 +178,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             <span className="hidden sm:inline-flex text-slate-300 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing p-0.5 transition-opacity">
               <GripVertical className="w-3.5 h-3.5" />
             </span>
-            <div className="relative" ref={menuRef}>
+            <div className="relative">
               <button
+                ref={menuButtonRef}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -158,8 +194,18 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 <MoreVertical className="w-4 h-4" />
               </button>
 
-              {showMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1 text-xs">
+              {showMenu && createPortal(
+                <div
+                  ref={menuRef}
+                  role="menu"
+                  style={{
+                    position: 'fixed',
+                    top: menuPos?.top ?? 0,
+                    left: menuPos?.left ?? 0,
+                    visibility: menuPos ? 'visible' : 'hidden',
+                  }}
+                  className="w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 text-xs"
+                >
                   <button
                     type="button"
                     onClick={(e) => {
@@ -211,7 +257,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                     <Trash2 className="w-4 h-4 text-rose-500" />
                     <span>Delete Activity</span>
                   </button>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           </div>

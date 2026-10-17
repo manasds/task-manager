@@ -115,7 +115,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     ? (Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0][0] as ActivityCategory)
     : null;
 
-  const maxHours = Math.max(8, ...daySeries.map((d) => d.hours));
+  // Leave room for the goal line even when every day is below it.
+  const maxHours = Math.max(8, dailyGoalMinutes / 60, ...daySeries.map((d) => d.hours));
   const maxTasks = Math.max(5, ...daySeries.map((d) => d.totalTasks));
 
   const getArcPath = (startAngle: number, sweepAngle: number, radius: number, cx: number, cy: number) => {
@@ -206,27 +207,28 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
             </div>
 
-            {/* Custom SVG Bar Chart */}
-            <div className="relative pt-6 pb-2 overflow-x-auto">
-              {velocityMetric === 'hours' && (
-                <div
-                  className="absolute left-0 right-0 border-t border-dashed border-amber-400 z-10 flex items-center justify-end pr-2 pointer-events-none"
-                  style={{
-                    top: `${100 - ((dailyGoalMinutes / 60) / maxHours) * 80}%`,
-                  }}
-                >
-                  <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-sm border border-amber-200 -mt-2.5 tabular-nums">
-                    Target: {(dailyGoalMinutes / 60).toFixed(1)}h
-                  </span>
-                </div>
-              )}
+            {/* Bar chart: the goal line and tooltips live inside the bar area so nothing gets clipped */}
+            <div className="pt-2 pb-2">
+              <div className="relative h-48 sm:h-56 flex items-end justify-between gap-1.5 sm:gap-3 px-1 border-b border-slate-100">
+                {velocityMetric === 'hours' && (
+                  <div
+                    className="absolute left-0 right-0 border-t border-dashed border-amber-400 z-10 pointer-events-none"
+                    style={{ bottom: `${(dailyGoalMinutes / 60 / maxHours) * 100}%` }}
+                  >
+                    <span className="absolute right-1 -top-2.5 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-sm border border-amber-200 tabular-nums">
+                      Target: {(dailyGoalMinutes / 60).toFixed(1)}h
+                    </span>
+                  </div>
+                )}
 
-              <div className="h-48 sm:h-56 flex items-end justify-between gap-1.5 sm:gap-3 px-1 border-b border-slate-100 min-w-70">
                 {daySeries.map((d, idx) => {
                   const val = velocityMetric === 'hours' ? d.hours : d.completedTasks;
                   const max = velocityMetric === 'hours' ? maxHours : maxTasks;
-                  const heightPercent = Math.min(100, Math.max(8, (val / max) * 100));
+                  const heightPercent = val > 0 ? Math.max(3, Math.min(100, (val / max) * 100)) : 0;
                   const isHovered = hoveredDayIndex === idx;
+                  // Keep edge tooltips inside the chart instead of hanging off the card.
+                  const tooltipAlign =
+                    idx < 2 ? 'left-0' : idx > daySeries.length - 3 ? 'right-0' : 'left-1/2 -translate-x-1/2';
 
                   return (
                     <div
@@ -234,11 +236,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       onClick={() => setHoveredDayIndex(isHovered ? null : idx)}
                       onMouseEnter={() => setHoveredDayIndex(idx)}
                       onMouseLeave={() => setHoveredDayIndex(null)}
-                      className="flex-1 flex flex-col items-center justify-end h-full group relative cursor-pointer"
+                      className="flex-1 flex flex-col items-center justify-end h-full relative cursor-pointer"
                     >
-                      {/* Tooltip on tap/hover */}
                       {isHovered && (
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-20 bg-slate-900 text-white rounded-xl p-2.5 text-xs shadow-xl w-36 pointer-events-none">
+                        <div className={`absolute top-0 ${tooltipAlign} z-20 bg-slate-900 text-white rounded-xl p-2.5 text-xs shadow-xl w-36 pointer-events-none`}>
                           <div className="font-semibold text-slate-100 border-b border-slate-700/80 pb-1 mb-1 text-[11px]">
                             {d.fullDate}
                           </div>
@@ -253,32 +254,34 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         </div>
                       )}
 
-                      <div className="w-full max-w-9 flex flex-col justify-end items-center h-full">
-                        <div
-                          className={`w-full rounded-t-lg transition-all duration-300 ${
-                            isHovered
-                              ? 'bg-indigo-600 shadow-md scale-x-105'
-                              : d.dateStr === today
-                              ? 'bg-indigo-500 ring-2 ring-indigo-200'
-                              : 'bg-indigo-400/90'
-                          }`}
-                          style={{ height: `${heightPercent}%` }}
-                        />
-                      </div>
-
-                      <div className="mt-2 text-center">
-                        <div className={`text-[10px] sm:text-[11px] font-semibold ${
-                          d.dateStr === today ? 'text-indigo-600 font-bold' : 'text-slate-600'
-                        }`}>
-                          {d.label}
-                        </div>
-                        <div className="text-[9px] sm:text-[10px] text-slate-400 tabular-nums font-mono">
-                          {velocityMetric === 'hours' ? `${d.hours}h` : `${d.completedTasks}`}
-                        </div>
-                      </div>
+                      <div
+                        className={`w-full max-w-9 rounded-t-lg transition-all duration-300 ${
+                          isHovered
+                            ? 'bg-indigo-600 shadow-md'
+                            : d.dateStr === today
+                            ? 'bg-indigo-500 ring-2 ring-indigo-200'
+                            : 'bg-indigo-400/90'
+                        }`}
+                        style={{ height: `${heightPercent}%` }}
+                      />
                     </div>
                   );
                 })}
+              </div>
+
+              <div className="flex justify-between gap-1.5 sm:gap-3 px-1 mt-2">
+                {daySeries.map((d) => (
+                  <div key={d.dateStr} className="flex-1 text-center">
+                    <div className={`text-[10px] sm:text-[11px] font-semibold ${
+                      d.dateStr === today ? 'text-indigo-600 font-bold' : 'text-slate-600'
+                    }`}>
+                      {d.label}
+                    </div>
+                    <div className="text-[9px] sm:text-[10px] text-slate-400 tabular-nums font-mono">
+                      {velocityMetric === 'hours' ? `${d.hours}h` : `${d.completedTasks}`}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
