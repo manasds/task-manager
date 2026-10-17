@@ -18,6 +18,8 @@ interface TaskModalProps {
   initialActivity?: Activity | null;
   defaultStatus?: ActivityStatus;
   defaultTime?: string;
+  /** Date for new activities, e.g. the day open in the planner. */
+  defaultDate?: string;
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({
@@ -27,6 +29,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   initialActivity,
   defaultStatus = "backlog",
   defaultTime,
+  defaultDate,
 }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -65,12 +68,12 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setEstimatedMinutes(45);
       setActualMinutes(0);
       setScheduledTime(defaultTime || "");
-      setDate(getTodayDateString());
+      setDate(defaultDate || getTodayDateString());
       setSubtasks([]);
       setTags([]);
     }
     setError("");
-  }, [initialActivity, defaultStatus, defaultTime, isOpen]);
+  }, [initialActivity, defaultStatus, defaultTime, defaultDate, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -132,7 +135,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     }
 
     const activityToSave: Activity = {
-      id: initialActivity ? initialActivity.id : `act-${Date.now()}`,
+      id: initialActivity ? initialActivity.id : `task-${crypto.randomUUID()}`,
       title: title.trim(),
       description: description.trim() || undefined,
       category,

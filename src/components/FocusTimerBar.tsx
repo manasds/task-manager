@@ -1,81 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Play, 
-  Pause, 
-  Plus, 
-  Headphones, 
-  X, 
-  Check 
+import {
+  Play,
+  Pause,
+  Plus,
+  Headphones,
+  Square,
+  Check
 } from 'lucide-react';
-import { Activity, CATEGORIES, WorkSession } from '../types/activity';
+import { Activity, CATEGORIES } from '../types/activity';
+import { FocusTimerSnapshot } from '../types/document';
 import { soundManager } from '../utils/audio';
-import { createWorkSession } from '../utils/workSessions';
+import { timerElapsedSeconds } from '../utils/workSessions';
 
 interface FocusTimerBarProps {
   activity: Activity | null;
-  onLogTime: (activityId: string, minutesToAdd: number, session: WorkSession) => void;
+  timer: FocusTimerSnapshot | null;
+  onTimerChange: (timer: FocusTimerSnapshot) => void;
+  /** Save the elapsed minutes as a work session and reset the clock. */
+  onLogTime: (minutes: number) => void;
   onCompleteActivity: (activityId: string) => void;
-  onClose: () => void;
+  /** Stop the timer, saving any elapsed time. */
+  onStop: () => void;
 }
 
 export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   activity,
+  timer,
+  onTimerChange,
   onLogTime,
   onCompleteActivity,
-  onClose,
+  onStop,
 }) => {
-  const [secondsElapsed, setSecondsElapsed] = useState(0);
-  const [isRunning, setIsRunning] = useState(true);
+  const [, setTick] = useState(0);
   const [isAmbientOn, setIsAmbientOn] = useState(false);
 
+  const isRunning = !!timer?.isRunning;
   useEffect(() => {
-    setSecondsElapsed(0);
-    setIsRunning(true);
-  }, [activity?.id]);
+    if (!isRunning) return;
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isRunning]);
 
   useEffect(() => {
-    let interval: any = null;
-    if (isRunning && activity) {
-      interval = setInterval(() => {
-        setSecondsElapsed((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRunning, activity]);
+    if (activity || !isAmbientOn) return;
+    soundManager.stopAmbient();
+    setIsAmbientOn(false);
+  }, [activity, isAmbientOn]);
 
-  if (!activity) return null;
+  if (!activity || !timer) return null;
 
+  const secondsElapsed = timerElapsedSeconds(timer);
   const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
   const minutes = Math.floor(secondsElapsed / 60);
   const seconds = secondsElapsed % 60;
+  const isCompleted = activity.status === 'completed';
 
   const handleToggleTimer = () => {
     soundManager.playDragStart();
-    setIsRunning(!isRunning);
+    if (timer.isRunning) {
+      onTimerChange({ ...timer, secondsElapsed, isRunning: false, startedAt: undefined });
+    } else {
+      onTimerChange({ ...timer, isRunning: true, startedAt: new Date().toISOString() });
+    }
   };
 
   const handleAddFiveMinutes = () => {
     soundManager.playDragStart();
-    setSecondsElapsed((prev) => prev + 300);
+    onTimerChange({ ...timer, secondsElapsed: timer.secondsElapsed + 300 });
   };
 
   const handleCommitLoggedTime = () => {
-    const minsToLog = Math.max(1, Math.round(secondsElapsed / 60));
     soundManager.playDrop();
-    onLogTime(activity.id, minsToLog, createWorkSession(activity.id, minsToLog));
-    setSecondsElapsed(0);
+    onLogTime(Math.max(1, Math.round(secondsElapsed / 60)));
   };
 
   const handleCompleteAndLog = () => {
-    const minsToLog = Math.max(0, Math.round(secondsElapsed / 60));
-    if (minsToLog > 0) {
-      onLogTime(activity.id, minsToLog, createWorkSession(activity.id, minsToLog));
-    }
     soundManager.playComplete();
     onCompleteActivity(activity.id);
-    onClose();
+  };
+
+  const handleStop = () => {
+    if (isAmbientOn) {
+      soundManager.stopAmbient();
+      setIsAmbientOn(false);
+    }
+    onStop();
   };
 
   const handleToggleAmbient = () => {
@@ -91,16 +100,18 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   return (
     <div className="fixed bottom-20 md:bottom-4 inset-x-3 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 z-40 md:w-full max-w-3xl">
       <div className="bg-slate-900/95 backdrop-blur-md text-white rounded-2xl p-2.5 sm:px-5 sm:py-3.5 shadow-2xl border border-slate-800 flex items-center justify-between gap-2 sm:gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-        
+
         {/* Left: Activity Details */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <span
-            className="w-2.5 h-2.5 rounded-full shrink-0"
+            className={`w-2.5 h-2.5 rounded-full shrink-0 ${isRunning ? 'animate-pulse' : ''}`}
             style={{ backgroundColor: categoryMeta.color }}
           />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-400">
-              <span className="uppercase tracking-wider font-semibold text-slate-300">Focus</span>
+              <span className="uppercase tracking-wider font-semibold text-slate-300">
+                {isRunning ? 'Focus' : 'Paused'}
+              </span>
               <span>·</span>
               <span className="truncate">{categoryMeta.label}</span>
             </div>
@@ -120,7 +131,8 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
           <button
             onClick={handleToggleTimer}
             className="min-h-11 min-w-11 flex items-center justify-center p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-xs transition-colors active:scale-95"
-            title={isRunning ? 'Pause Timer' : 'Resume Timer'}
+            title={isRunning ? 'Pause timer' : 'Resume timer'}
+            aria-label={isRunning ? 'Pause timer' : 'Resume timer'}
           >
             {isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
           </button>
@@ -133,7 +145,8 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
                 ? 'bg-emerald-600 text-white'
                 : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
             }`}
-            title={isAmbientOn ? 'Stop Ambient Rain' : 'Play Ambient Focus Rain'}
+            title={isAmbientOn ? 'Stop ambient rain' : 'Play ambient focus rain'}
+            aria-label={isAmbientOn ? 'Stop ambient rain' : 'Play ambient focus rain'}
           >
             <Headphones className="w-4 h-4" />
           </button>
@@ -155,27 +168,30 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
             <button
               onClick={handleCommitLoggedTime}
               className="min-h-11 px-2.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl transition-colors whitespace-nowrap active:scale-95"
-              title="Save elapsed minutes to this activity"
+              title="Save elapsed minutes and keep focusing"
             >
               Log
             </button>
           )}
 
-          <button
-            onClick={handleCompleteAndLog}
-            className="min-h-11 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition-colors whitespace-nowrap active:scale-95"
-            title="Mark activity completed"
-          >
-            <Check className="w-4 h-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">Done</span>
-          </button>
+          {!isCompleted && (
+            <button
+              onClick={handleCompleteAndLog}
+              className="min-h-11 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition-colors whitespace-nowrap active:scale-95"
+              title="Save time and mark activity completed"
+            >
+              <Check className="w-4 h-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">Done</span>
+            </button>
+          )}
 
           <button
-            onClick={onClose}
+            onClick={handleStop}
             className="min-h-11 min-w-11 flex items-center justify-center p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
-            title="Dismiss focus bar"
+            title="Stop and save time"
+            aria-label="Stop and save time"
           >
-            <X className="w-4 h-4" />
+            <Square className="w-3.5 h-3.5 fill-current" />
           </button>
         </div>
 

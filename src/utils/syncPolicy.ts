@@ -62,9 +62,8 @@ export function emptyDocument(nowIso = new Date().toISOString()): PersistedDocum
 
 export function isLikelyDemoDocument(doc: PersistedDocument): boolean {
   if (doc.activities.length === 0) return false;
-  return doc.activities.every(
-    (a) => a.id.startsWith('act-') || a.id.startsWith('act-hist-')
-  );
+  // Seeded demo ids are short (act-3, act-hist-12); old user-created ids were act-<timestamp>.
+  return doc.activities.every((a) => /^act-(hist-)?\d{1,3}$/.test(a.id));
 }
 
 export function activityTimestamp(activity: Activity): string {

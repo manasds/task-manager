@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { Activity } from '../types/activity';
 import {
   buildTimelineAxis,
+  timerElapsedSeconds,
   focusMinutesByHour,
   layoutDayTimeline,
   localDateString,
@@ -237,5 +238,14 @@ describe('adaptive timeline axis', () => {
     assert.equal(plain.blocks[0].lanes, 1);
     const padded = layoutDayTimeline(acts, '2026-10-15', 25);
     assert.equal(padded.blocks[0].lanes, 2);
+  });
+});
+
+describe('focus timer elapsed time', () => {
+  it('adds the running stretch to banked seconds', () => {
+    const startedAt = '2026-10-15T10:00:00.000Z';
+    const now = Date.parse('2026-10-15T10:02:30.000Z');
+    assert.equal(timerElapsedSeconds({ activityId: 'a', secondsElapsed: 60, isRunning: true, startedAt }, now), 210);
+    assert.equal(timerElapsedSeconds({ activityId: 'a', secondsElapsed: 60, isRunning: false }, now), 60);
   });
 });

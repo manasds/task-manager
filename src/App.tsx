@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, ActivityStatus, WorkSession } from './types/activity';
-import { DOCUMENT_SCHEMA_VERSION, PersistedDocument } from './types/document';
+import { Activity, ActivityStatus } from './types/activity';
+import { DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument } from './types/document';
 import { generateInitialActivities, getTodayDateString } from './utils/storage';
 import { soundManager } from './utils/audio';
 import { Navbar, ActiveTab } from './components/Navbar';
@@ -19,6 +19,7 @@ import { AuthPanel } from './components/AuthPanel';
 import { SyncStatus } from './components/SyncStatus';
 import { useSessionPersistence } from './hooks/useSessionPersistence';
 import { applyRemoteActivities } from './utils/syncPolicy';
+import { createWorkSession, formatMinutes, timerElapsedSeconds } from './utils/workSessions';
 
 function withUpdatedAt(activity: Activity): Activity {
   return { ...activity, updatedAt: new Date().toISOString() };
@@ -27,9 +28,6 @@ function withUpdatedAt(activity: Activity): Activity {
 export default function App() {
   const persistence = useSessionPersistence((update) => {
     setActivities((prev) => applyRemoteActivities(prev, update));
-    if (update.deletes.length > 0) {
-      setActiveTimerTask((current) => (current && update.deletes.includes(current.id) ? null : current));
-    }
     if (update.dailyGoalMinutes !== undefined) setDailyGoalMinutes(update.dailyGoalMinutes);
   });
   const [hydrated, setHydrated] = useState(false);
@@ -41,13 +39,20 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [activeTimerTask, setActiveTimerTask] = useState<Activity | null>(null);
+  const [timer, setTimer] = useState<FocusTimerSnapshot | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [modalDefaultStatus, setModalDefaultStatus] = useState<ActivityStatus>('backlog');
   const [modalDefaultTime, setModalDefaultTime] = useState<string | undefined>(undefined);
   const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const activeTimerTask = timer ? activities.find((a) => a.id === timer.activityId) ?? null : null;
+
+  // A timer whose task was deleted (here or on another device) has nothing to log to.
+  useEffect(() => {
+    if (hydrated && timer && !activeTimerTask) setTimer(null);
+  }, [hydrated, timer, activeTimerTask]);
 
   const showToast = (message: string, undo?: () => void) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -69,6 +74,7 @@ export default function App() {
     setSelectedDate(doc.settings.selectedDate || getTodayDateString());
     setIsMuted(doc.settings.muted);
     soundManager.setMuted(doc.settings.muted);
+    setTimer(doc.timer ?? null);
     setHydrated(true);
   };
 
@@ -89,7 +95,7 @@ export default function App() {
       },
       activities,
       deletedIds,
-      timer: null,
+      timer,
       updatedAt: new Date().toISOString(),
     };
     const markDirty = !skipDirtyRef.current;
@@ -103,6 +109,7 @@ export default function App() {
     isMuted,
     activeTab,
     selectedDate,
+    timer,
     persistence.persistLocal,
   ]);
 
@@ -114,9 +121,6 @@ export default function App() {
       return [next, ...prev];
     });
     setDeletedIds((prev) => prev.filter((id) => id !== next.id));
-    if (activeTimerTask && activeTimerTask.id === next.id) {
-      setActiveTimerTask(next);
-    }
   };
 
   const handleDeleteActivity = (activityId: string) => {
@@ -124,9 +128,7 @@ export default function App() {
     soundManager.playDrop();
     setActivities((prev) => prev.filter((a) => a.id !== activityId));
     setDeletedIds((prev) => (prev.includes(activityId) ? prev : [...prev, activityId]));
-    if (activeTimerTask && activeTimerTask.id === activityId) {
-      setActiveTimerTask(null);
-    }
+    setTimer((current) => (current?.activityId === activityId ? null : current));
     showToast(
       'Activity deleted',
       removed
@@ -167,29 +169,65 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  const handleStartFocus = (act: Activity) => {
-    setActiveTimerTask(act);
-    showToast(`Focus session: ${act.title}`);
-  };
-
-  const handleLogTime = (activityId: string, minutesToAdd: number, session: WorkSession) => {
+  /** Add a work session ending now to an activity. */
+  const logMinutes = (activityId: string, minutes: number) => {
     const now = new Date().toISOString();
+    const session = createWorkSession(activityId, minutes);
     setActivities((prev) =>
       prev.map((a) => {
         if (a.id !== activityId) return a;
-        const workSessions = [...(a.workSessions ?? []), session];
         return {
           ...a,
-          actualMinutes: (a.actualMinutes || 0) + minutesToAdd,
-          workSessions,
+          actualMinutes: (a.actualMinutes || 0) + minutes,
+          workSessions: [...(a.workSessions ?? []), session],
           updatedAt: now,
         };
       })
     );
-    showToast(`Logged ${minutesToAdd}m to activity`);
+  };
+
+  /** Save a timer's elapsed time (rounded to minutes) and return what was saved. */
+  const saveTimer = (current: FocusTimerSnapshot): number => {
+    const minutes = Math.round(timerElapsedSeconds(current) / 60);
+    if (minutes > 0) logMinutes(current.activityId, minutes);
+    return minutes;
+  };
+
+  const handleStartFocus = (act: Activity) => {
+    if (timer?.activityId === act.id) {
+      if (!timer.isRunning) setTimer({ ...timer, isRunning: true, startedAt: new Date().toISOString() });
+      showToast(`Already focusing on ${act.title}`);
+      return;
+    }
+    const saved = timer ? saveTimer(timer) : 0;
+    setTimer({ activityId: act.id, secondsElapsed: 0, isRunning: true, startedAt: new Date().toISOString() });
+    showToast(
+      saved > 0 && activeTimerTask
+        ? `Saved ${formatMinutes(saved)} to ${activeTimerTask.title} · Focus: ${act.title}`
+        : `Focus session: ${act.title}`
+    );
+  };
+
+  const handleLogTime = (minutes: number) => {
+    if (!timer) return;
+    logMinutes(timer.activityId, minutes);
+    setTimer({
+      ...timer,
+      secondsElapsed: 0,
+      startedAt: timer.isRunning ? new Date().toISOString() : undefined,
+    });
+    showToast(`Logged ${formatMinutes(minutes)} to activity`);
+  };
+
+  const handleStopTimer = () => {
+    if (!timer) return;
+    const saved = saveTimer(timer);
+    setTimer(null);
+    showToast(saved > 0 ? `Focus stopped · saved ${formatMinutes(saved)}` : 'Focus stopped · under a minute, nothing logged');
   };
 
   const handleCompleteActivity = (activityId: string) => {
+    const saved = timer?.activityId === activityId ? saveTimer(timer) : 0;
     const now = new Date().toISOString();
     setActivities((prev) =>
       prev.map((a) => {
@@ -202,8 +240,8 @@ export default function App() {
         };
       })
     );
-    setActiveTimerTask(null);
-    showToast('Activity completed');
+    setTimer(null);
+    showToast(saved > 0 ? `Activity completed · saved ${formatMinutes(saved)}` : 'Activity completed');
   };
 
   const handleResetData = () => {
@@ -214,7 +252,7 @@ export default function App() {
     const fresh = generateInitialActivities();
     setActivities(fresh);
     setDeletedIds([]);
-    setActiveTimerTask(null);
+    setTimer(null);
     soundManager.playDrop();
     showToast('Demo activities loaded on this device');
   };
@@ -372,6 +410,7 @@ export default function App() {
             onDeleteActivity={handleDeleteActivity}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
+            activeTimerTaskId={activeTimerTask?.id}
           />
         )}
 
@@ -400,13 +439,16 @@ export default function App() {
         initialActivity={editingActivity}
         defaultStatus={modalDefaultStatus}
         defaultTime={modalDefaultTime}
+        defaultDate={/^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : undefined}
       />
 
       <FocusTimerBar
         activity={activeTimerTask}
+        timer={timer}
+        onTimerChange={setTimer}
         onLogTime={handleLogTime}
         onCompleteActivity={handleCompleteActivity}
-        onClose={() => setActiveTimerTask(null)}
+        onStop={handleStopTimer}
       />
 
       <MobileBottomNav

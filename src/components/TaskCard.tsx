@@ -104,13 +104,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           onDragOverCard(e, index);
         }
       }}
-      className={`group relative box-border bg-white rounded-2xl border-2 transition-colors duration-200 select-none touch-manipulation min-h-28 ${
+      className={`group relative box-border bg-white rounded-2xl border-2 transition-[color,background-color,border-color,opacity,filter] duration-200 select-none touch-manipulation min-h-28 ${
         isDragging
           ? 'opacity-40 scale-[0.98] border-indigo-400'
           : isTimerActiveForTask
             ? 'border-indigo-500 bg-indigo-50/30'
             : isCompleted
-              ? 'border-slate-200/80 bg-slate-50/70'
+              ? 'border-slate-200/80 bg-slate-50/70 opacity-60 saturate-50 hover:opacity-100 hover:saturate-100 focus-within:opacity-100'
               : 'border-slate-200 hover:border-slate-300'
       }`}
     >
@@ -243,7 +243,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </h4>
 
             {activity.description && (
-              <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">
+              <p className={`text-xs line-clamp-2 mt-1 leading-relaxed ${isCompleted ? 'text-slate-400' : 'text-slate-500'}`}>
                 {activity.description}
               </p>
             )}
@@ -251,63 +251,59 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
 
         {/* Footer: quiet metadata on the left, actions on the right */}
-        {(activity.scheduledTime || totalSubtasks > 0 || activity.actualMinutes > 0 ) && !isCompleted && (
-          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
-            <div className="flex items-center gap-2.5 min-w-0 tabular-nums">
-              {activity.scheduledTime && (
-                <span className="shrink-0 font-medium text-slate-600" title="Scheduled time">
-                  {activity.scheduledTime}
-                </span>
-              )}
-              {totalSubtasks > 0 && (
-                <span className="inline-flex items-center gap-1 shrink-0" title="Checklist progress">
-                  <ListChecks className="w-3.5 h-3.5 text-slate-400" />
-                  {completedSubtasks}/{totalSubtasks}
-                </span>
-              )}
-              {activity.actualMinutes > 0 && (
-                <span className="inline-flex items-center gap-1 shrink-0" title="Time logged">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  {activity.actualMinutes}m
-                </span>
-              )}
-            </div>
-
-            {!isCompleted && (
-              <div className="flex items-center gap-0.5 shrink-0">
-                {nextStatus && onMoveToStatus && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      soundManager.playDrop();
-                      onMoveToStatus(activity.id, nextStatus.id);
-                    }}
-                    title={`Move to ${nextStatus.shortTitle}`}
-                    aria-label={`Move to ${nextStatus.shortTitle}`}
-                    className="sm:hidden size-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleStartTimer}
-                  title={isTimerActiveForTask ? 'Focus session active' : 'Start focus timer on this activity'}
-                  className={`min-h-8 max-sm:min-h-9 px-2.5 rounded-lg transition-[color,background-color,border-color,opacity] flex items-center gap-1.5 font-semibold ${
-                    isTimerActiveForTask
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-slate-600 border border-slate-200 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100'
-                  }`}
-                >
-                  <Play className="w-3 h-3 fill-current" />
-                  <span>{isTimerActiveForTask ? 'Active' : 'Focus'}</span>
-                </button>
-              </div>
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+          <div className="flex items-center gap-2.5 min-w-0 tabular-nums">
+            {activity.scheduledTime && (
+              <span className="shrink-0 font-medium text-slate-600" title="Scheduled time">
+                {activity.scheduledTime}
+              </span>
+            )}
+            {totalSubtasks > 0 && (
+              <span className="inline-flex items-center gap-1 shrink-0" title="Checklist progress">
+                <ListChecks className="w-3.5 h-3.5 text-slate-400" />
+                {completedSubtasks}/{totalSubtasks}
+              </span>
+            )}
+            {activity.actualMinutes > 0 && (
+              <span className="inline-flex items-center gap-1 shrink-0" title="Time logged">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                {activity.actualMinutes}m
+              </span>
             )}
           </div>
-        )}
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            {nextStatus && onMoveToStatus && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  soundManager.playDrop();
+                  onMoveToStatus(activity.id, nextStatus.id);
+                }}
+                title={`Move to ${nextStatus.shortTitle}`}
+                aria-label={`Move to ${nextStatus.shortTitle}`}
+                className="sm:hidden size-9 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleStartTimer}
+              title={isTimerActiveForTask ? 'Focus session active' : 'Start focus timer on this activity'}
+              className={`min-h-8 max-sm:min-h-9 px-2.5 rounded-lg transition-[color,background-color,border-color,opacity] flex items-center gap-1.5 font-semibold ${
+                isTimerActiveForTask
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-600 border border-slate-200 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50'
+              }`}
+            >
+              <Play className="w-3 h-3 fill-current" />
+              <span>{isTimerActiveForTask ? 'Active' : 'Focus'}</span>
+            </button>
+          </div>
+        </div>
 
       </div>
     </div>

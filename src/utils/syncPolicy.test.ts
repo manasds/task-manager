@@ -238,4 +238,11 @@ describe('first sync on a device', () => {
     assert.equal(isLikelyDemoDocument(demo), true);
     assert.equal(isLikelyDemoDocument(emptyDocument()), false);
   });
+
+  it('does not treat user-created tasks as demo data', () => {
+    const timestamped = doc({ activities: [activity({ id: 'act-1792231846000' })] });
+    const uuid = doc({ activities: [activity({ id: 'task-0b7f1c2e-1111-4a2b-9c3d-123456789abc' })] });
+    assert.equal(isLikelyDemoDocument(timestamped), false);
+    assert.equal(isLikelyDemoDocument(uuid), false);
+  });
 });

@@ -1,4 +1,5 @@
 import { Activity, WorkSession } from '../types/activity';
+import { FocusTimerSnapshot } from '../types/document';
 
 export const TIMELINE_HOURS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -334,4 +335,11 @@ export function buildTimelineAxis(
     return Math.min(height, Math.max(0, hourTops[row] + (offset - row) * rowHeights[row]));
   };
   return { hourTops, height, toPx };
+}
+
+/** Total seconds on a focus timer, including the stretch running right now. */
+export function timerElapsedSeconds(timer: FocusTimerSnapshot, nowMs = Date.now()): number {
+  if (!timer.isRunning || !timer.startedAt) return timer.secondsElapsed;
+  const running = Math.max(0, Math.floor((nowMs - Date.parse(timer.startedAt)) / 1000));
+  return timer.secondsElapsed + running;
 }

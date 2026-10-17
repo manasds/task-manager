@@ -4,7 +4,8 @@ import {
   Plus, 
   GripVertical,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Play
 } from 'lucide-react';
 import { Activity, CATEGORIES } from '../types/activity';
 import { soundManager } from '../utils/audio';
@@ -21,7 +22,27 @@ interface DayPlannerViewProps {
   onDeleteActivity: (activityId: string) => void;
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  activeTimerTaskId?: string;
 }
+
+const FocusButton: React.FC<{ active: boolean; onClick: () => void }> = ({ active, onClick }) => (
+  <button
+    type="button"
+    onClick={(e) => {
+      e.stopPropagation();
+      onClick();
+    }}
+    title={active ? 'Focus session active' : 'Start focus timer on this activity'}
+    className={`min-h-9 px-2.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 shrink-0 ${
+      active
+        ? 'bg-indigo-600 text-white'
+        : 'text-slate-600 border border-slate-200 bg-white hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50'
+    }`}
+  >
+    <Play className="w-3 h-3 fill-current" />
+    <span>{active ? 'Active' : 'Focus'}</span>
+  </button>
+);
 
 export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   activities,
@@ -32,6 +53,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   onDeleteActivity,
   selectedDate,
   onSelectDate,
+  activeTimerTaskId,
 }) => {
   const plannerDate = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : getTodayDateString();
   const [draggedActivityId, setDraggedActivityId] = useState<string | null>(null);
@@ -201,7 +223,11 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                     className={`bg-white rounded-xl p-3 border transition-all cursor-grab active:cursor-grabbing select-none ${
                       isDragging
                         ? 'opacity-40 border-indigo-400'
-                        : 'border-slate-200 hover:border-slate-300 hover:shadow-2xs'
+                        : act.id === activeTimerTaskId
+                          ? 'border-indigo-500 bg-indigo-50/40'
+                          : act.status === 'completed'
+                            ? 'border-slate-200 opacity-60 saturate-50 hover:opacity-100 hover:saturate-100'
+                            : 'border-slate-200 hover:border-slate-300 hover:shadow-2xs'
                     }`}
                   >
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
@@ -217,9 +243,20 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                       <GripVertical className="w-3.5 h-3.5 text-slate-300 hidden sm:block" />
                     </div>
 
-                    <h4 className="text-xs font-semibold text-slate-800 line-clamp-2">
-                      {act.title}
-                    </h4>
+                    <div className="flex items-start justify-between gap-2">
+                      <h4
+                        onClick={() => onEditActivity(act)}
+                        className={`text-xs font-semibold line-clamp-2 cursor-pointer hover:text-indigo-600 ${
+                          act.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-800'
+                        }`}
+                      >
+                        {act.title}
+                      </h4>
+                      <FocusButton
+                        active={act.id === activeTimerTaskId}
+                        onClick={() => onStartFocus(act)}
+                      />
+                    </div>
 
                     {/* Mobile quick assign button */}
                     <div className="sm:hidden mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
@@ -307,7 +344,11 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                             className={`flex items-center justify-between p-3 rounded-xl border select-none transition-all cursor-grab active:cursor-grabbing ${
                               isDragging
                                 ? 'opacity-40 border-indigo-400'
-                                : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+                                : act.id === activeTimerTaskId
+                                  ? 'bg-indigo-50/40 border-indigo-500'
+                                  : act.status === 'completed'
+                                    ? 'bg-white border-slate-200 opacity-60 saturate-50 hover:opacity-100 hover:saturate-100'
+                                    : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
                             }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
@@ -325,20 +366,19 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                                 </div>
                                 <h4
                                   onClick={() => onEditActivity(act)}
-                                  className="text-xs font-bold text-slate-900 truncate hover:text-indigo-600 cursor-pointer pt-0.5"
+                                  className={`text-xs font-bold truncate hover:text-indigo-600 cursor-pointer pt-0.5 ${
+                                    act.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'
+                                  }`}
                                 >
                                   {act.title}
                                 </h4>
                               </div>
                             </div>
 
-                            <button
-                              type="button"
+                            <FocusButton
+                              active={act.id === activeTimerTaskId}
                               onClick={() => onStartFocus(act)}
-                              className="min-h-10 px-3 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-1 active:scale-95 shrink-0 ml-2"
-                            >
-                              <span>Focus</span>
-                            </button>
+                            />
                           </div>
                         );
                       })}

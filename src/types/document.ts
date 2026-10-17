@@ -12,8 +12,11 @@ export interface AppSettings {
 
 export interface FocusTimerSnapshot {
   activityId: string;
+  /** Seconds banked before the current running stretch. */
   secondsElapsed: number;
   isRunning: boolean;
+  /** When the current running stretch began (ISO), so a reload keeps counting. */
+  startedAt?: string;
 }
 
 export interface PersistedDocument {

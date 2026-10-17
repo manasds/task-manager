@@ -133,7 +133,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
     }
 
     const newAct: Activity = {
-      id: `act-${Date.now()}`,
+      id: `task-${crypto.randomUUID()}`,
       title: quickAddTitle.trim(),
       category: 'deep_work',
       priority: 'medium',
