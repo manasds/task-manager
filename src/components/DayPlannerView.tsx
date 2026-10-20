@@ -33,14 +33,14 @@ const FocusButton: React.FC<{ active: boolean; onClick: () => void }> = ({ activ
       onClick();
     }}
     title={active ? 'Focus session active' : 'Start focus timer on this activity'}
-    className={`min-h-9 px-2.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 shrink-0 ${
+    aria-label={active ? 'Focus session active' : 'Start focus timer'}
+    className={`size-8 max-sm:size-9 rounded-full transition-[color,background-color,border-color,opacity] flex items-center justify-center active:scale-95 shrink-0 ${
       active
         ? 'bg-indigo-600 text-white'
-        : 'text-slate-600 border border-slate-200 bg-white hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50'
+        : 'text-slate-600 border border-slate-200 bg-white hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 opacity-0 group-hover/focus:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100'
     }`}
   >
-    <Play className="w-3 h-3 fill-current" />
-    <span>{active ? 'Active' : 'Focus'}</span>
+    <Play className="w-3 h-3 fill-current translate-x-px" />
   </button>
 );
 
@@ -220,7 +220,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                     draggable
                     onDragStart={(e) => handleDragStart(e, act.id)}
                     onDragEnd={handleDragEnd}
-                    className={`bg-white rounded-xl p-3 border transition-all cursor-grab active:cursor-grabbing select-none ${
+                    className={`group/focus bg-white rounded-xl p-3 border transition-all cursor-grab active:cursor-grabbing select-none ${
                       isDragging
                         ? 'opacity-40 border-indigo-400'
                         : act.id === activeTimerTaskId
@@ -341,7 +341,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                             draggable
                             onDragStart={(e) => handleDragStart(e, act.id)}
                             onDragEnd={handleDragEnd}
-                            className={`flex items-center justify-between p-3 rounded-xl border select-none transition-all cursor-grab active:cursor-grabbing ${
+                            className={`group/focus flex items-center justify-between p-3 rounded-xl border select-none transition-all cursor-grab active:cursor-grabbing ${
                               isDragging
                                 ? 'opacity-40 border-indigo-400'
                                 : act.id === activeTimerTaskId

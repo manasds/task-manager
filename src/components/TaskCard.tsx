@@ -340,14 +340,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               type="button"
               onClick={handleStartTimer}
               title={isTimerActiveForTask ? 'Focus session active' : 'Start focus timer on this activity'}
-              className={`min-h-8 max-sm:min-h-9 px-2.5 rounded-lg transition-[color,background-color,border-color,opacity] flex items-center gap-1.5 font-semibold ${
+              aria-label={isTimerActiveForTask ? 'Focus session active' : 'Start focus timer'}
+              className={`size-8 max-sm:size-9 rounded-full transition-[color,background-color,border-color,opacity] flex items-center justify-center ${
                 isTimerActiveForTask
                   ? 'bg-indigo-600 text-white'
-                  : 'text-slate-600 border border-slate-200 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50'
+                  : 'text-slate-600 border border-slate-200 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100'
               }`}
             >
-              <Play className="w-3 h-3 fill-current" />
-              <span>{isTimerActiveForTask ? 'Active' : 'Focus'}</span>
+              <Play className="w-3 h-3 fill-current translate-x-px" />
             </button>
           </div>
         </div>

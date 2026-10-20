@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { 
   Volume2, 
   VolumeX, 
@@ -10,7 +11,8 @@ import {
   Kanban,
   BarChart3,
   MoreHorizontal,
-  Activity as ActivityIcon
+  Activity as ActivityIcon,
+  LayoutGrid
 } from 'lucide-react';
 import { soundManager } from '../utils/audio';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -117,6 +119,10 @@ function UtilityMenu({
               <div className="my-1 border-t border-slate-100" />
             </div>
           )}
+          <Link href="/canvas" role="menuitem" className={menuItemClass} onClick={() => setOpen(false)}>
+            <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />
+            Canvas
+          </Link>
           <button
             type="button"
             role="menuitem"
