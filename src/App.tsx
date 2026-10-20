@@ -113,6 +113,9 @@ export default function App() {
     persistence.persistLocal,
   ]);
 
+  // The board's date filter can hold non-date values like "all"; day views need a real date.
+  const dayViewDate = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : getTodayDateString();
+
   const handleUpdateActivity = (updated: Activity) => {
     const next = withUpdatedAt(updated);
     setActivities((prev) => {
@@ -408,7 +411,7 @@ export default function App() {
             onStartFocus={handleStartFocus}
             onEditActivity={handleEditActivity}
             onDeleteActivity={handleDeleteActivity}
-            selectedDate={selectedDate}
+            selectedDate={dayViewDate}
             onSelectDate={setSelectedDate}
             activeTimerTaskId={activeTimerTask?.id}
           />
@@ -417,7 +420,7 @@ export default function App() {
         {activeTab === 'activity' && (
           <DayActivityView
             activities={activities}
-            selectedDate={selectedDate}
+            selectedDate={dayViewDate}
             onSelectDate={setSelectedDate}
             onEditActivity={handleEditActivity}
           />
@@ -439,7 +442,7 @@ export default function App() {
         initialActivity={editingActivity}
         defaultStatus={modalDefaultStatus}
         defaultTime={modalDefaultTime}
-        defaultDate={/^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : undefined}
+        defaultDate={dayViewDate}
       />
 
       <FocusTimerBar

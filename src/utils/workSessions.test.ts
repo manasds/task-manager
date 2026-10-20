@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { Activity } from '../types/activity';
 import {
   buildTimelineAxis,
+  createManualSession,
   timerElapsedSeconds,
   focusMinutesByHour,
   layoutDayTimeline,
@@ -247,5 +248,19 @@ describe('focus timer elapsed time', () => {
     const now = Date.parse('2026-10-15T10:02:30.000Z');
     assert.equal(timerElapsedSeconds({ activityId: 'a', secondsElapsed: 60, isRunning: true, startedAt }, now), 210);
     assert.equal(timerElapsedSeconds({ activityId: 'a', secondsElapsed: 60, isRunning: false }, now), 60);
+  });
+});
+
+describe('manual time entries', () => {
+  it('counts a hand-logged session on its local date like a timer session', () => {
+    const ws = createManualSession('a', '2026-10-15', '14:30', 15);
+    assert.equal(ws.start, new Date(2026, 9, 15, 14, 30).toISOString());
+    assert.equal(ws.end, new Date(2026, 9, 15, 14, 45).toISOString());
+    assert.equal(sessionDate(ws), '2026-10-15');
+
+    const acts = [activity({ id: 'a', date: '2026-10-10', actualMinutes: 15, workSessions: [ws] })];
+    assert.equal(loggedMinutesOnDate(acts, '2026-10-15'), 15);
+    assert.equal(loggedMinutesOnDate(acts, '2026-10-10'), 0);
+    assert.equal(focusMinutesByHour(acts, ['2026-10-15'])[14], 15);
   });
 });

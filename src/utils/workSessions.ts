@@ -39,6 +39,26 @@ export function createWorkSession(activityId: string, minutes: number): WorkSess
   };
 }
 
+/** A session logged by hand: `minutes` of work starting at local `date` + `time` ('HH:MM'). */
+export function createManualSession(
+  activityId: string,
+  date: string,
+  time: string,
+  minutes: number
+): WorkSession {
+  const [hours, mins] = time.split(':').map(Number);
+  const start = parseLocalDate(date);
+  start.setHours(hours || 0, mins || 0, 0, 0);
+  const end = new Date(start.getTime() + minutes * 60 * 1000);
+  return {
+    id: crypto.randomUUID(),
+    activityId,
+    start: start.toISOString(),
+    end: end.toISOString(),
+    minutes,
+  };
+}
+
 export function sessionDate(session: WorkSession): string {
   return localDateString(new Date(session.start));
 }
