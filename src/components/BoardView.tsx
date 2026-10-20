@@ -3,8 +3,7 @@ import {
   Plus, 
   Search, 
   X, 
-  Layers,
-  ChevronRight
+  Layers
 } from 'lucide-react';
 import { 
   Activity, 
@@ -16,14 +15,13 @@ import {
 } from '../types/activity';
 import { TaskCard } from './TaskCard';
 import { soundManager } from '../utils/audio';
-import { getTodayDateString } from '../utils/storage';
+import { getTodayDateString } from '../utils/dates';
 
 interface BoardViewProps {
   activities: Activity[];
   onUpdateActivity: (activity: Activity) => void;
   onDeleteActivity: (activityId: string) => void;
   onMoveActivityStatus: (activityId: string, newStatus: ActivityStatus, targetIndex?: number) => void;
-  onOpenNewTaskModal: (initialStatus?: ActivityStatus) => void;
   onStartFocus: (activity: Activity) => void;
   onEditActivity: (activity: Activity) => void;
   activeTimerTaskId?: string;
@@ -36,7 +34,6 @@ export const BoardView: React.FC<BoardViewProps> = ({
   onUpdateActivity,
   onDeleteActivity,
   onMoveActivityStatus,
-  onOpenNewTaskModal,
   onStartFocus,
   onEditActivity,
   activeTimerTaskId,
@@ -266,7 +263,6 @@ export const BoardView: React.FC<BoardViewProps> = ({
         {STATUS_COLUMNS.map((col) => {
           const colActivities = filteredActivities.filter((a) => a.status === col.id);
           const colMinutes = colActivities.reduce((acc, c) => acc + (c.estimatedMinutes || 0), 0);
-          const isDropActive = activeDropColumn === col.id;
 
           // On mobile, hide columns that aren't the selected mobileActiveColumn
           const isHiddenOnMobile = mobileActiveColumn !== col.id;

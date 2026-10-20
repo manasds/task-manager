@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { getTodayDateString, shiftIsoDate } from '../utils/storage';
+import { getTodayDateString, shiftIsoDate } from '../utils/dates';
 
 interface DayDateNavProps {
   selectedDate: string;

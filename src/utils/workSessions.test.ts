@@ -9,7 +9,6 @@ import {
   layoutDayTimeline,
   localDateString,
   loggedMinutesOnDate,
-  parseLocalDate,
   sessionBlockStyleForDate,
   sessionDate,
   sessionMinutesOnDate,

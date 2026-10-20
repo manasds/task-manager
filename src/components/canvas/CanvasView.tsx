@@ -103,9 +103,11 @@ export default function CanvasView() {
   const applyDragRef = useRef<(() => void) | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
 
+  // localStorage is unavailable during the server render, so tiles load after mount.
   useEffect(() => {
     const initial = loadCanvasTiles();
     tilesRef.current = initial;
+    // eslint-disable-next-line react/set-state-in-effect
     setTiles(initial);
     setLoaded(true);
     return () => cleanupRef.current?.();

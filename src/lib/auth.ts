@@ -2,52 +2,29 @@ import { betterAuth } from 'better-auth';
 import { nextCookies } from 'better-auth/next-js';
 import { pool } from './db';
 
-function appOrigin(): string {
-  return (
-    process.env.BETTER_AUTH_URL ||
-    process.env.APP_URL ||
-    'http://localhost:3000'
-  ).replace(/\/$/, '');
+// Better Auth reads BETTER_AUTH_SECRET from the environment. Without one it falls back
+// to a public default, so refuse to run that way in production.
+if (process.env.NODE_ENV === 'production' && !process.env.BETTER_AUTH_SECRET) {
+  throw new Error('BETTER_AUTH_SECRET must be set in production.');
 }
 
-const origin = appOrigin();
-
-function authSecret(): string {
-  const secret = process.env.BETTER_AUTH_SECRET;
-  if (secret) return secret;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('BETTER_AUTH_SECRET must be set in production.');
-  }
-  return 'orbittask-dev-secret-change-me';
-}
+// `next dev` serves on localhost and stores the port it bound in PORT. Everywhere else,
+// BETTER_AUTH_URL is the public origin that Google redirects back to.
+const baseURL =
+  process.env.NODE_ENV === 'development'
+    ? `http://localhost:${process.env.PORT ?? 3000}`
+    : process.env.BETTER_AUTH_URL;
 
 export const auth = betterAuth({
-  baseURL: origin,
-  secret: authSecret(),
+  baseURL,
   database: pool,
-  trustedOrigins: [origin, 'http://localhost:3000', 'http://127.0.0.1:3000'],
-  onAPIError: {
-    errorURL: `${origin}/auth/error`,
+  onAPIError: { errorURL: '/auth/error' },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      prompt: 'select_account',
+    },
   },
-  socialProviders:
-    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-      ? {
-          google: {
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            prompt: 'select_account',
-          },
-        }
-      : {},
   plugins: [nextCookies()],
 });
-
-export async function insertTestUser(email: string) {
-  const id = crypto.randomUUID();
-  await pool.query(
-    `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
-     VALUES ($1, $2, $3, true, now(), now())`,
-    [id, email.split('@')[0], email]
-  );
-  return { id, email };
-}

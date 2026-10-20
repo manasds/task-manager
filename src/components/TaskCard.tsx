@@ -87,11 +87,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   // Place the menu in the viewport: below the button, or above it when there is no room
   // (the mobile bottom nav covers the last ~80px), and never past the side edges.
+  // Runs before paint, so a reopened menu never shows at its old position.
   React.useLayoutEffect(() => {
-    if (!showMenu) {
-      setMenuPos(null);
-      return;
-    }
+    if (!showMenu) return;
     const button = menuButtonRef.current;
     const menu = menuRef.current;
     if (!button || !menu) return;

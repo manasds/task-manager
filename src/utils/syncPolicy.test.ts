@@ -11,11 +11,10 @@ import {
   emptyDocument,
   emptySyncMeta,
   hasPending,
-  isLikelyDemoDocument,
   recordLocalEdits,
   seedPendingFromLocal,
   shouldSafetyFlush,
-  SAFETY_FLUSH_MS,
+  BACKGROUND_SYNC_INTERVAL_MS,
   SyncMeta,
 } from './syncPolicy';
 
@@ -50,7 +49,7 @@ function pull(rows: PullResponse['rows'], cursor: number, goal: PullResponse['go
 describe('safety interval', () => {
   it('fires only after the interval and when wanted', () => {
     assert.equal(shouldSafetyFlush(60_000, 0, true, false), true);
-    assert.equal(shouldSafetyFlush(SAFETY_FLUSH_MS - 1, 0, true, false), false);
+    assert.equal(shouldSafetyFlush(BACKGROUND_SYNC_INTERVAL_MS - 1, 0, true, false), false);
     assert.equal(shouldSafetyFlush(120_000, 0, false, false), false);
     assert.equal(shouldSafetyFlush(120_000, 0, true, true), false);
   });
@@ -231,18 +230,5 @@ describe('first sync on a device', () => {
     assert.ok(byId.has('only-local'));
     assert.ok(byId.has('only-server'));
     assert.deepEqual(Object.keys(result.meta.pending).sort(), ['local-newer', 'only-local']);
-  });
-
-  it('treats seeded act-* boards as demo data', () => {
-    const demo = doc({ activities: [activity({ id: 'act-1' }), activity({ id: 'act-hist-2' })] });
-    assert.equal(isLikelyDemoDocument(demo), true);
-    assert.equal(isLikelyDemoDocument(emptyDocument()), false);
-  });
-
-  it('does not treat user-created tasks as demo data', () => {
-    const timestamped = doc({ activities: [activity({ id: 'act-1792231846000' })] });
-    const uuid = doc({ activities: [activity({ id: 'task-0b7f1c2e-1111-4a2b-9c3d-123456789abc' })] });
-    assert.equal(isLikelyDemoDocument(timestamped), false);
-    assert.equal(isLikelyDemoDocument(uuid), false);
   });
 });

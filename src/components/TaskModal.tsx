@@ -9,7 +9,7 @@ import {
   Subtask,
   WorkSession,
 } from "../types/activity";
-import { getTodayDateString } from "../utils/storage";
+import { getTodayDateString } from "../utils/dates";
 import { soundManager } from "../utils/audio";
 import {
   createManualSession,
@@ -23,8 +23,8 @@ function currentTimeString(): string {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
+/** Mounted only while open, so every open starts from these props. */
 interface TaskModalProps {
-  isOpen: boolean;
   onClose: () => void;
   onSave: (activity: Activity) => void;
   initialActivity?: Activity | null;
@@ -35,7 +35,6 @@ interface TaskModalProps {
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({
-  isOpen,
   onClose,
   onSave,
   initialActivity,
@@ -43,68 +42,38 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   defaultTime,
   defaultDate,
 }) => {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<ActivityCategory>("deep_work");
-  const [priority, setPriority] = useState<ActivityPriority>("medium");
-  const [status, setStatus] = useState<ActivityStatus>(defaultStatus);
-  const [estimatedMinutes, setEstimatedMinutes] = useState(45);
-  const [workSessions, setWorkSessions] = useState<WorkSession[]>([]);
-  const [logDate, setLogDate] = useState(getTodayDateString());
-  const [logTime, setLogTime] = useState("");
+  const today = getTodayDateString();
+  const [title, setTitle] = useState(initialActivity?.title ?? "");
+  const [description, setDescription] = useState(initialActivity?.description ?? "");
+  const [category, setCategory] = useState<ActivityCategory>(initialActivity?.category ?? "deep_work");
+  const [priority, setPriority] = useState<ActivityPriority>(initialActivity?.priority ?? "medium");
+  const [status, setStatus] = useState<ActivityStatus>(initialActivity?.status ?? defaultStatus);
+  const [estimatedMinutes, setEstimatedMinutes] = useState(
+    initialActivity ? initialActivity.estimatedMinutes || 30 : 45
+  );
+  const [workSessions, setWorkSessions] = useState<WorkSession[]>(initialActivity?.workSessions ?? []);
+  // Logging time on an existing task defaults to today; a new task logs on its own day.
+  const [logDate, setLogDate] = useState(initialActivity ? today : defaultDate || today);
+  const [logTime, setLogTime] = useState(currentTimeString);
   const [logMinutes, setLogMinutes] = useState("");
-  const [scheduledTime, setScheduledTime] = useState(defaultTime || "");
-  const [date, setDate] = useState(getTodayDateString());
-  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [scheduledTime, setScheduledTime] = useState(
+    initialActivity ? initialActivity.scheduledTime || "" : defaultTime || ""
+  );
+  const [date, setDate] = useState(initialActivity ? initialActivity.date || today : defaultDate || today);
+  const [subtasks, setSubtasks] = useState<Subtask[]>(initialActivity?.subtasks ?? []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(initialActivity?.tags ?? []);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"schedule" | "log">("schedule");
 
   useEffect(() => {
-    if (initialActivity) {
-      setTitle(initialActivity.title);
-      setDescription(initialActivity.description || "");
-      setCategory(initialActivity.category);
-      setPriority(initialActivity.priority);
-      setStatus(initialActivity.status);
-      setEstimatedMinutes(initialActivity.estimatedMinutes || 30);
-      setWorkSessions(initialActivity.workSessions || []);
-      setScheduledTime(initialActivity.scheduledTime || "");
-      setDate(initialActivity.date || getTodayDateString());
-      setSubtasks(initialActivity.subtasks || []);
-      setTags(initialActivity.tags || []);
-    } else {
-      setTitle("");
-      setDescription("");
-      setCategory("deep_work");
-      setPriority("medium");
-      setStatus(defaultStatus);
-      setEstimatedMinutes(45);
-      setWorkSessions([]);
-      setScheduledTime(defaultTime || "");
-      setDate(defaultDate || getTodayDateString());
-      setSubtasks([]);
-      setTags([]);
-    }
-    setLogDate(initialActivity ? getTodayDateString() : defaultDate || getTodayDateString());
-    setLogTime(currentTimeString());
-    setLogMinutes("");
-    setError("");
-    setTab("schedule");
-  }, [initialActivity, defaultStatus, defaultTime, defaultDate, isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
+  }, [onClose]);
 
   const handleAddSubtask = () => {
     if (!newSubtaskTitle.trim()) return;

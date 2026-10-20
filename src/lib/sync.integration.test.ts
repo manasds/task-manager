@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { Activity } from '../types/activity';
@@ -21,21 +20,27 @@ function activity(id: string, title: string): Activity {
 
 describe('postgres per-task sync', () => {
   it('pushes rows, pulls by cursor, and resolves concurrent edits by timestamp', async (t) => {
-    const { configuredDatabaseUrl, migrate, pool } = await import('./db');
-    if (!configuredDatabaseUrl()) {
-      t.skip('DATABASE_URL not set');
+    // Writes and deletes a throwaway user, so it never runs against DATABASE_URL by accident.
+    if (!process.env.TEST_DATABASE_URL) {
+      t.skip('TEST_DATABASE_URL not set');
       return;
     }
-    const { insertTestUser } = await import('./auth');
+    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+    const { ensureMigrated, pool } = await import('./db');
     const { pullChanges, pushChanges } = await import('./sync');
 
     try {
-      await migrate();
+      await ensureMigrated();
     } catch (error) {
       t.skip(`Postgres unavailable: ${(error as Error).message}`);
       return;
     }
-    const user = await insertTestUser(`sync-test-${Date.now()}@example.com`);
+    const user = { id: crypto.randomUUID(), email: `sync-test-${Date.now()}@example.com` };
+    await pool.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, true, now(), now())`,
+      [user.id, 'sync-test', user.email],
+    );
 
     try {
       const first = await pushChanges(user.id, {

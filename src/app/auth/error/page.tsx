@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function AuthErrorPage() {
@@ -38,12 +39,12 @@ export default function AuthErrorPage() {
             ? 'Checking whether you are already signed in…'
             : 'Return to the board and try Continue with Google again.'}
         </p>
-        <a
+        <Link
           href="/"
           className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white"
         >
           Back to the board
-        </a>
+        </Link>
       </div>
     </main>
   );

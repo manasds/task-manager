@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Activity, CATEGORIES } from '../types/activity';
 import { soundManager } from '../utils/audio';
-import { getTodayDateString } from '../utils/storage';
+import { getTodayDateString } from '../utils/dates';
 import { DayDateNav } from './DayDateNav';
 import { TIMELINE_HOURS } from '../utils/workSessions';
 
@@ -19,7 +19,6 @@ interface DayPlannerViewProps {
   onOpenNewTaskModal: (status?: any, initialTime?: string) => void;
   onStartFocus: (activity: Activity) => void;
   onEditActivity: (activity: Activity) => void;
-  onDeleteActivity: (activityId: string) => void;
   selectedDate: string;
   onSelectDate: (date: string) => void;
   activeTimerTaskId?: string;
@@ -50,7 +49,6 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   onOpenNewTaskModal,
   onStartFocus,
   onEditActivity,
-  onDeleteActivity,
   selectedDate,
   onSelectDate,
   activeTimerTaskId,

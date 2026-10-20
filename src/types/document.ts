@@ -24,7 +24,6 @@ export interface PersistedDocument {
   dailyGoalMinutes: number;
   settings: AppSettings;
   activities: Activity[];
-  deletedIds: string[];
   timer: FocusTimerSnapshot | null;
   updatedAt: string;
 }
@@ -35,12 +34,3 @@ export interface CloudUser {
   name?: string;
   image?: string;
 }
-
-export type FlushReason =
-  | 'edit'
-  | 'focus'
-  | 'session_end'
-  | 'safety_interval'
-  | 'explicit'
-  | 'online'
-  | 'sign_in';

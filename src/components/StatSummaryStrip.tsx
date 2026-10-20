@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Clock, Target, Flame } from 'lucide-react';
 import { Activity } from '../types/activity';
-import { getTodayDateString, shiftIsoDate } from '../utils/storage';
+import { getTodayDateString, shiftIsoDate } from '../utils/dates';
 import { localDateString, loggedMinutesOnDate } from '../utils/workSessions';
 
 /** Consecutive days with logged work or a completed task, ending today (or yesterday if today is still empty). */

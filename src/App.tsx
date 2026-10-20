@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Activity, ActivityStatus } from './types/activity';
 import { DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument } from './types/document';
-import { generateInitialActivities, getTodayDateString } from './utils/storage';
+import { getTodayDateString } from './utils/dates';
 import { soundManager } from './utils/audio';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { StatSummaryStrip } from './components/StatSummaryStrip';
@@ -25,16 +25,19 @@ function withUpdatedAt(activity: Activity): Activity {
   return { ...activity, updatedAt: new Date().toISOString() };
 }
 
+/** Set before the sign-out reload so the fresh page can confirm it. */
+const SIGNED_OUT_FLAG = 'orbittask_signed_out';
+
+/** Drop a timer whose task no longer exists; it has nothing to log to. */
+function timerFor(timer: FocusTimerSnapshot | null, activities: Activity[]): FocusTimerSnapshot | null {
+  return timer && activities.some((a) => a.id === timer.activityId) ? timer : null;
+}
+
 export default function App() {
-  const persistence = useSessionPersistence((update) => {
-    setActivities((prev) => applyRemoteActivities(prev, update));
-    if (update.dailyGoalMinutes !== undefined) setDailyGoalMinutes(update.dailyGoalMinutes);
-  });
   const [hydrated, setHydrated] = useState(false);
   const skipDirtyRef = useRef(true);
 
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [dailyGoalMinutes, setDailyGoalMinutes] = useState<number>(360);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
@@ -47,12 +50,17 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const activeTimerTask = timer ? activities.find((a) => a.id === timer.activityId) ?? null : null;
+  const persistence = useSessionPersistence((update) => {
+    setActivities((prev) => applyRemoteActivities(prev, update));
+    if (update.deletes.length > 0) {
+      setTimer((current) => (current && update.deletes.includes(current.activityId) ? null : current));
+    }
+    if (update.dailyGoalMinutes !== undefined) setDailyGoalMinutes(update.dailyGoalMinutes);
+  });
+  const { authReady, currentDocument, persistLocal } = persistence;
+  const userId = persistence.user?.id;
 
-  // A timer whose task was deleted (here or on another device) has nothing to log to.
-  useEffect(() => {
-    if (hydrated && timer && !activeTimerTask) setTimer(null);
-  }, [hydrated, timer, activeTimerTask]);
+  const activeTimerTask = timer ? activities.find((a) => a.id === timer.activityId) ?? null : null;
 
   const showToast = (message: string, undo?: () => void) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -65,23 +73,26 @@ export default function App() {
     setToast(null);
   };
 
-  const applyDocument = (doc: PersistedDocument) => {
+  // Load the stored board once auth settles. localStorage is an external store that
+  // the server render cannot read, so this is a one-time sync into React state.
+  useEffect(() => {
+    if (!authReady) return;
+    const doc = currentDocument();
     skipDirtyRef.current = true;
+    // eslint-disable-next-line react/set-state-in-effect
     setActivities(doc.activities);
-    setDeletedIds(doc.deletedIds);
     setDailyGoalMinutes(doc.dailyGoalMinutes);
     setActiveTab(doc.settings.lastTab);
     setSelectedDate(doc.settings.selectedDate || getTodayDateString());
     setIsMuted(doc.settings.muted);
-    soundManager.setMuted(doc.settings.muted);
-    setTimer(doc.timer ?? null);
+    setTimer(timerFor(doc.timer, doc.activities));
     setHydrated(true);
-  };
-
-  useEffect(() => {
-    if (!persistence.authReady) return;
-    applyDocument(persistence.currentDocument());
-  }, [persistence.authReady, persistence.user?.id]);
+    if (sessionStorage.getItem(SIGNED_OUT_FLAG)) {
+      sessionStorage.removeItem(SIGNED_OUT_FLAG);
+      showToast('Signed out');
+    }
+    soundManager.setMuted(doc.settings.muted);
+  }, [authReady, userId, currentDocument]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -94,24 +105,13 @@ export default function App() {
         selectedDate,
       },
       activities,
-      deletedIds,
       timer,
       updatedAt: new Date().toISOString(),
     };
     const markDirty = !skipDirtyRef.current;
-    if (skipDirtyRef.current) skipDirtyRef.current = false;
-    persistence.persistLocal(doc, markDirty);
-  }, [
-    hydrated,
-    activities,
-    deletedIds,
-    dailyGoalMinutes,
-    isMuted,
-    activeTab,
-    selectedDate,
-    timer,
-    persistence.persistLocal,
-  ]);
+    skipDirtyRef.current = false;
+    persistLocal(doc, markDirty);
+  }, [hydrated, activities, dailyGoalMinutes, isMuted, activeTab, selectedDate, timer, persistLocal]);
 
   // The board's date filter can hold non-date values like "all"; day views need a real date.
   const dayViewDate = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : getTodayDateString();
@@ -123,14 +123,12 @@ export default function App() {
       if (exists) return prev.map((a) => (a.id === next.id ? next : a));
       return [next, ...prev];
     });
-    setDeletedIds((prev) => prev.filter((id) => id !== next.id));
   };
 
   const handleDeleteActivity = (activityId: string) => {
     const removed = activities.find((a) => a.id === activityId);
     soundManager.playDrop();
     setActivities((prev) => prev.filter((a) => a.id !== activityId));
-    setDeletedIds((prev) => (prev.includes(activityId) ? prev : [...prev, activityId]));
     setTimer((current) => (current?.activityId === activityId ? null : current));
     showToast(
       'Activity deleted',
@@ -247,19 +245,6 @@ export default function App() {
     showToast(saved > 0 ? `Activity completed · saved ${formatMinutes(saved)}` : 'Activity completed');
   };
 
-  const handleResetData = () => {
-    if (persistence.user) {
-      showToast('Demo data is only available before you sign in');
-      return;
-    }
-    const fresh = generateInitialActivities();
-    setActivities(fresh);
-    setDeletedIds([]);
-    setTimer(null);
-    soundManager.playDrop();
-    showToast('Demo activities loaded on this device');
-  };
-
   const handleExportData = () => {
     const dataStr =
       'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(activities, null, 2));
@@ -290,12 +275,8 @@ export default function App() {
                   typeof item.status === 'string'
               )
               .map((item) => ({ ...item, updatedAt: now }));
-            const importedIds = new Set(imported.map((a) => a.id));
-            setDeletedIds((prev) => {
-              const replaced = activities.map((a) => a.id).filter((id) => !importedIds.has(id));
-              return Array.from(new Set([...prev, ...replaced])).filter((id) => !importedIds.has(id));
-            });
             setActivities(imported);
+            setTimer((current) => timerFor(current, imported));
             soundManager.playDrop();
             showToast(`Imported ${imported.length} activities`);
           } else {
@@ -315,14 +296,16 @@ export default function App() {
     if (!next) soundManager.playDragStart();
   };
 
-  const handleGoogleSignIn = async () => {
-    await persistence.startGoogleSignIn();
-  };
-
   const handleSignOut = async () => {
-    const guest = await persistence.logout();
-    applyDocument(guest);
-    showToast('Signed out. Pending changes were synced first when possible.');
+    try {
+      await persistence.logout();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Sign out failed');
+      return;
+    }
+    // A fresh page load resets every bit of the signed-in session's state.
+    sessionStorage.setItem(SIGNED_OUT_FLAG, '1');
+    window.location.reload();
   };
 
   return (
@@ -331,7 +314,6 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onOpenNewTaskModal={() => handleOpenNewTaskModal('backlog')}
-        onResetData={handleResetData}
         onExportData={handleExportData}
         onImportData={handleImportData}
         isMuted={isMuted}
@@ -339,16 +321,14 @@ export default function App() {
         user={persistence.user}
         syncPhase={persistence.phase}
         lastError={persistence.lastError}
-        lastFlushReason={persistence.lastFlushReason}
         lastSyncedAt={persistence.lastSyncedAt}
-        onGoogleSignIn={handleGoogleSignIn}
+        onGoogleSignIn={persistence.signIn}
         onFlush={() => {
-          void persistence.flush('explicit');
+          void persistence.retrySync();
         }}
         onSignOut={() => {
           void handleSignOut();
         }}
-        showResetDemo={!persistence.user}
       />
 
       {!persistence.user && persistence.authReady && (
@@ -357,7 +337,7 @@ export default function App() {
             <p className="text-xs text-indigo-900 flex-1 min-w-0 leading-snug">
               Work stays on this browser until you sign in.
             </p>
-            <AuthPanel compact onGoogleSignIn={handleGoogleSignIn} />
+            <AuthPanel compact onGoogleSignIn={persistence.signIn} />
           </div>
         </div>
       )}
@@ -369,10 +349,9 @@ export default function App() {
               user={persistence.user}
               phase={persistence.phase}
               lastError={persistence.lastError}
-              lastFlushReason={persistence.lastFlushReason}
               lastSyncedAt={persistence.lastSyncedAt}
               onFlush={() => {
-                void persistence.flush('explicit');
+                void persistence.retrySync();
               }}
               onSignOut={() => {
                 void handleSignOut();
@@ -394,7 +373,6 @@ export default function App() {
             onUpdateActivity={handleUpdateActivity}
             onDeleteActivity={handleDeleteActivity}
             onMoveActivityStatus={handleMoveActivityStatus}
-            onOpenNewTaskModal={handleOpenNewTaskModal}
             onStartFocus={handleStartFocus}
             onEditActivity={handleEditActivity}
             activeTimerTaskId={activeTimerTask?.id}
@@ -410,7 +388,6 @@ export default function App() {
             onOpenNewTaskModal={handleOpenNewTaskModal}
             onStartFocus={handleStartFocus}
             onEditActivity={handleEditActivity}
-            onDeleteActivity={handleDeleteActivity}
             selectedDate={dayViewDate}
             onSelectDate={setSelectedDate}
             activeTimerTaskId={activeTimerTask?.id}
@@ -435,24 +412,28 @@ export default function App() {
         )}
       </main>
 
-      <TaskModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleUpdateActivity}
-        initialActivity={editingActivity}
-        defaultStatus={modalDefaultStatus}
-        defaultTime={modalDefaultTime}
-        defaultDate={dayViewDate}
-      />
+      {isModalOpen && (
+        <TaskModal
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleUpdateActivity}
+          initialActivity={editingActivity}
+          defaultStatus={modalDefaultStatus}
+          defaultTime={modalDefaultTime}
+          defaultDate={dayViewDate}
+        />
+      )}
 
-      <FocusTimerBar
-        activity={activeTimerTask}
-        timer={timer}
-        onTimerChange={setTimer}
-        onLogTime={handleLogTime}
-        onCompleteActivity={handleCompleteActivity}
-        onStop={handleStopTimer}
-      />
+      {activeTimerTask && timer && (
+        <FocusTimerBar
+          key={activeTimerTask.id}
+          activity={activeTimerTask}
+          timer={timer}
+          onTimerChange={setTimer}
+          onLogTime={handleLogTime}
+          onCompleteActivity={handleCompleteActivity}
+          onStop={handleStopTimer}
+        />
+      )}
 
       <MobileBottomNav
         activeTab={activeTab}

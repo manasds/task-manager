@@ -1,40 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+const noSubscription = () => () => {};
+
+function isStandalone(): boolean {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as { standalone?: boolean }).standalone === true
+  );
+}
+
+function isIOSDevice(): boolean {
+  return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+}
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [installedNow, setInstalledNow] = useState(false);
+  // Browser-only facts; the server render assumes a regular, non-iOS tab.
+  const runningStandalone = useSyncExternalStore(noSubscription, isStandalone, () => false);
+  const isIOS = useSyncExternalStore(noSubscription, isIOSDevice, () => false);
 
   useEffect(() => {
-    // Detect standalone mode (already running as installed PWA)
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-    setIsInstalled(isStandalone);
-
-    // Detect iOS devices
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) && !(window as unknown as { MSStream?: unknown }).MSStream;
-    setIsIOS(isIOSDevice);
-
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
-
     const handleAppInstalled = () => {
-      setIsInstalled(true);
+      setInstalledNow(true);
       setDeferredPrompt(null);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
@@ -45,37 +47,30 @@ export function usePWAInstall() {
     if (!deferredPrompt) return false;
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-      return true;
-    }
-    return false;
+    if (outcome !== 'accepted') return false;
+    setInstalledNow(true);
+    setDeferredPrompt(null);
+    return true;
   };
 
   return {
     isInstallable: !!deferredPrompt,
-    isInstalled,
+    isInstalled: runningStandalone || installedNow,
     isIOS,
     install,
   };
 }
 
-export function useOnlineStatus() {
-  // Node exposes `navigator` without `onLine`. Reading it during render
-  // makes the server paint the offline banner and the browser remove it.
-  const [isOnline, setIsOnline] = useState(true);
+function subscribeOnline(onChange: () => void) {
+  window.addEventListener('online', onChange);
+  window.addEventListener('offline', onChange);
+  return () => {
+    window.removeEventListener('online', onChange);
+    window.removeEventListener('offline', onChange);
+  };
+}
 
-  useEffect(() => {
-    const sync = () => setIsOnline(navigator.onLine !== false);
-    sync();
-    window.addEventListener('online', sync);
-    window.addEventListener('offline', sync);
-    return () => {
-      window.removeEventListener('online', sync);
-      window.removeEventListener('offline', sync);
-    };
-  }, []);
-
-  return isOnline;
+/** The server render always reports online so it never paints the offline banner. */
+export function useOnlineStatus(): boolean {
+  return useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
 }

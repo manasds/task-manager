@@ -8,10 +8,16 @@ import {
   PushResponse,
 } from '../types/sync';
 
-/** Push this long after the last edit. */
-export const SYNC_DEBOUNCE_MS = 1_500;
-/** Safety net push, and a pull while the tab is visible. */
-export const SAFETY_FLUSH_MS = 60_000;
+// Sync timing. Change these two values to tune how often the app talks to the server.
+
+/**
+ * Wait this long after the last edit, then sync once. Every new edit restarts the wait,
+ * so a burst of edits becomes one sync. There is no sync while nothing changes.
+ */
+export const SYNC_DELAY_AFTER_EDIT_MS = 1_500;
+
+/** While the tab is visible, pull other devices' changes (and retry failed pushes) this often. */
+export const BACKGROUND_SYNC_INTERVAL_MS = 60_000;
 
 /** A local edit not yet confirmed by the server. `at` is unique and increasing per task. */
 export interface PendingEdit {
@@ -45,7 +51,7 @@ export function shouldSafetyFlush(
   inFlight: boolean
 ): boolean {
   if (!dirty || inFlight) return false;
-  return nowMs - lastAttemptMs >= SAFETY_FLUSH_MS;
+  return nowMs - lastAttemptMs >= BACKGROUND_SYNC_INTERVAL_MS;
 }
 
 export function emptyDocument(nowIso = new Date().toISOString()): PersistedDocument {
@@ -54,16 +60,9 @@ export function emptyDocument(nowIso = new Date().toISOString()): PersistedDocum
     dailyGoalMinutes: 360,
     settings: { muted: false, lastTab: 'board' },
     activities: [],
-    deletedIds: [],
     timer: null,
     updatedAt: nowIso,
   };
-}
-
-export function isLikelyDemoDocument(doc: PersistedDocument): boolean {
-  if (doc.activities.length === 0) return false;
-  // Seeded demo ids are short (act-3, act-hist-12); old user-created ids were act-<timestamp>.
-  return doc.activities.every((a) => /^act-(hist-)?\d{1,3}$/.test(a.id));
 }
 
 export function activityTimestamp(activity: Activity): string {
@@ -293,7 +292,6 @@ export function isValidDocument(value: unknown): value is PersistedDocument {
     typeof doc.schemaVersion === 'number' &&
     typeof doc.dailyGoalMinutes === 'number' &&
     Array.isArray(doc.activities) &&
-    Array.isArray(doc.deletedIds) &&
     !!doc.settings &&
     typeof doc.updatedAt === 'string'
   );

@@ -140,18 +140,6 @@ export function taskStatsForDate(activities: Activity[], date: string): TaskDayS
   return stats.sort((a, b) => b.totalMinutes - a.totalMinutes);
 }
 
-export function mergeWorkSessions(
-  local?: WorkSession[],
-  server?: WorkSession[]
-): WorkSession[] {
-  const byId = new Map<string, WorkSession>();
-  for (const session of server ?? []) byId.set(session.id, session);
-  for (const session of local ?? []) byId.set(session.id, session);
-  return Array.from(byId.values()).sort(
-    (a, b) => Date.parse(a.start) - Date.parse(b.start)
-  );
-}
-
 export function minutesFromDayStart(d: Date, dayStart: Date): number {
   return (d.getTime() - dayStart.getTime()) / 60_000;
 }
@@ -221,7 +209,7 @@ export function loggedMinutesOnDate(activities: Activity[], date: string): numbe
 
 /** Timed minutes per local hour of day (index 0-23), summed across the given dates. */
 export function focusMinutesByHour(activities: Activity[], dates: string[]): number[] {
-  const buckets = new Array<number>(24).fill(0);
+  const buckets = Array.from({ length: 24 }, () => 0);
   for (const date of dates) {
     const dayStart = parseLocalDate(date);
     for (const activity of activities) {

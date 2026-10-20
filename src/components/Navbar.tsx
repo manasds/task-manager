@@ -4,7 +4,6 @@ import {
   Volume2, 
   VolumeX, 
   Plus, 
-  RotateCcw, 
   Download, 
   Upload,
   Calendar,
@@ -18,7 +17,7 @@ import { soundManager } from '../utils/audio';
 import { PWAInstallButton } from './PWAInstallButton';
 import { AuthPanel } from './AuthPanel';
 import { SyncStatus } from './SyncStatus';
-import { CloudUser, FlushReason } from '../types/document';
+import { CloudUser } from '../types/document';
 import { SyncPhase } from '../hooks/useSessionPersistence';
 
 export type ActiveTab = 'board' | 'planner' | 'activity' | 'analytics';
@@ -29,8 +28,6 @@ const menuItemClass =
 function UtilityMenu({
   isMuted,
   onToggleMute,
-  showResetDemo,
-  onResetData,
   onExportData,
   onImportData,
   fileInputRef,
@@ -41,8 +38,6 @@ function UtilityMenu({
 }: {
   isMuted: boolean;
   onToggleMute: () => void;
-  showResetDemo: boolean;
-  onResetData: () => void;
   onExportData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
@@ -132,17 +127,6 @@ function UtilityMenu({
             {isMuted ? <VolumeX className="w-3.5 h-3.5 text-slate-400" /> : <Volume2 className="w-3.5 h-3.5 text-slate-400" />}
             {isMuted ? 'Unmute sounds' : 'Mute sounds'}
           </button>
-          {showResetDemo && (
-            <button
-              type="button"
-              role="menuitem"
-              className={menuItemClass}
-              onClick={() => closeAnd(onResetData)}
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-              Load demo
-            </button>
-          )}
           <button type="button" role="menuitem" className={menuItemClass} onClick={() => closeAnd(onExportData)}>
             <Download className="w-3.5 h-3.5 text-slate-400" />
             Export
@@ -166,7 +150,6 @@ interface NavbarProps {
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
   onOpenNewTaskModal: () => void;
-  onResetData: () => void;
   onExportData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isMuted: boolean;
@@ -174,19 +157,16 @@ interface NavbarProps {
   user: CloudUser | null;
   syncPhase: SyncPhase;
   lastError: string | null;
-  lastFlushReason: FlushReason | null;
   lastSyncedAt: string | null;
   onGoogleSignIn: () => Promise<void>;
   onFlush: () => void;
   onSignOut: () => void;
-  showResetDemo: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
   onOpenNewTaskModal,
-  onResetData,
   onExportData,
   onImportData,
   isMuted,
@@ -194,12 +174,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   user,
   syncPhase,
   lastError,
-  lastFlushReason,
   lastSyncedAt,
   onGoogleSignIn,
   onFlush,
   onSignOut,
-  showResetDemo,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -283,7 +261,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 user={user}
                 phase={syncPhase}
                 lastError={lastError}
-                lastFlushReason={lastFlushReason}
                 lastSyncedAt={lastSyncedAt}
                 onFlush={onFlush}
                 onSignOut={onSignOut}
@@ -301,8 +278,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <UtilityMenu
               isMuted={isMuted}
               onToggleMute={onToggleMute}
-              showResetDemo={showResetDemo}
-              onResetData={onResetData}
               onExportData={onExportData}
               onImportData={onImportData}
               fileInputRef={fileInputRef}

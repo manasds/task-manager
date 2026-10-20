@@ -12,9 +12,10 @@ import { FocusTimerSnapshot } from '../types/document';
 import { soundManager } from '../utils/audio';
 import { timerElapsedSeconds } from '../utils/workSessions';
 
+/** Rendered only while a timer runs on an existing task. */
 interface FocusTimerBarProps {
-  activity: Activity | null;
-  timer: FocusTimerSnapshot | null;
+  activity: Activity;
+  timer: FocusTimerSnapshot;
   onTimerChange: (timer: FocusTimerSnapshot) => void;
   /** Save the elapsed minutes as a work session and reset the clock. */
   onLogTime: (minutes: number) => void;
@@ -34,20 +35,18 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   const [, setTick] = useState(0);
   const [isAmbientOn, setIsAmbientOn] = useState(false);
 
-  const isRunning = !!timer?.isRunning;
+  const isRunning = timer.isRunning;
   useEffect(() => {
     if (!isRunning) return;
     const interval = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(interval);
   }, [isRunning]);
 
+  // Rain stops when toggled off or when the bar goes away (timer stopped, task gone).
   useEffect(() => {
-    if (activity || !isAmbientOn) return;
-    soundManager.stopAmbient();
-    setIsAmbientOn(false);
-  }, [activity, isAmbientOn]);
-
-  if (!activity || !timer) return null;
+    if (!isAmbientOn) return;
+    return () => soundManager.stopAmbient();
+  }, [isAmbientOn]);
 
   const secondsElapsed = timerElapsedSeconds(timer);
   const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
@@ -79,22 +78,8 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
     onCompleteActivity(activity.id);
   };
 
-  const handleStop = () => {
-    if (isAmbientOn) {
-      soundManager.stopAmbient();
-      setIsAmbientOn(false);
-    }
-    onStop();
-  };
-
   const handleToggleAmbient = () => {
-    if (isAmbientOn) {
-      soundManager.stopAmbient();
-      setIsAmbientOn(false);
-    } else {
-      const started = soundManager.startAmbientFocus();
-      setIsAmbientOn(started);
-    }
+    setIsAmbientOn(isAmbientOn ? false : soundManager.startAmbientFocus());
   };
 
   return (
@@ -186,7 +171,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
           )}
 
           <button
-            onClick={handleStop}
+            onClick={onStop}
             className="min-h-11 min-w-11 flex items-center justify-center p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
             title="Stop and save time"
             aria-label="Stop and save time"

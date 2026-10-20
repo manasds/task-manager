@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "nextjs", "import", "typescript", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    // React 17+ JSX transform: no React import needed.
+    "react/react-in-jsx-scope": "off",
+    // Flags `new Date()` inside event handlers declared in a component body.
+    "react/purity": "off"
+  },
+  "ignorePatterns": [".next/**", "next-env.d.ts", "public/sw.js"]
+}

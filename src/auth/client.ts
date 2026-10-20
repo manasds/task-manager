@@ -1,16 +1,15 @@
 import { createAuthClient } from 'better-auth/react';
 
-export const authClient = createAuthClient({
-  baseURL: typeof window === 'undefined' ? 'http://localhost:3000' : window.location.origin,
-});
+// Same-origin: the client talks to /api/auth on whatever host served the page.
+const authClient = createAuthClient();
 
-export function signInWithGoogle(): Promise<unknown> {
-  return authClient.signIn.social({
-    provider: 'google',
-    callbackURL: '/',
-  });
+/** Redirects to Google. Better Auth reports failures in `error` instead of throwing. */
+export async function signInWithGoogle(): Promise<void> {
+  const { error } = await authClient.signIn.social({ provider: 'google', callbackURL: '/' });
+  if (error) throw new Error(error.message || 'Google sign-in failed');
 }
 
-export function signOutGoogle(): Promise<unknown> {
-  return authClient.signOut();
+export async function signOut(): Promise<void> {
+  const { error } = await authClient.signOut();
+  if (error) throw new Error(error.message || 'Sign out failed');
 }

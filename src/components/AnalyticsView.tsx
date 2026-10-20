@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  BarChart3, 
   PieChart as PieIcon, 
   Clock, 
   Target, 
@@ -8,7 +7,7 @@ import {
   Sliders
 } from 'lucide-react';
 import { Activity, CATEGORIES, ActivityCategory } from '../types/activity';
-import { getDateOffset, getTodayDateString } from '../utils/storage';
+import { getDateOffset, getTodayDateString } from '../utils/dates';
 import { focusMinutesByHour, formatMinutes, loggedMinutesOnDate, taskStatsForDate } from '../utils/workSessions';
 
 function hourLabel(hour: number): string {

@@ -1,13 +1,12 @@
 import React from 'react';
 import { Cloud, CloudOff, Loader2, Check } from 'lucide-react';
-import { CloudUser, FlushReason } from '../types/document';
+import { CloudUser } from '../types/document';
 import { SyncPhase } from '../hooks/useSessionPersistence';
 
 interface SyncStatusProps {
   user: CloudUser | null;
   phase: SyncPhase;
   lastError: string | null;
-  lastFlushReason: FlushReason | null;
   lastSyncedAt: string | null;
   onFlush: () => void;
   onSignOut: () => void;
@@ -38,7 +37,6 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({
   user,
   phase,
   lastError,
-  lastFlushReason,
   lastSyncedAt,
   onFlush,
   onSignOut,
@@ -51,11 +49,7 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({
     ? new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null;
 
-  const statusTitle =
-    lastError ||
-    (lastFlushReason
-      ? `Last sync: ${lastFlushReason}`
-      : 'Edits save on this device and sync a moment later.');
+  const statusTitle = lastError || 'Edits save on this device and sync a moment later.';
 
   if (compact) {
     if (!user) return null;

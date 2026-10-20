@@ -1,76 +1,65 @@
-import { DOCUMENT_SCHEMA_VERSION, PersistedDocument } from '../types/document';
+import { Activity } from '../types/activity';
+import { PersistedDocument } from '../types/document';
+import { getTodayDateString } from './dates';
 import { emptyDocument, emptySyncMeta, isValidDocument, isValidSyncMeta, SyncMeta } from './syncPolicy';
-import { loadActivities, loadDailyGoalMinutes, STORAGE_KEY, GOAL_STORAGE_KEY } from './storage';
 
 const DOC_KEY_PREFIX = 'orbittask_doc_v2_';
 const SYNC_KEY_PREFIX = 'orbittask_sync_v3_';
 
-export function guestScope(): string {
-  return 'guest';
-}
+/** Storage scope for work done while signed out. */
+export const GUEST_SCOPE = 'guest';
 
-export function documentKey(scope: string): string {
-  return `${DOC_KEY_PREFIX}${scope}`;
+/** The one task a brand-new browser starts with. Not copied into an account unless edited. */
+export const STARTER_ACTIVITY_ID = 'starter-task';
+
+function starterActivity(): Activity {
+  return {
+    id: STARTER_ACTIVITY_ID,
+    title: 'Plan your first focus session',
+    description:
+      'Drag this card across the board, start a focus timer, or log time you already worked. Delete it when you are ready.',
+    category: 'deep_work',
+    priority: 'medium',
+    status: 'backlog',
+    estimatedMinutes: 25,
+    actualMinutes: 0,
+    date: getTodayDateString(),
+    subtasks: [],
+    tags: [],
+    createdAt: new Date().toISOString(),
+  };
 }
 
 /** Per-user sync bookkeeping. Survives reloads so unconfirmed edits are pushed later. */
 export function loadSyncMeta(userId: string): SyncMeta {
-  if (typeof window === 'undefined') return emptySyncMeta();
   try {
-    const raw = localStorage.getItem(`${SYNC_KEY_PREFIX}${userId}`);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (isValidSyncMeta(parsed)) return parsed;
-    }
+    const parsed: unknown = JSON.parse(localStorage.getItem(`${SYNC_KEY_PREFIX}${userId}`) ?? 'null');
+    if (isValidSyncMeta(parsed)) return parsed;
   } catch {
-    // fall through
+    // Corrupt entry: start bookkeeping over.
   }
   return emptySyncMeta();
 }
 
 export function saveSyncMeta(userId: string, meta: SyncMeta): void {
-  if (typeof window === 'undefined') return;
   localStorage.setItem(`${SYNC_KEY_PREFIX}${userId}`, JSON.stringify(meta));
 }
 
 export function loadLocalDocument(scope: string): PersistedDocument {
-  if (typeof window === 'undefined') return emptyDocument();
+  const raw = localStorage.getItem(`${DOC_KEY_PREFIX}${scope}`);
+  if (raw === null) {
+    const doc = emptyDocument();
+    return scope === GUEST_SCOPE ? { ...doc, activities: [starterActivity()] } : doc;
+  }
   try {
-    const raw = localStorage.getItem(documentKey(scope));
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (isValidDocument(parsed)) return parsed;
-    }
-
-    if (scope === guestScope()) {
-      const legacyActivities = loadActivities();
-      if (legacyActivities.length > 0) {
-        return {
-          ...emptyDocument(),
-          schemaVersion: DOCUMENT_SCHEMA_VERSION,
-          dailyGoalMinutes: loadDailyGoalMinutes(),
-          activities: legacyActivities,
-          updatedAt: new Date().toISOString(),
-        };
-      }
-    }
+    const parsed: unknown = JSON.parse(raw);
+    if (isValidDocument(parsed)) return parsed;
   } catch {
-    // fall through
+    // Corrupt entry: fall back to an empty board.
   }
   return emptyDocument();
 }
 
 export function saveLocalDocument(scope: string, document: PersistedDocument): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(documentKey(scope), JSON.stringify(document));
-    if (scope === guestScope()) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(document.activities));
-      localStorage.setItem(GOAL_STORAGE_KEY, String(document.dailyGoalMinutes));
-    }
-  } catch (error) {
-    throw error;
-  }
+  localStorage.setItem(`${DOC_KEY_PREFIX}${scope}`, JSON.stringify(document));
 }
-
-export { STORAGE_KEY, GOAL_STORAGE_KEY };

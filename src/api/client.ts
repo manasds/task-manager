@@ -7,7 +7,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(init?.headers || {}),
+      ...init?.headers,
     },
   });
   const data = (await response.json().catch(() => ({}))) as T & { error?: string };

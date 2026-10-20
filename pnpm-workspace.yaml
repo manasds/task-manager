@@ -1,7 +1,5 @@
 allowBuilds:
-  '@google/genai': false
   esbuild: true
-  protobufjs: false
 minimumReleaseAgeExclude:
   - '@next/env@15.5.28'
   - '@next/swc-darwin-arm64@15.5.28'
