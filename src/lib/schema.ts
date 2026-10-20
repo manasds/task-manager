@@ -1,3 +1,5 @@
+// Applied by migrate(). Kept as a string so it ships inside the serverless bundle.
+export const SCHEMA_SQL = String.raw`
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Prototype email/password tables from the first persistence pass.
@@ -131,3 +133,4 @@ SELECT d.user_id,
        COALESCE((SELECT max(server_seq) FROM activities a WHERE a.user_id = d.user_id), 0) + 1
 FROM user_documents d
 WHERE NOT EXISTS (SELECT 1 FROM user_sync_state s WHERE s.user_id = d.user_id);
+`;

@@ -1,7 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { SCHEMA_SQL } from './schema';
 
 const { Pool } = pg;
 
@@ -57,9 +55,7 @@ export async function migrate(): Promise<void> {
       'DATABASE_URL is required. Paste the pooled Neon connection string from the dashboard.',
     );
   }
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  const sql = fs.readFileSync(path.join(here, 'schema.sql'), 'utf8');
-  await pool.query(sql);
+  await pool.query(SCHEMA_SQL);
 }
 
 let migrating: Promise<void> | null = null;
