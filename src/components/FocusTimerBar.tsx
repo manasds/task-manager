@@ -49,7 +49,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   }, [isAmbientOn]);
 
   const secondsElapsed = timerElapsedSeconds(timer);
-  const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
+  const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.build;
   const minutes = Math.floor(secondsElapsed / 60);
   const seconds = secondsElapsed % 60;
   const isCompleted = activity.status === 'completed';

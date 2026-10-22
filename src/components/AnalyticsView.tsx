@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { Activity, CATEGORIES, ActivityCategory } from '../types/activity';
 import { getDateOffset, getTodayDateString } from '../utils/dates';
-import { focusMinutesByHour, formatMinutes, loggedMinutesOnDate, taskStatsForDate } from '../utils/workSessions';
+import { focusMinutesByHour, formatMinutes, isActivityOnDate, localDateString, loggedMinutesOnDate, taskStatsForDate } from '../utils/workSessions';
 
 function hourLabel(hour: number): string {
   const h = hour % 24;
@@ -36,10 +36,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const daySeries = Array.from({ length: daysCount }).map((_, i) => {
     const offset = -(daysCount - 1 - i);
     const dateStr = getDateOffset(offset);
-    const dayActs = activities.filter((a) => a.date === dateStr);
+    const dayActs = activities.filter((a) => isActivityOnDate(a, dateStr));
     
     const totalMinutes = loggedMinutesOnDate(activities, dateStr);
-    const completedTasks = dayActs.filter((a) => a.status === 'completed').length;
+    const completedTasks = dayActs.filter(
+      (a) => a.completedAt && localDateString(new Date(a.completedAt)) === dateStr
+    ).length;
     const totalTasks = dayActs.length;
 
     const dateObj = new Date(dateStr + 'T00:00:00');
@@ -57,14 +59,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     };
   });
 
-  const categoryTotals: Record<ActivityCategory, number> = {
-    deep_work: 0,
-    health_fitness: 0,
-    creative: 0,
-    admin_meetings: 0,
-    learning: 0,
-    personal: 0,
-  };
+  const categoryTotals: Record<ActivityCategory, number> = { build: 0, learn: 0 };
 
   for (const day of daySeries) {
     for (const stat of taskStatsForDate(activities, day.dateStr)) {

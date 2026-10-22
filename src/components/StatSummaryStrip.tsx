@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckCircle2, Clock, Target, Flame } from 'lucide-react';
 import { Activity } from '../types/activity';
 import { getTodayDateString, shiftIsoDate } from '../utils/dates';
-import { localDateString, loggedMinutesOnDate } from '../utils/workSessions';
+import { isActivityOnDate, localDateString, loggedMinutesOnDate } from '../utils/workSessions';
 
 /** Consecutive days with logged work or a completed task, ending today (or yesterday if today is still empty). */
 function currentStreak(activities: Activity[], today: string): number {
@@ -30,7 +30,7 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
   dailyGoalMinutes,
 }) => {
   const today = getTodayDateString();
-  const todayActivities = activities.filter((a) => a.date === today);
+  const todayActivities = activities.filter((a) => isActivityOnDate(a, today));
   const totalTasks = todayActivities.length;
   const completedTasks = todayActivities.filter((a) => a.status === 'completed').length;
   

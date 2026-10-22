@@ -13,3 +13,10 @@ export async function signOut(): Promise<void> {
   const { error } = await authClient.signOut();
   if (error) throw new Error(error.message || 'Sign out failed');
 }
+
+/** The signed-in user's id, or null for a guest. */
+export async function getSessionUserId(): Promise<string | null> {
+  const { data, error } = await authClient.getSession();
+  if (error) throw new Error(error.message || 'Could not read session');
+  return data?.user?.id ?? null;
+}

@@ -5,13 +5,14 @@ import {
   GripVertical,
   ChevronDown,
   ChevronUp,
-  Play
+  Play,
+  X
 } from 'lucide-react';
 import { Activity, CATEGORIES } from '../types/activity';
 import { soundManager } from '../utils/audio';
 import { getTodayDateString } from '../utils/dates';
 import { DayDateNav } from './DayDateNav';
-import { TIMELINE_HOURS } from '../utils/workSessions';
+import { TIMELINE_HOURS, isActivityOnDate } from '../utils/workSessions';
 
 interface DayPlannerViewProps {
   activities: Activity[];
@@ -22,6 +23,17 @@ interface DayPlannerViewProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
   activeTimerTaskId?: string;
+}
+
+/** The task, also planned on `day` if it isn't already there. Its start date stays put. */
+function planOn(activity: Activity, day: string): Activity {
+  if (isActivityOnDate(activity, day)) return activity;
+  return { ...activity, plannedDates: [...(activity.plannedDates ?? []), day] };
+}
+
+/** On `day` only because it was added there in the planner, so it can be taken off again. */
+function onlyPlannedOn(activity: Activity, day: string): boolean {
+  return !!activity.plannedDates?.includes(day) && !isActivityOnDate({ ...activity, plannedDates: undefined }, day);
 }
 
 const FocusButton: React.FC<{ active: boolean; onClick: () => void }> = ({ active, onClick }) => (
@@ -59,9 +71,13 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   const [isUnscheduledDropActive, setIsUnscheduledDropActive] = useState(false);
   const [isQueueExpandedOnMobile, setIsQueueExpandedOnMobile] = useState(false);
 
-  const dayActivities = activities.filter((a) => a.date === plannerDate);
+  const dayActivities = activities.filter((a) => isActivityOnDate(a, plannerDate));
   const scheduledActivities = dayActivities.filter((a) => Boolean(a.scheduledTime));
   const unscheduledActivities = dayActivities.filter((a) => !a.scheduledTime);
+
+  const addable = activities.filter(
+    (a) => !a.parked && a.status !== 'completed' && !isActivityOnDate(a, plannerDate)
+  );
 
   const totalScheduledMinutes = scheduledActivities.reduce((acc, c) => acc + (c.estimatedMinutes || 0), 0);
 
@@ -94,8 +110,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
       if (act) {
         soundManager.playDrop();
         onUpdateActivity({
-          ...act,
-          date: plannerDate,
+          ...planOn(act, plannerDate),
           scheduledTime: hour,
         });
       }
@@ -125,8 +140,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   const handleQuickAssignSlot = (act: Activity, hour: string) => {
     soundManager.playDrop();
     onUpdateActivity({
-      ...act,
-      date: plannerDate,
+      ...planOn(act, plannerDate),
       scheduledTime: hour,
     });
   };
@@ -200,6 +214,27 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
           <div className={`space-y-2 max-h-125 overflow-y-auto pr-1 ${
             isQueueExpandedOnMobile ? 'block' : 'hidden sm:block'
           }`}>
+            {addable.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => {
+                  const act = addable.find((a) => a.id === e.target.value);
+                  if (!act) return;
+                  soundManager.playDrop();
+                  onUpdateActivity(planOn(act, plannerDate));
+                }}
+                aria-label="Add an existing task to this day"
+                className="w-full min-h-11 text-xs bg-white border border-dashed border-slate-300 rounded-xl px-3 text-slate-600 hover:border-slate-400 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+              >
+                <option value="">+ Add existing task to this day</option>
+                {addable.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.title}
+                    {a.deadline ? ` · due ${a.deadline.slice(5)}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
             {unscheduledActivities.length === 0 ? (
               <div className="py-8 sm:py-12 border-2 border-dashed border-slate-200 rounded-xl text-center p-3">
                 <Clock className="w-5 h-5 text-slate-300 mx-auto mb-1.5" />
@@ -209,7 +244,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
               </div>
             ) : (
               unscheduledActivities.map((act) => {
-                const categoryMeta = CATEGORIES[act.category] || CATEGORIES.deep_work;
+                const categoryMeta = CATEGORIES[act.category] || CATEGORIES.build;
                 const isDragging = draggedActivityId === act.id;
 
                 return (
@@ -238,7 +273,25 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                         <span className="text-slate-300">·</span>
                         <span className="tabular-nums">{act.estimatedMinutes}m</span>
                       </div>
-                      <GripVertical className="w-3.5 h-3.5 text-slate-300 hidden sm:block" />
+                      <div className="flex items-center gap-1 shrink-0">
+                        {onlyPlannedOn(act, plannerDate) && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onUpdateActivity({
+                                ...act,
+                                plannedDates: act.plannedDates?.filter((d) => d !== plannerDate),
+                              })
+                            }
+                            title="Remove from this day"
+                            aria-label="Remove from this day"
+                            className="size-7 max-sm:size-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <GripVertical className="w-3.5 h-3.5 text-slate-300 hidden sm:block" />
+                      </div>
                     </div>
 
                     <div className="flex items-start justify-between gap-2">
@@ -330,7 +383,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
                   ) : (
                     <div className="space-y-2">
                       {hourActivities.map((act) => {
-                        const categoryMeta = CATEGORIES[act.category] || CATEGORIES.deep_work;
+                        const categoryMeta = CATEGORIES[act.category] || CATEGORIES.build;
                         const isDragging = draggedActivityId === act.id;
 
                         return (

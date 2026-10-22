@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { signInWithGoogle, signOut } from '../auth/client';
-import { fetchMe, pullChanges, pushChanges, pushChangesBeacon } from '../api/client';
+import { pullChanges, pushChanges, pushChangesBeacon } from '../api/client';
 import { CloudUser, PersistedDocument } from '../types/document';
 import {
   GUEST_SCOPE,
@@ -69,9 +69,12 @@ interface PersistenceState {
  * BACKGROUND_SYNC_INTERVAL_MS while the tab is visible.
  * `onRemoteUpdate` receives server changes so the UI can merge them into its state.
  */
-export function useSessionPersistence(onRemoteUpdate: (update: RemoteUpdate) => void) {
+export function useSessionPersistence(
+  onRemoteUpdate: (update: RemoteUpdate) => void,
+  { initialUser, sessionError = false }: { initialUser: CloudUser | null; sessionError?: boolean }
+) {
   const [state, setState] = useState<PersistenceState>({
-    user: null,
+    user: initialUser,
     authReady: false,
     phase: 'idle',
     lastError: null,
@@ -80,7 +83,9 @@ export function useSessionPersistence(onRemoteUpdate: (update: RemoteUpdate) => 
 
   const documentRef = useRef<PersistedDocument>(emptyDocument());
   const metaRef = useRef<SyncMeta>(emptySyncMeta());
-  const userRef = useRef<CloudUser | null>(null);
+  const userRef = useRef<CloudUser | null>(initialUser);
+  /** The server's session read for this mount; later prop changes don't re-run setup. */
+  const initialSessionRef = useRef({ initialUser, sessionError });
   const inFlightRef = useRef(false);
   const rerunRef = useRef(false);
   const lastAttemptRef = useRef(0);
@@ -212,15 +217,16 @@ export function useSessionPersistence(onRemoteUpdate: (update: RemoteUpdate) => 
       let user: CloudUser | null;
       let phase: SyncPhase = 'idle';
       let lastError: string | null = null;
-      try {
-        user = (await fetchMe()).user;
-        saveLastUser(user);
-      } catch (error) {
+      const { initialUser, sessionError } = initialSessionRef.current;
+      if (sessionError || (!initialUser && !navigator.onLine)) {
         // Keep the last signed-in user's board usable until the server is reachable.
         user = loadLastUser();
-        const offline = isNetworkFailure(error);
+        const offline = !navigator.onLine;
         phase = offline ? 'offline' : 'error';
         lastError = offline ? OFFLINE_MESSAGE : 'Could not reach the sync server. Work is saved on this device.';
+      } else {
+        user = initialUser;
+        saveLastUser(user);
       }
       if (cancelled) return;
       userRef.current = user;

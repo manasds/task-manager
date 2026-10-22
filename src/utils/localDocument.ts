@@ -18,7 +18,7 @@ function starterActivity(): Activity {
     title: 'Plan your first focus session',
     description:
       'Drag this card across the board, start a focus timer, or log time you already worked. Delete it when you are ready.',
-    category: 'deep_work',
+    category: 'build',
     priority: 'medium',
     status: 'backlog',
     estimatedMinutes: 25,

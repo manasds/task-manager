@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getSessionUserId } from '@/auth/client';
 
 export default function AuthErrorPage() {
   const router = useRouter();
@@ -12,10 +13,9 @@ export default function AuthErrorPage() {
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch('/api/me', { credentials: 'include' });
-        const data = (await response.json().catch(() => ({}))) as { user?: unknown };
+        const userId = await getSessionUserId();
         if (cancelled) return;
-        if (data.user) {
+        if (userId) {
           setSignedIn(true);
           router.replace('/');
           return;

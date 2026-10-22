@@ -1,5 +1,5 @@
 import React from 'react';
-import { Kanban, Calendar, BarChart3, Plus, Activity as ActivityIcon } from 'lucide-react';
+import { Kanban, Columns3, Calendar, BarChart3, Plus, Activity as ActivityIcon } from 'lucide-react';
 import { ActiveTab } from './Navbar';
 import { soundManager } from '../utils/audio';
 
@@ -24,7 +24,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-lg"
       aria-label="Mobile Navigation"
     >
-      <div className="grid grid-cols-5 items-center h-14 max-w-lg mx-auto">
+      <div className="grid grid-cols-6 items-center h-14 max-w-lg mx-auto">
         
         {/* Tab 1: Board */}
         <button
@@ -37,7 +37,21 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           aria-label="Board View"
         >
           <Kanban className={`w-5 h-5 ${activeTab === 'board' ? 'stroke-[2.5]' : ''}`} />
-          <span className="text-[10px] tracking-tight mt-0.5">Board</span>
+          <span className="text-[10px] tracking-tight mt-0.5">Progress</span>
+        </button>
+
+        {/* Tab 1b: Types */}
+        <button
+          onClick={() => handleTabClick('types')}
+          className={`flex flex-col items-center justify-center min-h-11 min-w-11 rounded-xl transition-all ${
+            activeTab === 'types'
+              ? 'text-indigo-600 font-semibold'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+          aria-label="By Type View"
+        >
+          <Columns3 className={`w-5 h-5 ${activeTab === 'types' ? 'stroke-[2.5]' : ''}`} />
+          <span className="text-[10px] tracking-tight mt-0.5">Types</span>
         </button>
 
         {/* Tab 2: Planner */}

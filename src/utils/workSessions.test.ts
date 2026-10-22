@@ -6,9 +6,11 @@ import {
   createManualSession,
   timerElapsedSeconds,
   focusMinutesByHour,
+  isActivityOnDate,
   layoutDayTimeline,
   localDateString,
   loggedMinutesOnDate,
+  minutesByDay,
   sessionBlockStyleForDate,
   sessionDate,
   sessionMinutesOnDate,
@@ -34,7 +36,7 @@ function session(
 function activity(partial: Partial<Activity> & Pick<Activity, 'id'>): Activity {
   return {
     title: partial.title || partial.id,
-    category: 'deep_work',
+    category: 'build',
     priority: 'medium',
     status: 'backlog',
     estimatedMinutes: 30,
@@ -261,5 +263,67 @@ describe('manual time entries', () => {
     assert.equal(loggedMinutesOnDate(acts, '2026-10-15'), 15);
     assert.equal(loggedMinutesOnDate(acts, '2026-10-10'), 0);
     assert.equal(focusMinutesByHour(acts, ['2026-10-15'])[14], 15);
+  });
+});
+
+describe('isActivityOnDate', () => {
+  const base = {
+    id: 'a1',
+    date: '2026-10-13',
+    status: 'in_progress',
+    actualMinutes: 0,
+  } as Activity;
+
+  it('is false before the task date', () => {
+    assert.equal(isActivityOnDate(base, '2026-10-12'), false);
+  });
+
+  it('carries unfinished tasks onto later and future days', () => {
+    assert.equal(isActivityOnDate(base, '2026-10-13'), true);
+    assert.equal(isActivityOnDate(base, '2026-10-20'), true);
+    assert.equal(isActivityOnDate(base, '2027-01-01'), true);
+  });
+
+  it('stops at the completion day once completed', () => {
+    const done = { ...base, status: 'completed', completedAt: new Date(2026, 9, 15, 12).toISOString() } as Activity;
+    assert.equal(isActivityOnDate(done, '2026-10-14'), true);
+    assert.equal(isActivityOnDate(done, '2026-10-15'), true);
+    assert.equal(isActivityOnDate(done, '2026-10-16'), false);
+  });
+
+  it('also shows on extra planned days, even before its start', () => {
+    const planned = { ...base, plannedDates: ['2026-10-10'] } as Activity;
+    assert.equal(isActivityOnDate(planned, '2026-10-10'), true);
+    assert.equal(isActivityOnDate(planned, '2026-10-11'), false);
+  });
+
+  it('is on no day while parked', () => {
+    const parked = { ...base, parked: true, plannedDates: ['2026-10-13'] } as Activity;
+    assert.equal(isActivityOnDate(parked, '2026-10-13'), false);
+    assert.equal(isActivityOnDate(parked, '2026-10-20'), false);
+  });
+
+  it('falls back to its own date when completed without completedAt', () => {
+    const done = { ...base, status: 'completed' } as Activity;
+    assert.equal(isActivityOnDate(done, '2026-10-13'), true);
+    assert.equal(isActivityOnDate(done, '2026-10-14'), false);
+  });
+});
+
+describe('minutesByDay', () => {
+  it('sums session minutes per local day, newest first', () => {
+    const at = (d: number, h: number) => new Date(2026, 9, d, h);
+    const activity = {
+      workSessions: [
+        session('s1', at(13, 9), at(13, 10), 60),
+        session('s2', at(15, 9), at(15, 9), 30),
+        session('s3', at(15, 14), at(15, 14), 40),
+      ],
+    } as Activity;
+    assert.deepEqual(minutesByDay(activity), [
+      { date: '2026-10-15', minutes: 70 },
+      { date: '2026-10-13', minutes: 60 },
+    ]);
+    assert.deepEqual(minutesByDay({} as Activity), []);
   });
 });

@@ -14,8 +14,10 @@ import {
   ActivityPriority 
 } from '../types/activity';
 import { TaskCard } from './TaskCard';
+import { GoalSelect } from './GoalSelect';
 import { soundManager } from '../utils/audio';
 import { getTodayDateString } from '../utils/dates';
+import { isActivityOnDate } from '../utils/workSessions';
 
 interface BoardViewProps {
   activities: Activity[];
@@ -26,6 +28,9 @@ interface BoardViewProps {
   onEditActivity: (activity: Activity) => void;
   activeTimerTaskId?: string;
   selectedDate: string;
+  /** 'all' or a goal name. */
+  goal: string;
+  onGoalChange: (goal: string) => void;
   onSelectDate: (date: string) => void;
 }
 
@@ -38,6 +43,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
   onEditActivity,
   activeTimerTaskId,
   selectedDate,
+  goal,
+  onGoalChange,
   onSelectDate,
 }) => {
   const [draggedActivityId, setDraggedActivityId] = useState<string | null>(null);
@@ -53,7 +60,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
 
   // Filter activities
   const filteredActivities = activities.filter((act) => {
-    if (selectedDate !== 'all' && act.date !== selectedDate) {
+    if (act.parked) return false;
+    if (goal !== 'all' && act.goal !== goal) return false;
+    if (selectedDate !== 'all' && !isActivityOnDate(act, selectedDate)) {
       return false;
     }
     if (searchQuery.trim()) {
@@ -132,7 +141,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
     const newAct: Activity = {
       id: `task-${crypto.randomUUID()}`,
       title: quickAddTitle.trim(),
-      category: 'deep_work',
+      ...(goal !== 'all' ? { goal } : {}),
+      category: 'build',
       priority: 'medium',
       status,
       estimatedMinutes: 30,
@@ -184,7 +194,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
             aria-label="Filter by category"
             className="flex-1 sm:flex-none min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >
-            <option value="all">Category</option>
+            <option value="all">Type</option>
             {Object.values(CATEGORIES).map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.label}
@@ -223,6 +233,13 @@ export const BoardView: React.FC<BoardViewProps> = ({
             )}
             <option value="all">All Dates</option>
           </select>
+
+          <GoalSelect
+            activities={activities}
+            value={goal}
+            onChange={onGoalChange}
+            className="flex-1 sm:flex-none min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+          />
         </div>
       </div>
 
@@ -378,6 +395,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                         soundManager.playDrop();
                         onMoveActivityStatus(id, status);
                       }}
+                      onPark={(a) => onUpdateActivity({ ...a, parked: true })}
                       isTimerActiveForTask={activeTimerTaskId === act.id}
                     />
                   ))

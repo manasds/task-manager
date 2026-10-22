@@ -10,10 +10,13 @@ import {
   Edit3, 
   ListChecks, 
   GripVertical,
-  ArrowRight
+  ArrowRight,
+  Archive
 } from 'lucide-react';
 import { Activity, CATEGORIES, PRIORITY_CONFIG, ActivityStatus, STATUS_COLUMNS } from '../types/activity';
 import { soundManager } from '../utils/audio';
+import { getTodayDateString } from '../utils/dates';
+import { formatMinutes } from '../utils/workSessions';
 
 interface TaskCardProps {
   activity: Activity;
@@ -27,6 +30,7 @@ interface TaskCardProps {
   onEdit: (activity: Activity) => void;
   onDelete: (activityId: string) => void;
   onMoveToStatus?: (activityId: string, targetStatus: ActivityStatus) => void;
+  onPark?: (activity: Activity) => void;
   isTimerActiveForTask?: boolean;
 }
 
@@ -42,6 +46,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onEdit,
   onDelete,
   onMoveToStatus,
+  onPark,
   isTimerActiveForTask,
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
@@ -49,9 +54,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const menuRef = React.useRef<HTMLDivElement>(null);
   const menuButtonRef = React.useRef<HTMLButtonElement>(null);
 
-  const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
+  const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.build;
   const priorityMeta = PRIORITY_CONFIG[activity.priority] || PRIORITY_CONFIG.medium;
   const isCompleted = activity.status === 'completed';
+  const isOverdue = !isCompleted && !!activity.deadline && activity.deadline < getTodayDateString();
   const shortCategory = categoryMeta.label.split(/[&/]/)[0].trim();
 
   const completedSubtasks = activity.subtasks.filter((s) => s.completed).length;
@@ -242,6 +248,21 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                     </>
                   )}
 
+                  {onPark && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onPark(activity);
+                      }}
+                      className="flex items-center gap-2 w-full px-3.5 py-2 text-slate-700 hover:bg-slate-50 text-left min-h-9.5"
+                    >
+                      <Archive className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Park for later</span>
+                    </button>
+                  )}
+
                   <div className="border-t border-slate-100 my-1" />
                   <button
                     type="button"
@@ -298,6 +319,19 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         {/* Footer: quiet metadata on the left, actions on the right */}
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
           <div className="flex items-center gap-2.5 min-w-0 tabular-nums">
+            {activity.deadline && (
+              <span
+                className={`shrink-0 ${isOverdue ? 'font-medium text-rose-600' : 'text-slate-600'}`}
+                title={isOverdue ? 'Past its deadline' : 'Deadline'}
+              >
+                Due {new Date(`${activity.deadline}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+              </span>
+            )}
+            {activity.goal && (
+              <span className="min-w-0 truncate rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600" title="Goal">
+                {activity.goal}
+              </span>
+            )}
             {activity.scheduledTime && (
               <span className="shrink-0 font-medium text-slate-600" title="Scheduled time">
                 {activity.scheduledTime}
@@ -310,9 +344,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               </span>
             )}
             {activity.actualMinutes > 0 && (
-              <span className="inline-flex items-center gap-1 shrink-0" title="Time logged">
+              <span className="inline-flex items-center gap-1 shrink-0" title="Total time across all days">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                {activity.actualMinutes}m
+                {formatMinutes(activity.actualMinutes)} total
               </span>
             )}
           </div>

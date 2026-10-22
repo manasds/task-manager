@@ -1,5 +1,4 @@
 import { CanvasTile } from '../types/canvas';
-import { CloudUser } from '../types/document';
 import { PullResponse, PushRequest, PushResponse } from '../types/sync';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -22,10 +21,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw error;
   }
   return data;
-}
-
-export function fetchMe(): Promise<{ user: CloudUser | null }> {
-  return request('/api/me');
 }
 
 export function pullChanges(since: number): Promise<PullResponse> {

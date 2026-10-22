@@ -6,7 +6,7 @@ function activity(id: string, title: string): Activity {
   return {
     id,
     title,
-    category: 'deep_work',
+    category: 'build',
     priority: 'medium',
     status: 'backlog',
     estimatedMinutes: 30,

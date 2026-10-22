@@ -6,6 +6,7 @@ import {
   ActivityPriority,
   ActivityStatus,
   CATEGORIES,
+  STATUS_COLUMNS,
   Subtask,
   WorkSession,
 } from "../types/activity";
@@ -14,6 +15,8 @@ import { soundManager } from "../utils/audio";
 import {
   createManualSession,
   formatMinutes,
+  minutesByDay,
+  parseLocalDate,
   totalSessionMinutes,
   untimedMinutes,
 } from "../utils/workSessions";
@@ -30,8 +33,12 @@ interface TaskModalProps {
   initialActivity?: Activity | null;
   defaultStatus?: ActivityStatus;
   defaultTime?: string;
-  /** Date for new activities, e.g. the day open in the planner. */
-  defaultDate?: string;
+  /** Goals already in use, offered as suggestions. */
+  goals: string[];
+  /** Goal for a new task, e.g. the one the board is filtered to. */
+  defaultGoal?: string;
+  /** Tasks in Doing, offered as targets when logging time from a new activity. */
+  doingTasks: Activity[];
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({
@@ -40,32 +47,37 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   initialActivity,
   defaultStatus = "backlog",
   defaultTime,
-  defaultDate,
+  goals,
+  defaultGoal,
+  doingTasks,
 }) => {
   const today = getTodayDateString();
   const [title, setTitle] = useState(initialActivity?.title ?? "");
   const [description, setDescription] = useState(initialActivity?.description ?? "");
-  const [category, setCategory] = useState<ActivityCategory>(initialActivity?.category ?? "deep_work");
+  const [category, setCategory] = useState<ActivityCategory>(initialActivity?.category ?? "build");
   const [priority, setPriority] = useState<ActivityPriority>(initialActivity?.priority ?? "medium");
   const [status, setStatus] = useState<ActivityStatus>(initialActivity?.status ?? defaultStatus);
   const [estimatedMinutes, setEstimatedMinutes] = useState(
     initialActivity ? initialActivity.estimatedMinutes || 30 : 45
   );
   const [workSessions, setWorkSessions] = useState<WorkSession[]>(initialActivity?.workSessions ?? []);
-  // Logging time on an existing task defaults to today; a new task logs on its own day.
-  const [logDate, setLogDate] = useState(initialActivity ? today : defaultDate || today);
+  const [logDate, setLogDate] = useState(today);
   const [logTime, setLogTime] = useState(currentTimeString);
   const [logMinutes, setLogMinutes] = useState("");
   const [scheduledTime, setScheduledTime] = useState(
     initialActivity ? initialActivity.scheduledTime || "" : defaultTime || ""
   );
-  const [date, setDate] = useState(initialActivity ? initialActivity.date || today : defaultDate || today);
+  const [date, setDate] = useState(initialActivity?.date || today);
+  const [goal, setGoal] = useState(initialActivity ? initialActivity.goal ?? "" : defaultGoal ?? "");
+  const [deadline, setDeadline] = useState(initialActivity?.deadline ?? "");
+  const [parked, setParked] = useState(initialActivity?.parked ?? false);
   const [subtasks, setSubtasks] = useState<Subtask[]>(initialActivity?.subtasks ?? []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>(initialActivity?.tags ?? []);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"schedule" | "log">("schedule");
+  const [logTargetId, setLogTargetId] = useState("");
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -117,7 +129,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   const pendingLogMinutes = parseInt(logMinutes, 10) || 0;
-  const loggedTotal = totalSessionMinutes(workSessions);
+  const target = !initialActivity ? doingTasks.find((t) => t.id === logTargetId) : undefined;
+  const targetSessions = target?.workSessions ?? [];
+  const shownSessions = target ? [...targetSessions, ...workSessions] : workSessions;
+  const loggedTotal = totalSessionMinutes(shownSessions);
+  const earlierUntimed = initialActivity || target ? untimedMinutes((initialActivity ?? target)!) : 0;
+  const allTimeTotal = earlierUntimed + loggedTotal;
+  const dayBreakdown = minutesByDay({ workSessions: shownSessions });
 
   /** Session for the "Log time worked" fields, or null if they are incomplete. */
   const buildPendingSession = (): WorkSession | null => {
@@ -143,6 +161,25 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (target) {
+      const pending = buildPendingSession();
+      const added = (pending ? [...workSessions, pending] : workSessions).map((s) => ({
+        ...s,
+        activityId: target.id,
+      }));
+      if (added.length === 0) {
+        setError("Add the time you worked first");
+        return;
+      }
+      soundManager.playDrop();
+      onSave({
+        ...target,
+        workSessions: [...targetSessions, ...added].sort((a, b) => Date.parse(a.start) - Date.parse(b.start)),
+        actualMinutes: target.actualMinutes + totalSessionMinutes(added),
+      });
+      onClose();
+      return;
+    }
     if (!title.trim()) {
       setError("Please provide a title for the activity");
       return;
@@ -167,6 +204,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       actualMinutes: baseUntimed + totalSessionMinutes(sessions),
       scheduledTime: scheduledTime || undefined,
       date,
+      plannedDates: initialActivity?.plannedDates,
+      deadline: deadline || undefined,
+      goal: goal.trim() || undefined,
+      parked: parked || undefined,
       subtasks,
       tags,
       notes: initialActivity?.notes,
@@ -281,7 +322,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label htmlFor="task-category" className="font-semibold text-slate-700 text-xs">
-                    Category
+                    Type
                   </label>
                   <select
                     id="task-category"
@@ -323,7 +364,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label htmlFor="task-status" className="font-semibold text-slate-700 text-xs">
-                    Board Status
+                    Status
                   </label>
                   <select
                     id="task-status"
@@ -331,10 +372,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     onChange={(e) => setStatus(e.target.value as ActivityStatus)}
                     className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
                   >
-                    <option value="backlog">Planned & Queued</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="review">Review / Verify</option>
-                    <option value="completed">Completed</option>
+                    {STATUS_COLUMNS.map((col) => (
+                      <option key={col.id} value={col.id}>
+                        {col.title}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -389,7 +431,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div className="space-y-1.5">
                   <label htmlFor="task-date" className="font-semibold text-slate-700 text-xs">
-                    Target Date
+                    Start date
                   </label>
                   <input
                     id="task-date"
@@ -413,6 +455,55 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Goal & Deadline Row */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="space-y-1.5">
+                  <label htmlFor="task-goal" className="font-semibold text-slate-700 text-xs">
+                    Goal
+                  </label>
+                  <input
+                    id="task-goal"
+                    type="text"
+                    list="task-goal-options"
+                    placeholder="Optional"
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value)}
+                    className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 text-xs"
+                  />
+                  <datalist id="task-goal-options">
+                    {goals.map((g) => (
+                      <option key={g} value={g} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="task-deadline" className="font-semibold text-slate-700 text-xs">
+                    Deadline
+                  </label>
+                  <input
+                    id="task-deadline"
+                    type="date"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 text-xs"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={parked}
+                  onChange={(e) => setParked(e.target.checked)}
+                  className="size-4 accent-indigo-600"
+                />
+                <span>
+                  <span className="font-semibold">Park for later</span>
+                  <span className="text-slate-500"> · keeps it off the board, planner and daily stats</span>
+                </span>
+              </label>
 
               {/* Description */}
               <div className="space-y-1.5 pt-1">
@@ -538,6 +629,31 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               </>
             ) : (
               <div className="space-y-4">
+                {!initialActivity && doingTasks.length > 0 && (
+                  <div className="space-y-1.5">
+                    <label htmlFor="log-target" className="font-semibold text-slate-700 text-xs">
+                      Log time to
+                    </label>
+                    <select
+                      id="log-target"
+                      value={logTargetId}
+                      onChange={(e) => setLogTargetId(e.target.value)}
+                      className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
+                    >
+                      <option value="">This new activity</option>
+                      {doingTasks.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.title}
+                        </option>
+                      ))}
+                    </select>
+                    {target && (
+                      <p className="text-[11px] text-slate-500">
+                        Saving adds this time to “{target.title}”. The other fields are ignored.
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-3 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
                   <p className="text-[11px] text-slate-500">
                     Worked without the timer? Add it here and it counts toward Activity and Analytics.
@@ -618,6 +734,31 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   </button>
                 </div>
 
+                <div className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/60 space-y-2">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-semibold text-slate-700 text-xs">Total focused time</span>
+                    <span className="text-base font-bold text-slate-900 tabular-nums">{formatMinutes(allTimeTotal)}</span>
+                  </div>
+                  {(dayBreakdown.length > 0 || earlierUntimed > 0) && (
+                    <ul className="space-y-1 text-[11px] text-slate-500 tabular-nums">
+                      {dayBreakdown.map((d) => (
+                        <li key={d.date} className="flex items-center justify-between">
+                          <span>
+                            {parseLocalDate(d.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                          </span>
+                          <span className="font-medium text-slate-700">{formatMinutes(d.minutes)}</span>
+                        </li>
+                      ))}
+                      {earlierUntimed > 0 && (
+                        <li className="flex items-center justify-between">
+                          <span>Earlier (untimed)</span>
+                          <span className="font-medium text-slate-700">{formatMinutes(earlierUntimed)}</span>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-slate-700 text-xs">Logged sessions</span>
@@ -625,13 +766,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                       {formatMinutes(loggedTotal)} total
                     </span>
                   </div>
-                  {workSessions.length === 0 ? (
+                  {shownSessions.length === 0 ? (
                     <p className="py-4 text-center text-[11px] text-slate-400">
                       No time logged yet. Timer sessions show up here too.
                     </p>
                   ) : (
                     <div className="space-y-1.5">
-                      {[...workSessions].reverse().map((s) => {
+                      {[...shownSessions].reverse().map((s) => {
                         const start = new Date(s.start);
                         const end = new Date(s.end);
                         const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
@@ -649,6 +790,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                                 {time(start)}–{time(end)}
                               </span>
                             </span>
+                            {!targetSessions.some((t) => t.id === s.id) && (
                             <button
                               type="button"
                               onClick={() => handleRemoveSession(s.id)}
@@ -657,6 +799,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
+                            )}
                           </div>
                         );
                       })}
@@ -678,7 +821,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               type="submit"
               className="min-h-11 px-5 font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-98 rounded-xl shadow-xs transition-all"
             >
-              {initialActivity ? "Save Changes" : "Create Activity"}
+              {initialActivity ? "Save Changes" : target ? "Log time" : "Create Activity"}
             </button>
           </div>
         </form>

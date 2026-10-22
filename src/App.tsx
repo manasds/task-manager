@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, ActivityStatus } from './types/activity';
-import { DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument } from './types/document';
+import { Activity, ActivityStatus, goalNames, normalizeActivity } from './types/activity';
+import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument } from './types/document';
 import { getTodayDateString } from './utils/dates';
 import { soundManager } from './utils/audio';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { StatSummaryStrip } from './components/StatSummaryStrip';
 import { BoardView } from './components/BoardView';
+import { ByTypeView } from './components/ByTypeView';
 import { DayPlannerView } from './components/DayPlannerView';
 import { DayActivityView } from './components/DayActivityView';
 import { AnalyticsView } from './components/AnalyticsView';
@@ -15,8 +16,6 @@ import { TaskModal } from './components/TaskModal';
 import { FocusTimerBar } from './components/FocusTimerBar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { OfflineIndicator } from './components/OfflineIndicator';
-import { AuthPanel } from './components/AuthPanel';
-import { SyncStatus } from './components/SyncStatus';
 import { useSessionPersistence } from './hooks/useSessionPersistence';
 import { applyRemoteActivities } from './utils/syncPolicy';
 import { createWorkSession, formatMinutes, timerElapsedSeconds } from './utils/workSessions';
@@ -33,7 +32,7 @@ function timerFor(timer: FocusTimerSnapshot | null, activities: Activity[]): Foc
   return timer && activities.some((a) => a.id === timer.activityId) ? timer : null;
 }
 
-export default function App() {
+export default function App({ initialUser, sessionError }: { initialUser: CloudUser | null; sessionError?: boolean }) {
   const [hydrated, setHydrated] = useState(false);
   const skipDirtyRef = useRef(true);
 
@@ -41,6 +40,8 @@ export default function App() {
   const [dailyGoalMinutes, setDailyGoalMinutes] = useState<number>(360);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
+  /** Goal filter shared by the Progress and By type views: 'all' or a goal name. */
+  const [goal, setGoal] = useState('all');
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [timer, setTimer] = useState<FocusTimerSnapshot | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -50,13 +51,17 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const persistence = useSessionPersistence((update) => {
-    setActivities((prev) => applyRemoteActivities(prev, update));
-    if (update.deletes.length > 0) {
-      setTimer((current) => (current && update.deletes.includes(current.activityId) ? null : current));
-    }
-    if (update.dailyGoalMinutes !== undefined) setDailyGoalMinutes(update.dailyGoalMinutes);
-  });
+  const persistence = useSessionPersistence(
+    (update) => {
+      const upserts = update.upserts.map(normalizeActivity);
+      setActivities((prev) => applyRemoteActivities(prev, { ...update, upserts }));
+      if (update.deletes.length > 0) {
+        setTimer((current) => (current && update.deletes.includes(current.activityId) ? null : current));
+      }
+      if (update.dailyGoalMinutes !== undefined) setDailyGoalMinutes(update.dailyGoalMinutes);
+    },
+    { initialUser, sessionError }
+  );
   const { authReady, currentDocument, persistLocal } = persistence;
   const userId = persistence.user?.id;
 
@@ -79,8 +84,9 @@ export default function App() {
     if (!authReady) return;
     const doc = currentDocument();
     skipDirtyRef.current = true;
+    // Tasks saved before Build/Learn are converted as they load, on every device.
     // eslint-disable-next-line react/set-state-in-effect
-    setActivities(doc.activities);
+    setActivities(doc.activities.map(normalizeActivity));
     setDailyGoalMinutes(doc.dailyGoalMinutes);
     setActiveTab(doc.settings.lastTab);
     setSelectedDate(doc.settings.selectedDate || getTodayDateString());
@@ -321,7 +327,6 @@ export default function App() {
         user={persistence.user}
         syncPhase={persistence.phase}
         lastError={persistence.lastError}
-        lastSyncedAt={persistence.lastSyncedAt}
         onGoogleSignIn={persistence.signIn}
         onFlush={() => {
           void persistence.retrySync();
@@ -330,36 +335,6 @@ export default function App() {
           void handleSignOut();
         }}
       />
-
-      {!persistence.user && persistence.authReady && (
-        <div className="lg:hidden bg-indigo-50 border-b border-indigo-100">
-          <div className="max-w-7xl mx-auto px-3 py-2 flex items-center gap-3">
-            <p className="text-xs text-indigo-900 flex-1 min-w-0 leading-snug">
-              Work stays on this browser until you sign in.
-            </p>
-            <AuthPanel compact onGoogleSignIn={persistence.signIn} />
-          </div>
-        </div>
-      )}
-
-      {persistence.user && (
-        <div className="xl:hidden bg-white border-b border-slate-200">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5">
-            <SyncStatus
-              user={persistence.user}
-              phase={persistence.phase}
-              lastError={persistence.lastError}
-              lastSyncedAt={persistence.lastSyncedAt}
-              onFlush={() => {
-                void persistence.retrySync();
-              }}
-              onSignOut={() => {
-                void handleSignOut();
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       <StatSummaryStrip
         activities={activities}
@@ -378,6 +353,20 @@ export default function App() {
             activeTimerTaskId={activeTimerTask?.id}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
+            goal={goal}
+            onGoalChange={setGoal}
+          />
+        )}
+
+        {activeTab === 'types' && (
+          <ByTypeView
+            activities={activities}
+            goal={goal}
+            onGoalChange={setGoal}
+            signedIn={!!userId}
+            onEdit={handleEditActivity}
+            onDelete={handleDeleteActivity}
+            onAddTask={() => handleOpenNewTaskModal('backlog')}
           />
         )}
 
@@ -419,7 +408,9 @@ export default function App() {
           initialActivity={editingActivity}
           defaultStatus={modalDefaultStatus}
           defaultTime={modalDefaultTime}
-          defaultDate={dayViewDate}
+          goals={goalNames(activities)}
+          defaultGoal={goal === 'all' ? undefined : goal}
+          doingTasks={activities.filter((a) => a.status === 'in_progress' && !a.parked)}
         />
       )}
 

@@ -116,6 +116,34 @@ export function untimedMinutes(activity: Activity): number {
   return Math.max(0, (activity.actualMinutes || 0) - allSessionMinutes(activity));
 }
 
+/** Logged minutes per local day (newest first), from timed sessions only. */
+export function minutesByDay(activity: Pick<Activity, 'workSessions'>): { date: string; minutes: number }[] {
+  const byDay = new Map<string, number>();
+  for (const s of activity.workSessions ?? []) {
+    const day = sessionDate(s);
+    byDay.set(day, (byDay.get(day) ?? 0) + s.minutes);
+  }
+  return [...byDay.entries()]
+    .map(([date, minutes]) => ({ date, minutes }))
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+/**
+ * Whether a task belongs on `date`: any day it was planned for, plus from its start day onward
+ * while unfinished (up to the day it was completed once done). Parked tasks belong nowhere.
+ */
+export function isActivityOnDate(activity: Activity, date: string): boolean {
+  if (activity.parked) return false;
+  if (activity.plannedDates?.includes(date)) return true;
+  if (date < activity.date) return false;
+  if (activity.status !== 'completed') return true;
+  const completedDay = activity.completedAt
+    ? localDateString(new Date(activity.completedAt))
+    : activity.date;
+  // Finished before its own date (done early): it still belongs on that date.
+  return date <= completedDay || date === activity.date;
+}
+
 export interface TaskDayStats {
   activity: Activity;
   timedMinutes: number;

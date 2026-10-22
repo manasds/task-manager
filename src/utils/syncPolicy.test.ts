@@ -21,7 +21,7 @@ import {
 function activity(partial: Partial<Activity> & Pick<Activity, 'id'>): Activity {
   return {
     title: partial.title || partial.id,
-    category: 'deep_work',
+    category: 'build',
     priority: 'medium',
     status: 'backlog',
     estimatedMinutes: 30,

@@ -91,7 +91,7 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
           ) : (
             <div className="divide-y divide-slate-100">
               {taskStats.map(({ activity, untimedMinutes, totalMinutes: taskTotal }) => {
-                const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
+                const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.build;
                 const pct = totalMinutes > 0 ? Math.round((taskTotal / totalMinutes) * 100) : 0;
 
                 return (
@@ -117,6 +117,12 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
                             <span className="text-amber-600 font-medium">
                               {formatMinutes(untimedMinutes)} untimed
                             </span>
+                          </>
+                        )}
+                        {activity.actualMinutes !== taskTotal && (
+                          <>
+                            <span>·</span>
+                            <span>{formatMinutes(activity.actualMinutes)} total</span>
                           </>
                         )}
                       </div>
@@ -182,7 +188,7 @@ export const DayActivityView: React.FC<DayActivityViewProps> = ({
                 ))}
 
                 {blocks.map(({ session, activity, startMin, endMin, lane, lanes }) => {
-                  const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.deep_work;
+                  const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.build;
                   const top = toPx(startMin);
                   const height = Math.max(toPx(endMin) - top, MIN_BLOCK_PX);
                   const fromPrevDay = sessionDate(session) !== selectedDate;
