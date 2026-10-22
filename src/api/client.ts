@@ -1,3 +1,4 @@
+import { CanvasTile } from '../types/canvas';
 import { CloudUser } from '../types/document';
 import { PullResponse, PushRequest, PushResponse } from '../types/sync';
 
@@ -36,6 +37,18 @@ export function pushChanges(payload: PushRequest): Promise<PushResponse> {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export function fetchCanvas(): Promise<{ tiles: CanvasTile[] }> {
+  return request('/api/canvas');
+}
+
+export function saveCanvasTile(tile: CanvasTile): Promise<{ tile: CanvasTile }> {
+  return request(`/api/canvas/${encodeURIComponent(tile.id)}`, { method: 'PUT', body: JSON.stringify(tile) });
+}
+
+export function deleteCanvasTile(id: string): Promise<{ ok: true }> {
+  return request(`/api/canvas/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 /** Browsers cap keepalive/beacon bodies at 64 KiB in flight. */

@@ -73,4 +73,22 @@ CREATE TABLE IF NOT EXISTS activities (
 );
 
 CREATE INDEX IF NOT EXISTS activities_user_seq_idx ON activities (user_id, server_seq);
+
+-- Links on the /canvas page. Plain rows: the page reads them on load and writes each
+-- edit straight through, with no local copy or sync bookkeeping.
+CREATE TABLE IF NOT EXISTS canvas_tiles (
+  user_id TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  id TEXT NOT NULL,
+  url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  status TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  position DOUBLE PRECISION NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, id)
+);
+
+CREATE INDEX IF NOT EXISTS canvas_tiles_user_position_idx ON canvas_tiles (user_id, position);
 `;

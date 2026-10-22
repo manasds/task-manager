@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -18,16 +18,10 @@ import {
   Youtube,
   type LucideIcon,
 } from 'lucide-react';
-import {
-  CanvasKind,
-  CanvasTile,
-  detectKind,
-  getDomain,
-  getYouTubeId,
-  loadCanvasTiles,
-  saveCanvasTiles,
-  youtubeThumbnail,
-} from '@/utils/canvasStorage';
+import { deleteCanvasTile, fetchCanvas, saveCanvasTile } from '@/api/client';
+import { signInWithGoogle } from '@/auth/client';
+import type { CanvasKind, CanvasTile } from '@/types/canvas';
+import { detectKind, getDomain, getYouTubeId, positionBetween, youtubeThumbnail } from '@/utils/canvas';
 
 const KIND_META: Record<CanvasKind, { label: string; icon: LucideIcon; cover: string; iconColor: string }> = {
   youtube: { label: 'YouTube', icon: Youtube, cover: 'from-red-100 to-red-300', iconColor: 'text-red-500/70' },
@@ -77,6 +71,10 @@ function newId(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function errorStatus(error: unknown): number | undefined {
+  return (error as { status?: number }).status;
+}
+
 function stop(e: React.SyntheticEvent) {
   e.preventDefault();
   e.stopPropagation();
@@ -84,7 +82,8 @@ function stop(e: React.SyntheticEvent) {
 
 export default function CanvasView() {
   const [tiles, setTiles] = useState<CanvasTile[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [load, setLoad] = useState<'loading' | 'ready' | 'signed-out' | 'failed'>('loading');
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
 
   const [adding, setAdding] = useState(false);
@@ -102,16 +101,77 @@ export default function CanvasView() {
   const suppressClickRef = useRef(false);
   const applyDragRef = useRef<(() => void) | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+  /** Writes run one after another so the server sees edits in the order they were made. */
+  const writesRef = useRef<Promise<void>>(Promise.resolve());
 
-  // localStorage is unavailable during the server render, so tiles load after mount.
-  useEffect(() => {
-    const initial = loadCanvasTiles();
-    tilesRef.current = initial;
-    // eslint-disable-next-line react/set-state-in-effect
-    setTiles(initial);
-    setLoaded(true);
-    return () => cleanupRef.current?.();
+  const show = (next: CanvasTile[]) => {
+    tilesRef.current = next;
+    setTiles(next);
+  };
+
+  /** Replace what is on screen with the server's copy. False when that is not possible. */
+  const reload = useCallback(async (): Promise<boolean> => {
+    try {
+      const { tiles: saved } = await fetchCanvas();
+      tilesRef.current = saved;
+      setTiles(saved);
+      setLoad('ready');
+      return true;
+    } catch (err) {
+      if (errorStatus(err) === 401) setLoad('signed-out');
+      else setLoad((current) => (current === 'ready' ? current : 'failed'));
+      return false;
+    }
   }, []);
+
+  useEffect(() => {
+    void (async () => {
+      if (!(await reload())) return;
+      // Tiles saved on this device before the canvas moved to the database.
+      let old: unknown;
+      try {
+        old = JSON.parse(localStorage.getItem('orbittask_canvas_v1') ?? '[]');
+      } catch {
+        return;
+      }
+      if (!Array.isArray(old) || old.length === 0) return;
+      const lastPos = tilesRef.current.at(-1)?.position ?? 0;
+      let failed = false;
+      for (const [i, item] of old.entries()) {
+        try {
+          await saveCanvasTile({ ...item, position: lastPos + i + 1 });
+        } catch (err) {
+          if (errorStatus(err) !== 400) failed = true;
+        }
+      }
+      if (failed) return setError('Could not move the links saved on this device to your account.');
+      localStorage.removeItem('orbittask_canvas_v1');
+      await reload();
+    })();
+    return () => cleanupRef.current?.();
+  }, [reload]);
+
+  /** Show an edit at once and save it in the background. If the save fails, show the server's copy. */
+  const update = (next: CanvasTile[], save?: () => Promise<unknown>) => {
+    show(next);
+    if (!save) return;
+    setError(null);
+    writesRef.current = writesRef.current.then(save).then(
+      () => undefined,
+      async (err) => {
+        if (errorStatus(err) === 401) {
+          setLoad('signed-out');
+          return;
+        }
+        setError('Could not save that change. Showing what is saved.');
+        await reload();
+      }
+    );
+  };
+
+  const signIn = () => {
+    signInWithGoogle().catch((err) => setError((err as Error).message));
+  };
 
   // Keep the dragged tile glued to the pointer after live reorders change its natural slot.
   useLayoutEffect(() => {
@@ -133,6 +193,8 @@ export default function CanvasView() {
     let grabY = 0;
     let dragging = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const start = tilesRef.current.findIndex(t => t.id === id);
+    const before = { prev: tilesRef.current[start - 1]?.id, next: tilesRef.current[start + 1]?.id };
 
     const apply = () => {
       if (!dragging) return;
@@ -203,7 +265,17 @@ export default function CanvasView() {
         setTimeout(() => {
           suppressClickRef.current = false;
         }, 60);
-        saveCanvasTiles(tilesRef.current);
+        const list = tilesRef.current;
+        const index = list.findIndex(t => t.id === id);
+        if (index === -1) return;
+        const prev = list[index - 1];
+        const next = list[index + 1];
+        if (prev?.id === before?.prev && next?.id === before?.next) return;
+        const tile = { ...list[index], position: positionBetween(prev?.position, next?.position) };
+        update(
+          list.map(t => (t.id === id ? tile : t)),
+          () => saveCanvasTile(tile)
+        );
       }
     };
 
@@ -237,12 +309,6 @@ export default function CanvasView() {
     if (touch) timer = setTimeout(begin, 250);
   };
 
-  const update = (next: CanvasTile[]) => {
-    tilesRef.current = next;
-    setTiles(next);
-    saveCanvasTiles(next);
-  };
-
   const onUrlChange = (value: string) => {
     setUrl(value);
     setKind(detectKind(normalizeUrl(value)));
@@ -259,6 +325,10 @@ export default function CanvasView() {
     e.preventDefault();
     const finalUrl = normalizeUrl(url);
     if (!finalUrl) return;
+    if (!getDomain(finalUrl)) {
+      setError('Enter a web link that starts with http:// or https://.');
+      return;
+    }
     const k = kind;
     const fallback = getDomain(finalUrl) || (k === 'youtube' ? 'YouTube video' : finalUrl);
     const tile: CanvasTile = {
@@ -268,14 +338,20 @@ export default function CanvasView() {
       kind: k,
       status: 'active',
       note: '',
+      position: positionBetween(undefined, tiles[0]?.position),
       createdAt: new Date().toISOString(),
     };
-    update([tile, ...tiles]);
+    update([tile, ...tiles], () => saveCanvasTile(tile));
     resetAdd();
   };
 
-  const toggleStatus = (id: string) =>
-    update(tiles.map(t => (t.id === id ? { ...t, status: t.status === 'done' ? 'active' : 'done' } : t)));
+  const toggleStatus = (tile: CanvasTile) => {
+    const next: CanvasTile = { ...tile, status: tile.status === 'done' ? 'active' : 'done' };
+    update(
+      tiles.map(t => (t.id === tile.id ? next : t)),
+      () => saveCanvasTile(next)
+    );
+  };
 
   const startEdit = (t: CanvasTile) => {
     setEditingId(t.id);
@@ -283,13 +359,23 @@ export default function CanvasView() {
     setEditNote(t.note);
   };
 
-  const saveEdit = (id: string) => {
-    update(tiles.map(t => (t.id === id ? { ...t, title: editTitle.trim() || t.title, note: editNote.trim() } : t)));
+  const saveEdit = (tile: CanvasTile) => {
+    const changes = { title: editTitle.trim() || tile.title, note: editNote.trim() };
     setEditingId(null);
+    if (changes.title === tile.title && changes.note === tile.note) return;
+    const next = { ...tile, ...changes };
+    update(
+      tiles.map(t => (t.id === tile.id ? next : t)),
+      () => saveCanvasTile(next)
+    );
   };
 
   const remove = (t: CanvasTile) => {
-    if (window.confirm(`Delete "${t.title}"?`)) update(tiles.filter(x => x.id !== t.id));
+    if (!window.confirm(`Delete "${t.title}"?`)) return;
+    update(
+      tiles.filter(x => x.id !== t.id),
+      () => deleteCanvasTile(t.id)
+    );
   };
 
   const visible = useMemo(() => tiles.filter(t => matches(t, filter)), [tiles, filter]);
@@ -341,7 +427,39 @@ export default function CanvasView() {
           </Link>
         </header>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {error && (
+          <p role="alert" className="mb-3 text-xs text-red-600">
+            {error}
+          </p>
+        )}
+
+        {load === 'loading' && <p className="text-sm text-slate-500">Loading your canvas…</p>}
+
+        {load === 'failed' && (
+          <p className="text-sm text-slate-500">
+            Could not load your canvas.{' '}
+            <button type="button" onClick={() => void reload()} className="font-medium text-indigo-600 hover:text-indigo-800">
+              Try again
+            </button>
+          </p>
+        )}
+
+        {load === 'signed-out' && (
+          <div className="flex flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-600">Sign in to save links to your canvas.</p>
+            <button
+              type="button"
+              onClick={signIn}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              Continue with Google
+            </button>
+          </div>
+        )}
+
+        <div
+          className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${load === 'ready' ? '' : 'hidden'}`}
+        >
           {adding ? (
             <form
               onSubmit={onAdd}
@@ -420,7 +538,7 @@ export default function CanvasView() {
                   key={t.id}
                   onSubmit={e => {
                     e.preventDefault();
-                    saveEdit(t.id);
+                    saveEdit(t);
                   }}
                   onKeyDown={e => onFormKey(e, () => setEditingId(null))}
                   className="flex aspect-square min-w-0 flex-col justify-between gap-1.5 overflow-hidden rounded-2xl border border-indigo-300 bg-white p-2.5 shadow-sm"
@@ -549,7 +667,7 @@ export default function CanvasView() {
                     type="button"
                     onClick={e => {
                       stop(e);
-                      toggleStatus(t.id);
+                      toggleStatus(t);
                     }}
                     aria-label={done ? 'Reopen' : 'Mark done'}
                     title={done ? 'Reopen' : 'Mark done'}
@@ -587,7 +705,7 @@ export default function CanvasView() {
           })}
         </div>
 
-        {loaded && visible.length === 0 && (
+        {load === 'ready' && visible.length === 0 && (
           <p className="mt-4 text-sm text-slate-500">
             {tiles.length === 0 ? "Add a video or article you're into right now." : 'No tiles match this filter.'}
           </p>

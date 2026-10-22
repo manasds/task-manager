@@ -1,55 +1,11 @@
-export type CanvasKind = 'youtube' | 'blog' | 'article' | 'podcast' | 'other';
-export type CanvasStatus = 'active' | 'done';
+import type { CanvasKind } from '../types/canvas';
 
-export interface CanvasTile {
-  id: string;
-  url: string;
-  title: string;
-  kind: CanvasKind;
-  status: CanvasStatus;
-  note: string;
-  createdAt: string;
-}
-
-export const CANVAS_STORAGE_KEY = 'orbittask_canvas_v1';
-
-const KINDS: CanvasKind[] = ['youtube', 'blog', 'article', 'podcast', 'other'];
-
-function isTile(value: unknown): value is CanvasTile {
-  if (!value || typeof value !== 'object') return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.id === 'string' &&
-    typeof v.url === 'string' &&
-    typeof v.title === 'string' &&
-    typeof v.kind === 'string' &&
-    KINDS.includes(v.kind as CanvasKind) &&
-    (v.status === 'active' || v.status === 'done') &&
-    typeof v.note === 'string' &&
-    typeof v.createdAt === 'string'
-  );
-}
-
-export function loadCanvasTiles(): CanvasTile[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(CANVAS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isTile);
-  } catch {
-    return [];
-  }
-}
-
-export function saveCanvasTiles(tiles: CanvasTile[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(tiles));
-  } catch {
-    // storage unavailable or full; ignore
-  }
+/** Position for a tile between two neighbours; either may be missing at an end of the list. */
+export function positionBetween(before?: number, after?: number): number {
+  if (before !== undefined && after !== undefined) return (before + after) / 2;
+  if (before !== undefined) return before + 1;
+  if (after !== undefined) return after - 1;
+  return 0;
 }
 
 function parseUrl(url: string): URL | null {
