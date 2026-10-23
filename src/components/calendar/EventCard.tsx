@@ -15,10 +15,12 @@ export interface EventCardProps {
   column: number;
   columns: number;
   selected: boolean;
+  /** Focus timer is running on this activity. */
+  active: boolean;
   onSelect: (item: CalendarItem, anchor: HTMLElement) => void;
 }
 
-export function EventCard({ item, top, height, column, columns, selected, onSelect }: EventCardProps) {
+export function EventCard({ item, top, height, column, columns, selected, active, onSelect }: EventCardProps) {
   const theme = CALENDAR_TYPES[item.type];
   const logged = item.kind === 'logged';
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -29,7 +31,7 @@ export function EventCard({ item, top, height, column, columns, selected, onSele
 
   const compact = height < 44;
   const range = formatRange(item.start, item.end);
-  const label = `${item.title}, ${format(item.start, 'EEE d MMM')} ${range}, ${item.kind}`;
+  const label = `${item.title}, ${format(item.start, 'EEE d MMM')} ${range}, ${item.kind}${item.completed ? ', done' : ''}`;
 
   const cursor = isDragging ? 'cursor-grabbing' : logged ? 'cursor-pointer' : 'cursor-grab';
 
@@ -52,12 +54,17 @@ export function EventCard({ item, top, height, column, columns, selected, onSele
         width: `calc(${100 / columns}% - 8px)`,
         background: logged ? theme.fillSoft : theme.fill,
         border: logged ? `1.5px dashed ${theme.border}` : '1px solid transparent',
-        boxShadow: selected ? `inset 0 0 0 2px ${theme.text}8c` : undefined,
+        boxShadow: selected
+          ? `inset 0 0 0 2px ${theme.text}8c`
+          : active
+            ? 'inset 0 0 0 2px #6366f1'
+            : undefined,
+        opacity: item.completed && !isDragging ? 0.6 : undefined,
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
       }}
     >
       <span className="flex min-w-0 items-center gap-1 text-[13px] font-medium leading-tight" style={{ color: theme.text }}>
-        <span className="truncate">{item.title}</span>
+        <span className={`truncate ${item.completed ? 'line-through' : ''}`}>{item.title}</span>
         {logged && compact && <Clock className="h-3 w-3 shrink-0" aria-hidden />}
       </span>
       {!compact && (

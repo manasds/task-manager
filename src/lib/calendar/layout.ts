@@ -1,6 +1,8 @@
 import { differenceInMinutes, format } from 'date-fns';
 import type { CalendarItem, CalendarFilters } from './types';
-import { GRID_START_HOUR, HOUR_HEIGHT, MIN_CARD_HEIGHT } from './theme';
+import { GRID_END_HOUR, GRID_START_HOUR, HOUR_HEIGHT, MIN_CARD_HEIGHT } from './theme';
+
+const GRID_HEIGHT = (GRID_END_HOUR - GRID_START_HOUR) * HOUR_HEIGHT;
 
 export interface PositionedItem {
   item: CalendarItem;
@@ -47,10 +49,14 @@ export function layoutDay(items: CalendarItem[]): PositionedItem[] {
       laneEnds[lane] = item.end.getTime();
     }
     clusterEnd = Math.max(clusterEnd, item.end.getTime());
+    // Blocks outside 07:00–23:00 are pinned to the nearest edge so they stay visible.
+    const rawTop = topFor(item.start);
+    const rawBottom = rawTop + (differenceInMinutes(item.end, item.start) / 60) * HOUR_HEIGHT;
+    const top = Math.min(Math.max(0, rawTop), GRID_HEIGHT - MIN_CARD_HEIGHT);
     cluster.push({
       item,
-      top: topFor(item.start),
-      height: Math.max(MIN_CARD_HEIGHT, (differenceInMinutes(item.end, item.start) / 60) * HOUR_HEIGHT),
+      top,
+      height: Math.min(Math.max(MIN_CARD_HEIGHT, Math.min(rawBottom, GRID_HEIGHT) - top), GRID_HEIGHT - top),
       column: lane,
       columns: 1,
     });

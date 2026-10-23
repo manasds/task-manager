@@ -2,8 +2,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { format } from 'date-fns';
-import { AlignLeft, Clock, Flag, ListChecks, Pencil, Trash2, X } from 'lucide-react';
+import { differenceInMinutes, format } from 'date-fns';
+import { AlignLeft, Clock, Flag, ListChecks, Pencil, Play, Trash2, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { CALENDAR_TYPES, PRIORITY_LABELS } from '@/lib/calendar/theme';
 import { formatRange } from '@/lib/calendar/layout';
@@ -13,7 +13,16 @@ export interface EventPopoverProps {
   item: CalendarItem;
   /** Card or rail row it was opened from; position next to it. */
   anchor: HTMLElement;
+  /** This activity's focus timer is running. */
+  isFocusing: boolean;
+  /** Planned only on this day as an extra day. */
+  canRemoveFromDay: boolean;
   onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onStartFocus: () => void;
+  onUnschedule: () => void;
+  onRemoveFromDay: () => void;
 }
 
 const WIDTH = 320;
@@ -29,7 +38,18 @@ function Row({ icon: Icon, children }: { icon: LucideIcon; children: React.React
   );
 }
 
-export function EventPopover({ item, anchor, onClose }: EventPopoverProps) {
+export function EventPopover({
+  item,
+  anchor,
+  isFocusing,
+  canRemoveFromDay,
+  onClose,
+  onEdit,
+  onDelete,
+  onStartFocus,
+  onUnschedule,
+  onRemoveFromDay,
+}: EventPopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const theme = CALENDAR_TYPES[item.type];
@@ -77,7 +97,9 @@ export function EventPopover({ item, anchor, onClose }: EventPopoverProps) {
   const checklist = item.checklist;
   const pct = checklist && checklist.total > 0 ? Math.round((checklist.done / checklist.total) * 100) : 0;
   const iconButton =
-    'flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800';
+    'flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 outline-none hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:ring-neutral-400';
+  const footerButton = 'h-8 rounded-lg px-3 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-neutral-400';
+  const secondary = `${footerButton} border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50`;
 
   return createPortal(
     <div
@@ -94,12 +116,14 @@ export function EventPopover({ item, anchor, onClose }: EventPopoverProps) {
           {theme.label}
         </div>
         <div className="flex items-center gap-0.5">
-          <button type="button" aria-label="Edit" className={iconButton} onClick={onClose}>
+          <button type="button" aria-label="Edit activity" className={iconButton} onClick={onEdit}>
             <Pencil className="h-4 w-4" />
           </button>
-          <button type="button" aria-label="Delete" className={iconButton} onClick={onClose}>
-            <Trash2 className="h-4 w-4" />
-          </button>
+          {item.kind === 'planned' && (
+            <button type="button" aria-label="Delete activity" className={iconButton} onClick={onDelete}>
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
           <button type="button" aria-label="Close" className={iconButton} onClick={onClose}>
             <X className="h-4 w-4" />
           </button>
@@ -109,10 +133,10 @@ export function EventPopover({ item, anchor, onClose }: EventPopoverProps) {
       <ul className="mt-3 space-y-2.5 text-sm text-neutral-800">
         <Row icon={Clock}>
           {format(item.start, 'EEE, MMM d')} · {formatRange(item.start, item.end)}
+          {logged && ` · ${differenceInMinutes(item.end, item.start)} min`}
         </Row>
         <Row icon={Flag}>
-          {PRIORITY_LABELS[item.priority]}
-          {logged ? ' · Logged session' : ' · Planned'}
+          {`${PRIORITY_LABELS[item.priority]} · ${logged ? 'Logged session' : item.completed ? 'Done' : 'Planned'}`}
         </Row>
         {item.notes && (
           <Row icon={AlignLeft}>
@@ -130,6 +154,33 @@ export function EventPopover({ item, anchor, onClose }: EventPopoverProps) {
           </Row>
         )}
       </ul>
+      {!logged && (
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-neutral-100 pt-3">
+          {!item.completed &&
+            (isFocusing ? (
+              <button type="button" onClick={onStartFocus} className={`${footerButton} bg-indigo-50 text-indigo-700`}>
+                Focusing…
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onStartFocus}
+                className={`${footerButton} flex items-center gap-1.5 bg-neutral-900 text-white hover:bg-neutral-800`}
+              >
+                <Play className="h-3.5 w-3.5" aria-hidden />
+                Start focus
+              </button>
+            ))}
+          <button type="button" onClick={onUnschedule} title="Clear the time; it moves back to Unscheduled" className={secondary}>
+            Unschedule
+          </button>
+          {canRemoveFromDay && (
+            <button type="button" onClick={onRemoveFromDay} className={`${secondary} text-rose-600 hover:bg-rose-50`}>
+              Remove from day
+            </button>
+          )}
+        </div>
+      )}
     </div>,
     document.body,
   );

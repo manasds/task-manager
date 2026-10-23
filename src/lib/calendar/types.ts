@@ -1,11 +1,11 @@
 import type { ActivityCategory, ActivityPriority } from '@/types/activity';
 
-/** Same as an activity's category, so items map 1:1 onto real activities later. */
+/** Same as an activity's category. */
 export type CalendarType = ActivityCategory;
 
 export type CalendarPriority = ActivityPriority;
 
-/** Planned = put on the calendar ahead of time. Logged = a focus session that already happened. */
+/** Planned = an activity's scheduled block. Logged = one of its work sessions. */
 export type CalendarItemKind = 'planned' | 'logged';
 
 export type CalendarViewMode = 'day' | 'week';
@@ -15,25 +15,33 @@ export interface ChecklistProgress {
   total: number;
 }
 
+/** One block on the grid, derived from an activity. Never stored. */
 export interface CalendarItem {
+  /** `<activityId>@<day>` for planned blocks, `<sessionId>@<day>` for logged ones. */
   id: string;
+  activityId: string;
+  /** 'YYYY-MM-DD' of the column it is drawn in. */
+  day: string;
   title: string;
   type: CalendarType;
   priority: CalendarPriority;
   kind: CalendarItemKind;
   start: Date;
   end: Date;
+  completed: boolean;
   notes?: string;
   checklist?: ChecklistProgress;
 }
 
-/** Not on the grid yet. Dropping one onto a slot turns it into a planned CalendarItem. */
+/** An activity on the selected day with no time yet (the Planner's unscheduled queue). */
 export interface UnscheduledItem {
+  /** The activity id. */
   id: string;
   title: string;
   type: CalendarType;
   priority: CalendarPriority;
   durationMinutes: number;
+  completed: boolean;
   notes?: string;
   checklist?: ChecklistProgress;
 }

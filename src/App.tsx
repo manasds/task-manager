@@ -49,6 +49,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [modalDefaultStatus, setModalDefaultStatus] = useState<ActivityStatus>('backlog');
   const [modalDefaultTime, setModalDefaultTime] = useState<string | undefined>(undefined);
+  const [modalDefaultDate, setModalDefaultDate] = useState<string | undefined>(undefined);
   const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -164,10 +165,11 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     );
   };
 
-  const handleOpenNewTaskModal = (initialStatus: ActivityStatus = 'backlog', initialTime?: string) => {
+  const handleOpenNewTaskModal = (initialStatus: ActivityStatus = 'backlog', initialTime?: string, initialDate?: string) => {
     setEditingActivity(null);
     setModalDefaultStatus(initialStatus);
     setModalDefaultTime(initialTime);
+    setModalDefaultDate(initialDate);
     setIsModalOpen(true);
   };
 
@@ -395,7 +397,20 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
         )}
 
         {activeTab === 'calendar' && (
-          <CalendarView />
+          <CalendarView
+            activities={activities}
+            selectedDate={dayViewDate}
+            onSelectDate={setSelectedDate}
+            activeTimerTaskId={activeTimerTask?.id}
+            onUpdateActivity={handleUpdateActivity}
+            onDeleteActivity={handleDeleteActivity}
+            onEditActivity={handleEditActivity}
+            onStartFocus={handleStartFocus}
+            onCreateActivity={(date, time) =>
+              handleOpenNewTaskModal(date === getTodayDateString() ? 'in_progress' : 'backlog', time, date)
+            }
+            onToast={showToast}
+          />
         )}
 
         {activeTab === 'analytics' && (
@@ -414,6 +429,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
           initialActivity={editingActivity}
           defaultStatus={modalDefaultStatus}
           defaultTime={modalDefaultTime}
+          defaultDate={modalDefaultDate}
           goals={goalNames(activities)}
           defaultGoal={goal === 'all' ? undefined : goal}
           doingTasks={activities.filter((a) => a.status === 'in_progress' && !a.parked)}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -8,6 +8,7 @@ import {
   rectIntersection,
   useSensor,
   useSensors,
+  type Announcements,
   type CollisionDetection,
   type DragEndEvent,
   type DragMoveEvent,
@@ -27,6 +28,7 @@ import {
   startOfWeek,
 } from 'date-fns';
 import { X } from 'lucide-react';
+import type { Activity } from '@/types/activity';
 import type {
   CalendarFilters,
   CalendarItem,
@@ -34,14 +36,26 @@ import type {
   CalendarType,
   CalendarViewMode,
   DragPayload,
-  UnscheduledItem,
 } from '@/lib/calendar/types';
-import { GRID_END_HOUR, GRID_START_HOUR, HOUR_HEIGHT, SNAP_MINUTES } from '@/lib/calendar/theme';
-import { createMockItems, createMockUnscheduled, WEEK_OPTIONS } from '@/lib/calendar/mock';
+import { GRID_END_HOUR, GRID_START_HOUR, HOUR_HEIGHT, SNAP_MINUTES, WEEK_OPTIONS } from '@/lib/calendar/theme';
 import { formatRange, passesFilters } from '@/lib/calendar/layout';
+import {
+  addableTo,
+  addToDay,
+  calendarItems,
+  canRemoveFromDay,
+  moveToSlot,
+  removeFromDay,
+  toTimeString,
+  unschedule,
+  unscheduledOn,
+} from '@/lib/calendar/activities';
+import { formatMinutes, localDateString, parseLocalDate, taskStatsForDate } from '@/utils/workSessions';
+import { soundManager } from '@/utils/audio';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarSidebarFilters } from './CalendarSidebarFilters';
 import { EventPopover } from './EventPopover';
+import { LoggedSummary } from './LoggedSummary';
 import { MiniMonth } from './MiniMonth';
 import { UnscheduledTray, TrayChipPreview, TRAY_DROP_ID } from './UnscheduledTray';
 import { UpcomingRail } from './UpcomingRail';
@@ -63,6 +77,28 @@ const collisionDetection: CollisionDetection = (args) => {
   const tray = hits.find((hit) => hit.id === TRAY_DROP_ID);
   if (tray) return [tray];
   return hits.length > 0 ? hits : rectIntersection(args);
+};
+
+type DragTarget = { id: string | number; data: { current?: unknown } } | null;
+
+function dragTitle(data: { current?: unknown }): string {
+  return (data.current as DragPayload | undefined)?.item.title ?? 'Activity';
+}
+
+function targetLabel(over: DragTarget): string {
+  if (!over) return 'nowhere';
+  if (over.id === TRAY_DROP_ID) return 'Unscheduled';
+  const day = (over.data.current as DayDropData | undefined)?.day;
+  return day ? format(day, 'EEEE, MMMM d') : 'the calendar';
+}
+
+/** Screen reader messages with titles and days instead of internal ids. */
+const announcements: Announcements = {
+  onDragStart: ({ active }) => `Picked up ${dragTitle(active.data)}.`,
+  onDragOver: ({ active, over }) => `${dragTitle(active.data)} is over ${targetLabel(over)}.`,
+  onDragEnd: ({ active, over }) =>
+    over ? `${dragTitle(active.data)} dropped on ${targetLabel(over)}.` : `${dragTitle(active.data)} was not moved.`,
+  onDragCancel: ({ active }) => `Moving ${dragTitle(active.data)} was cancelled.`,
 };
 
 function useIsMobile(): boolean {
@@ -99,15 +135,35 @@ function rangeSubtitle(start: Date, end: Date): string {
   return `Week ${getISOWeek(start)} · ${format(start, 'MMM d')} – ${tail}`;
 }
 
-/** Snapped start for a drag, from the dragged node's top edge relative to the day column. */
-function dropStart(event: DragMoveEvent | DragEndEvent, durationMinutes: number): { day: Date; start: Date } | null {
+function clientY(event: Event | null): number | null {
+  if (!event) return null;
+  if ('touches' in event) {
+    const touch = (event as TouchEvent).touches[0] ?? (event as TouchEvent).changedTouches[0];
+    return touch ? touch.clientY : null;
+  }
+  return 'clientY' in event ? (event as MouseEvent).clientY : null;
+}
+
+/**
+ * Snapped start for a drag: where the dragged item's top edge sits in the hovered day column.
+ * Uses the live pointer and the column's current position, so it stays right while the grid
+ * auto-scrolls during the drag.
+ */
+function dropStart(
+  event: DragMoveEvent | DragEndEvent,
+  pointerY: number | null,
+  durationMinutes: number,
+): { day: Date; start: Date } | null {
   const { active, over } = event;
-  const rect = active.rect.current.translated;
   const data = over?.data.current as DayDropData | undefined;
-  if (!over || !rect || !data) return null;
-  const raw = ((rect.top - over.rect.top) / HOUR_HEIGHT) * 60;
+  const startY = clientY(event.activatorEvent);
+  const initial = active.rect.current.initial;
+  const column = over ? document.querySelector(`[data-drop-id="${String(over.id)}"]`) : null;
+  if (!data?.day || pointerY === null || startY === null || !initial || !column) return null;
+  const itemTop = pointerY - (startY - initial.top);
+  const raw = ((itemTop - column.getBoundingClientRect().top) / HOUR_HEIGHT) * 60;
   const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
-  const minutes = Math.min(Math.max(0, snapped), GRID_MINUTES - durationMinutes);
+  const minutes = Math.min(Math.max(0, snapped), GRID_MINUTES - Math.min(durationMinutes, GRID_MINUTES));
   return { day: data.day, start: addMinutes(startOfDay(data.day), GRID_START_HOUR * 60 + minutes) };
 }
 
@@ -117,18 +173,42 @@ function payloadDuration(payload: DragPayload): number {
     : payload.item.durationMinutes;
 }
 
+export interface CalendarViewProps {
+  activities: Activity[];
+  /** 'YYYY-MM-DD', shared with the Planner and Activity tabs. */
+  selectedDate: string;
+  onSelectDate: (date: string) => void;
+  activeTimerTaskId?: string;
+  onUpdateActivity: (activity: Activity) => void;
+  onDeleteActivity: (activityId: string) => void;
+  onEditActivity: (activity: Activity) => void;
+  onStartFocus: (activity: Activity) => void;
+  /** New activity on `date` ('YYYY-MM-DD') at `time` ('HH:MM'). */
+  onCreateActivity: (date: string, time: string) => void;
+  onToast: (message: string) => void;
+}
 
-/** UI-only preview: everything comes from the mock fixture and resets on refresh. */
-export function CalendarView() {
+/** Planner and Activity in one week view: planned blocks, logged sessions and the unscheduled queue. */
+export function CalendarView({
+  activities,
+  selectedDate,
+  onSelectDate,
+  activeTimerTaskId,
+  onUpdateActivity,
+  onDeleteActivity,
+  onEditActivity,
+  onStartFocus,
+  onCreateActivity,
+  onToast,
+}: CalendarViewProps) {
   const now = useNow();
   const isMobile = useIsMobile();
-  const [anchor, setAnchor] = useState(() => new Date());
+  const today = localDateString(now);
+  const anchor = parseLocalDate(selectedDate);
   const [view, setView] = useState<CalendarViewMode>('week');
-  const [miniMonth, setMiniMonth] = useState(() => startOfMonth(new Date()));
+  const [miniMonth, setMiniMonth] = useState(() => startOfMonth(parseLocalDate(selectedDate)));
   const [filters, setFilters] = useState<CalendarFilters>(ALL_FILTERS);
-  const [scheduled, setScheduled] = useState<CalendarItem[]>(() => createMockItems());
-  const [unscheduled, setUnscheduled] = useState<UnscheduledItem[]>(() => createMockUnscheduled());
-  const [selected, setSelected] = useState<{ item: CalendarItem; anchor: HTMLElement } | null>(null);
+  const [selected, setSelected] = useState<{ id: string; anchor: HTMLElement } | null>(null);
   const [trayOpen, setTrayOpen] = useState(true);
   // Separate flags so the desktop sidebar stays open while the phone drawer starts closed.
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
@@ -136,10 +216,26 @@ export function CalendarView() {
   const [railSheetOpen, setRailSheetOpen] = useState(false);
   const [dragging, setDragging] = useState<DragPayload | null>(null);
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null);
+  // Browsers fire a click on the card right after a drag ends; that must not open the popover.
+  const justDraggedRef = useRef(false);
+  // Latest pointer position during a drag (dnd-kit's own rects lag behind auto-scroll).
+  const pointerYRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const track = (event: MouseEvent | TouchEvent) => {
+      pointerYRef.current = clientY(event);
+    };
+    window.addEventListener('mousemove', track, { passive: true });
+    window.addEventListener('touchmove', track, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', track);
+      window.removeEventListener('touchmove', track);
+    };
+  }, [dragging]);
 
   // Phones only have room for one day.
   const effectiveView: CalendarViewMode = isMobile ? 'day' : view;
-
   const sidebarOpen = isMobile ? mobileSidebarOpen : desktopSidebarOpen;
   const setSidebarOpen = isMobile ? setMobileSidebarOpen : setDesktopSidebarOpen;
 
@@ -148,35 +244,66 @@ export function CalendarView() {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
   );
 
-  const visibleItems = useMemo(() => scheduled.filter((item) => passesFilters(item, filters)), [scheduled, filters]);
-  const visibleUnscheduled = useMemo(
-    () => unscheduled.filter((item) => passesFilters(item, filters)),
-    [unscheduled, filters],
-  );
-
   const weekStart = startOfWeek(anchor, WEEK_OPTIONS);
-  const days =
-    effectiveView === 'day' ? [startOfDay(anchor)] : Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const days = useMemo(() => {
+    const day = parseLocalDate(selectedDate);
+    if (effectiveView === 'day') return [day];
+    const monday = startOfWeek(day, WEEK_OPTIONS);
+    return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  }, [effectiveView, selectedDate]);
+  const dayKeys = useMemo(() => days.map(localDateString), [days]);
 
+  const visibleItems = useMemo(
+    () => calendarItems(activities, dayKeys, today).filter((item) => passesFilters(item, filters)),
+    [activities, dayKeys, today, filters],
+  );
+  const upcomingItems = useMemo(() => {
+    const next7 = Array.from({ length: 7 }, (_, i) => localDateString(addDays(parseLocalDate(today), i)));
+    return calendarItems(activities, next7, today).filter(
+      (item) => item.kind === 'planned' && passesFilters(item, filters),
+    );
+  }, [activities, today, filters]);
+  const trayItems = useMemo(
+    () => unscheduledOn(activities, selectedDate).filter((item) => passesFilters(item, filters)),
+    [activities, selectedDate, filters],
+  );
+  const addable = useMemo(
+    () => addableTo(activities, selectedDate).map((a) => ({ id: a.id, title: a.title })),
+    [activities, selectedDate],
+  );
+  const loggedStats = useMemo(
+    () =>
+      taskStatsForDate(activities, selectedDate).filter(
+        (s) => filters.types[s.activity.category] && filters.priorities[s.activity.priority],
+      ),
+    [activities, selectedDate, filters],
+  );
+  const loggedTotal = loggedStats.reduce((sum, s) => sum + s.totalMinutes, 0);
+  const plannedTotal = visibleItems
+    .filter((item) => item.kind === 'planned' && item.day === selectedDate)
+    .reduce((sum, item) => sum + differenceInMinutes(item.end, item.start), 0);
+
+  const selectedDayLabel = selectedDate === today ? 'Today' : format(anchor, 'EEE d');
   const title = format(anchor, 'MMMM yyyy');
+  const dayStats = `${selectedDayLabel}: ${formatMinutes(plannedTotal)} planned · ${formatMinutes(loggedTotal)} logged`;
   const subtitle =
     effectiveView === 'week'
-      ? rangeSubtitle(weekStart, endOfWeek(anchor, WEEK_OPTIONS))
-      : `${format(anchor, 'EEEE, MMM d')} · Week ${getISOWeek(anchor)}`;
+      ? `${rangeSubtitle(weekStart, endOfWeek(anchor, WEEK_OPTIONS))} · ${dayStats}`
+      : `${format(anchor, 'EEEE, MMM d')} · ${formatMinutes(plannedTotal)} planned · ${formatMinutes(loggedTotal)} logged`;
+
+  const findActivity = (id: string) => activities.find((a) => a.id === id);
 
   const goTo = (date: Date) => {
-    setAnchor(date);
+    onSelectDate(localDateString(date));
     setMiniMonth(startOfMonth(date));
     setSelected(null);
   };
 
-  const step = (direction: 1 | -1) => {
-    if (effectiveView === 'day') goTo(addDays(anchor, direction));
-    else goTo(addWeeks(anchor, direction));
-  };
+  const step = (direction: 1 | -1) => goTo(effectiveView === 'day' ? addDays(anchor, direction) : addWeeks(anchor, direction));
 
   const selectItem = (item: CalendarItem, el: HTMLElement) => {
-    setSelected((current) => (current?.item.id === item.id ? null : { item, anchor: el }));
+    if (justDraggedRef.current) return;
+    setSelected((current) => (current?.id === item.id ? null : { id: item.id, anchor: el }));
   };
 
   const toggleType = (type: CalendarType) =>
@@ -185,8 +312,10 @@ export function CalendarView() {
     setFilters((f) => ({ ...f, priorities: { ...f.priorities, [priority]: !f.priorities[priority] } }));
 
   const handleDragStart = (event: DragStartEvent) => {
+    pointerYRef.current = clientY(event.activatorEvent);
     setDragging((event.active.data.current as DragPayload | undefined) ?? null);
     setSelected(null);
+    soundManager.playDragStart();
   };
 
   const handleDragMove = (event: DragMoveEvent) => {
@@ -195,67 +324,65 @@ export function CalendarView() {
       return;
     }
     const minutes = payloadDuration(dragging);
-    const target = dropStart(event, minutes);
-    if (!target) return setDropPreview(null);
-    const end = addMinutes(target.start, minutes);
+    const target = dropStart(event, pointerYRef.current, minutes);
+    if (!target) {
+      setDropPreview(null);
+      return;
+    }
     const top = ((target.start.getHours() - GRID_START_HOUR) * 60 + target.start.getMinutes()) * (HOUR_HEIGHT / 60);
-    setDropPreview((current) => {
-      const next: DropPreview = {
-        dropId: String(event.over?.id),
-        top,
-        height: Math.max(24, (minutes / 60) * HOUR_HEIGHT),
-        label: formatRange(target.start, end),
-      };
-      return current && current.dropId === next.dropId && current.top === next.top ? current : next;
-    });
+    const next: DropPreview = {
+      dropId: String(event.over.id),
+      top,
+      height: Math.max(24, (minutes / 60) * HOUR_HEIGHT),
+      label: formatRange(target.start, addMinutes(target.start, minutes)),
+    };
+    setDropPreview((current) => (current && current.dropId === next.dropId && current.top === next.top ? current : next));
+  };
+
+  const finishDrag = () => {
+    setDragging(null);
+    setDropPreview(null);
+    justDraggedRef.current = true;
+    setTimeout(() => {
+      justDraggedRef.current = false;
+    }, 0);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const payload = dragging;
-    setDragging(null);
-    setDropPreview(null);
+    finishDrag();
     if (!payload) return;
+    const activityId = payload.source === 'grid' ? payload.item.activityId : payload.item.id;
+    const activity = findActivity(activityId);
+    if (!activity) return;
+
     if (event.over?.id === TRAY_DROP_ID) {
       if (payload.source === 'grid') {
-        const { item } = payload;
-        setScheduled((items) => items.filter((i) => i.id !== item.id));
-        setUnscheduled((items) => [
-          ...items,
-          {
-            id: item.id,
-            title: item.title,
-            type: item.type,
-            priority: item.priority,
-            durationMinutes: differenceInMinutes(item.end, item.start),
-            notes: item.notes,
-            checklist: item.checklist,
-          },
-        ]);
+        onUpdateActivity(unschedule(activity));
+        soundManager.playDrop();
       }
       return;
     }
-    const minutes = payloadDuration(payload);
-    const target = dropStart(event, minutes);
+
+    const target = dropStart(event, pointerYRef.current, payloadDuration(payload));
     if (!target) return;
-    const end = addMinutes(target.start, minutes);
-
-    if (payload.source === 'grid') {
-      setScheduled((items) =>
-        items.map((item) => (item.id === payload.item.id ? { ...item, start: target.start, end } : item)),
-      );
-    } else {
-      const { durationMinutes: _duration, ...rest } = payload.item;
-      setUnscheduled((items) => items.filter((item) => item.id !== payload.item.id));
-      setScheduled((items) => [...items, { ...rest, kind: 'planned', start: target.start, end }]);
-    }
+    const sourceDay = payload.source === 'grid' ? payload.item.day : selectedDate;
+    const result = moveToSlot(
+      activity,
+      sourceDay,
+      localDateString(target.day),
+      toTimeString(target.start),
+      today,
+    );
+    onUpdateActivity(result.activity);
+    soundManager.playDrop();
+    if (result.note) onToast(result.note);
   };
 
-  const handleDragCancel = () => {
-    setDragging(null);
-    setDropPreview(null);
-  };
-
-  const selectedVisible = selected && visibleItems.some((item) => item.id === selected.item.id) ? selected : null;
+  // Re-resolve the open item each render so the popover follows edits and closes if it disappears.
+  const selectedItem = selected ? visibleItems.find((item) => item.id === selected.id) : undefined;
+  const selectedActivity = selectedItem ? findActivity(selectedItem.activityId) : undefined;
+  const closePopover = () => setSelected(null);
 
   const rail = (
     <>
@@ -270,20 +397,31 @@ export function CalendarView() {
         }}
       />
       <div className="my-5 border-t border-neutral-200" />
-      <UpcomingRail items={visibleItems} today={now} now={now} onSelectItem={selectItem} />
+      <LoggedSummary
+        dayLabel={selectedDayLabel}
+        stats={loggedStats}
+        totalMinutes={loggedTotal}
+        onOpen={(activity) => {
+          setRailSheetOpen(false);
+          onEditActivity(activity);
+        }}
+      />
+      <div className="my-5 border-t border-neutral-200" />
+      <UpcomingRail items={upcomingItems} today={now} now={now} onSelectItem={selectItem} />
     </>
   );
 
   return (
     <div className="mx-auto max-w-[1600px] md:px-6 md:pt-5">
-      <div className="relative flex h-[calc(100dvh-16.5rem)] min-h-[520px] flex-col overflow-hidden border-y border-neutral-200 bg-[#f7f7f6] md:h-[calc(100dvh-9.5rem)] md:min-h-[640px] md:rounded-2xl md:border md:shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="relative flex h-[calc(100dvh-17.5rem)] min-h-[520px] flex-col overflow-hidden border-y border-neutral-200 bg-[#f7f7f6] md:h-[calc(100dvh-9.5rem)] md:min-h-[640px] md:rounded-2xl md:border md:shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}
+          accessibility={{ announcements }}
           onDragStart={handleDragStart}
           onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
+          onDragCancel={finishDrag}
         >
           <div className="relative flex min-h-0 flex-1">
             {sidebarOpen && (
@@ -291,12 +429,12 @@ export function CalendarView() {
                 {isMobile && (
                   <button
                     type="button"
-                    aria-label="Close sidebar"
+                    aria-label="Close filters"
                     onClick={() => setSidebarOpen(false)}
                     className="absolute inset-0 z-30 bg-neutral-900/20"
                   />
                 )}
-                <aside className="absolute inset-y-0 left-0 z-40 w-[220px] shrink-0 overflow-y-auto border-r border-neutral-200 bg-[#f7f7f6] md:static md:z-auto">
+                <aside className="absolute inset-y-0 left-0 z-40 w-[200px] shrink-0 overflow-y-auto border-r border-neutral-200 bg-[#f7f7f6] md:static md:z-auto">
                   <CalendarSidebarFilters filters={filters} onToggleType={toggleType} onTogglePriority={togglePriority} />
                 </aside>
               </>
@@ -319,14 +457,36 @@ export function CalendarView() {
                 onOpenRail={() => setRailSheetOpen(true)}
               />
               <WeekGrid
-                  days={days}
-                  items={visibleItems}
-                  now={now}
-                  selectedId={selectedVisible?.item.id ?? null}
-                  dropPreview={dropPreview}
-                  onSelectItem={selectItem}
-                />
-              <UnscheduledTray items={visibleUnscheduled} open={trayOpen} onToggle={() => setTrayOpen((o) => !o)} />
+                days={days}
+                items={visibleItems}
+                now={now}
+                selectedId={selectedItem?.id ?? null}
+                selectedDay={anchor}
+                activeActivityId={activeTimerTaskId}
+                dropPreview={dropPreview}
+                onSelectItem={selectItem}
+                onSelectDay={(day) => {
+                  onSelectDate(localDateString(day));
+                  setSelected(null);
+                }}
+                onCreateAt={(day, time) => onCreateActivity(localDateString(day), time)}
+              />
+              <UnscheduledTray
+                items={trayItems}
+                open={trayOpen}
+                onToggle={() => setTrayOpen((o) => !o)}
+                dayLabel={selectedDayLabel}
+                addable={addable}
+                onAddToDay={(id) => {
+                  const activity = findActivity(id);
+                  if (activity) onUpdateActivity(addToDay(activity, selectedDate));
+                }}
+                onOpenItem={(id) => {
+                  if (justDraggedRef.current) return;
+                  const activity = findActivity(id);
+                  if (activity) onEditActivity(activity);
+                }}
+              />
             </section>
 
             <aside className="hidden w-[284px] shrink-0 overflow-y-auto border-l border-neutral-200 bg-[#f7f7f6] px-5 py-4 lg:block">
@@ -340,7 +500,7 @@ export function CalendarView() {
         </DndContext>
 
         {railSheetOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Month and upcoming">
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Month, logged and upcoming">
             <button
               type="button"
               aria-label="Close"
@@ -365,8 +525,34 @@ export function CalendarView() {
         )}
       </div>
 
-      {selectedVisible && (
-        <EventPopover item={selectedVisible.item} anchor={selectedVisible.anchor} onClose={() => setSelected(null)} />
+      {selected && selectedItem && selectedActivity && (
+        <EventPopover
+          item={selectedItem}
+          anchor={selected.anchor}
+          isFocusing={activeTimerTaskId === selectedActivity.id}
+          canRemoveFromDay={canRemoveFromDay(selectedActivity, selectedItem.day, today)}
+          onClose={closePopover}
+          onEdit={() => {
+            closePopover();
+            onEditActivity(selectedActivity);
+          }}
+          onDelete={() => {
+            closePopover();
+            onDeleteActivity(selectedActivity.id);
+          }}
+          onStartFocus={() => {
+            closePopover();
+            onStartFocus(selectedActivity);
+          }}
+          onUnschedule={() => {
+            closePopover();
+            onUpdateActivity(unschedule(selectedActivity));
+          }}
+          onRemoveFromDay={() => {
+            closePopover();
+            onUpdateActivity(removeFromDay(selectedActivity, selectedItem.day));
+          }}
+        />
       )}
     </div>
   );

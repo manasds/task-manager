@@ -1,6 +1,6 @@
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, startOfMonth, startOfWeek } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { WEEK_OPTIONS } from '@/lib/calendar/mock';
+import { WEEK_OPTIONS } from '@/lib/calendar/theme';
 
 export interface MiniMonthProps {
   /** Any date in the visible week/day; its Monday-start week row gets a light highlight band. */

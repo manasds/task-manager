@@ -57,3 +57,6 @@ export const GRID_END_HOUR = TIMELINE_END_MINUTES / 60;
 export const HOUR_HEIGHT = 64;
 export const MIN_CARD_HEIGHT = 24;
 export const SNAP_MINUTES = 30;
+
+/** Monday-start weeks for every date-fns week call in the calendar. */
+export const WEEK_OPTIONS = { weekStartsOn: 1 } as const;

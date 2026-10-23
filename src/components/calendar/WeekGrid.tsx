@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { format, isSameDay, isWeekend } from 'date-fns';
 import type { CalendarItem } from '@/lib/calendar/types';
-import { GRID_END_HOUR, GRID_START_HOUR, HOUR_HEIGHT } from '@/lib/calendar/theme';
+import { GRID_END_HOUR, GRID_START_HOUR, HOUR_HEIGHT, SNAP_MINUTES } from '@/lib/calendar/theme';
 import { layoutDay, timezoneLabel, topFor } from '@/lib/calendar/layout';
 import { EventCard } from './EventCard';
 
@@ -31,8 +31,15 @@ export interface WeekGridProps {
   items: CalendarItem[];
   now: Date;
   selectedId: string | null;
+  /** The day the tray and logged summary follow. */
+  selectedDay: Date;
+  /** Activity with a running focus timer. */
+  activeActivityId?: string;
   dropPreview: DropPreview | null;
   onSelectItem: (item: CalendarItem, anchor: HTMLElement) => void;
+  onSelectDay: (day: Date) => void;
+  /** Click on an empty slot: new activity at `time` ('HH:MM'). */
+  onCreateAt: (day: Date, time: string) => void;
 }
 
 function DayColumn({
@@ -40,25 +47,40 @@ function DayColumn({
   items,
   now,
   selectedId,
+  activeActivityId,
   dropPreview,
   onSelectItem,
+  onCreateAt,
 }: {
   day: Date;
   items: CalendarItem[];
   now: Date;
   selectedId: string | null;
+  activeActivityId?: string;
   dropPreview: DropPreview | null;
   onSelectItem: WeekGridProps['onSelectItem'];
+  onCreateAt: WeekGridProps['onCreateAt'];
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDropId(day), data: { day } satisfies DayDropData });
   const isToday = isSameDay(day, now);
   const nowTop = topFor(now);
   const showNow = isToday && nowTop >= 0 && nowTop <= GRID_HEIGHT;
 
+  const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    // Only clicks on the empty column, not on cards or overlays.
+    if (event.target !== event.currentTarget) return;
+    const minutes = Math.floor(((event.nativeEvent.offsetY / HOUR_HEIGHT) * 60) / SNAP_MINUTES) * SNAP_MINUTES;
+    const total = GRID_START_HOUR * 60 + Math.max(0, minutes);
+    onCreateAt(day, `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`);
+  };
+
   return (
     <div
       ref={setNodeRef}
-      className={`relative border-l border-neutral-200 transition-colors ${
+      data-drop-id={dayDropId(day)}
+      onClick={handleClick}
+      title="Click an empty slot to add an activity"
+      className={`relative cursor-cell border-l border-neutral-200 transition-colors ${
         isOver ? 'bg-neutral-100/80' : isWeekend(day) ? 'bg-neutral-50/80' : ''
       }`}
       style={{ height: GRID_HEIGHT }}
@@ -72,6 +94,7 @@ function DayColumn({
           column={positioned.column}
           columns={positioned.columns}
           selected={positioned.item.id === selectedId}
+          active={positioned.item.activityId === activeActivityId}
           onSelect={onSelectItem}
         />
       ))}
@@ -93,7 +116,18 @@ function DayColumn({
   );
 }
 
-export function WeekGrid({ days, items, now, selectedId, dropPreview, onSelectItem }: WeekGridProps) {
+export function WeekGrid({
+  days,
+  items,
+  now,
+  selectedId,
+  selectedDay,
+  activeActivityId,
+  dropPreview,
+  onSelectItem,
+  onSelectDay,
+  onCreateAt,
+}: WeekGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const columns = `${GUTTER_WIDTH}px repeat(${days.length}, minmax(0, 1fr))`;
   const showsToday = days.some((day) => isSameDay(day, now));
@@ -121,10 +155,17 @@ export function WeekGrid({ days, items, now, selectedId, dropPreview, onSelectIt
           <div className="flex h-12 items-center px-3 text-[12px] text-neutral-500">{timezoneLabel(now)}</div>
           {days.map((day) => {
             const isToday = isSameDay(day, now);
+            const isSelected = days.length > 1 && isSameDay(day, selectedDay);
             return (
-              <div
+              <button
                 key={day.toISOString()}
-                className={`flex h-12 items-center gap-2 px-3 text-[13px] ${isWeekend(day) ? 'bg-neutral-50/80' : ''}`}
+                type="button"
+                onClick={() => onSelectDay(day)}
+                aria-pressed={isSelected}
+                aria-label={format(day, 'EEEE, MMMM d')}
+                className={`flex h-12 items-center gap-2 px-3 text-left text-[13px] outline-none hover:bg-neutral-100/70 focus-visible:bg-neutral-100 ${
+                  isSelected ? 'shadow-[inset_0_-2px_0_#171717]' : ''
+                } ${isWeekend(day) ? 'bg-neutral-50/80' : ''}`}
               >
                 <span className={isToday ? 'font-medium text-neutral-900' : 'text-neutral-500'}>{format(day, 'EEE')}</span>
                 {isToday ? (
@@ -134,7 +175,7 @@ export function WeekGrid({ days, items, now, selectedId, dropPreview, onSelectIt
                 ) : (
                   <span className="font-medium text-neutral-900">{format(day, 'd')}</span>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -182,9 +223,11 @@ export function WeekGrid({ days, items, now, selectedId, dropPreview, onSelectIt
             <DayColumn
               key={day.toISOString()}
               day={day}
-              items={items.filter((item) => isSameDay(item.start, day))}
+              items={items.filter((item) => item.day === format(day, 'yyyy-MM-dd'))}
               now={now}
               selectedId={selectedId}
+              activeActivityId={activeActivityId}
+              onCreateAt={onCreateAt}
               dropPreview={dropPreview?.dropId === dayDropId(day) ? dropPreview : null}
               onSelectItem={onSelectItem}
             />

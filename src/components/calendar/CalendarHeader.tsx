@@ -48,10 +48,7 @@ export function CalendarHeader({
         <PanelLeft className="size-4" />
       </button>
       <div className="min-w-0 flex-1">
-        <h2 className="flex items-center gap-2 truncate text-[17px] font-semibold leading-tight text-neutral-900">
-          {title}
-          <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-500">Preview</span>
-        </h2>
+        <h2 className="truncate text-[17px] font-semibold leading-tight text-neutral-900">{title}</h2>
         <p className="mt-0.5 truncate text-[13px] text-neutral-500">{subtitle}</p>
       </div>
 
