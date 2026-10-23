@@ -395,11 +395,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
         )}
 
         {activeTab === 'calendar' && (
-          <CalendarView
-            userName={persistence.user?.name || 'You'}
-            userImage={persistence.user?.image ?? undefined}
-            onToast={showToast}
-          />
+          <CalendarView />
         )}
 
         {activeTab === 'analytics' && (

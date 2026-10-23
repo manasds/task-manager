@@ -16,7 +16,6 @@ import {
 import {
   addDays,
   addMinutes,
-  addMonths,
   addWeeks,
   differenceInMinutes,
   endOfWeek,
@@ -27,7 +26,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns';
-import { Check, CalendarRange, PanelLeft, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type {
   CalendarFilters,
   CalendarItem,
@@ -41,16 +40,15 @@ import { GRID_END_HOUR, GRID_START_HOUR, HOUR_HEIGHT, SNAP_MINUTES } from '@/lib
 import { createMockItems, createMockUnscheduled, WEEK_OPTIONS } from '@/lib/calendar/mock';
 import { formatRange, passesFilters } from '@/lib/calendar/layout';
 import { CalendarHeader } from './CalendarHeader';
-import { CalendarSidebarFilters, type SidebarSection } from './CalendarSidebarFilters';
+import { CalendarSidebarFilters } from './CalendarSidebarFilters';
 import { EventPopover } from './EventPopover';
 import { MiniMonth } from './MiniMonth';
-import { MonthGrid } from './MonthGrid';
 import { UnscheduledTray, TrayChipPreview, TRAY_DROP_ID } from './UnscheduledTray';
 import { UpcomingRail } from './UpcomingRail';
 import { WeekGrid, type DayDropData, type DropPreview } from './WeekGrid';
 
 const ALL_FILTERS: CalendarFilters = {
-  types: { build: true, learn: true, focus: true, personal: true, social: true, reminder: true },
+  types: { build: true, learn: true },
   priorities: { urgent: true, high: true, medium: true, low: true },
 };
 
@@ -119,21 +117,15 @@ function payloadDuration(payload: DragPayload): number {
     : payload.item.durationMinutes;
 }
 
-export interface CalendarViewProps {
-  userName: string;
-  userImage?: string;
-  onToast: (message: string) => void;
-}
 
 /** UI-only preview: everything comes from the mock fixture and resets on refresh. */
-export function CalendarView({ userName, userImage, onToast }: CalendarViewProps) {
+export function CalendarView() {
   const now = useNow();
   const isMobile = useIsMobile();
   const [anchor, setAnchor] = useState(() => new Date());
   const [view, setView] = useState<CalendarViewMode>('week');
   const [miniMonth, setMiniMonth] = useState(() => startOfMonth(new Date()));
   const [filters, setFilters] = useState<CalendarFilters>(ALL_FILTERS);
-  const [section, setSection] = useState<SidebarSection>('calendar');
   const [scheduled, setScheduled] = useState<CalendarItem[]>(() => createMockItems());
   const [unscheduled, setUnscheduled] = useState<UnscheduledItem[]>(() => createMockUnscheduled());
   const [selected, setSelected] = useState<{ item: CalendarItem; anchor: HTMLElement } | null>(null);
@@ -161,10 +153,6 @@ export function CalendarView({ userName, userImage, onToast }: CalendarViewProps
     () => unscheduled.filter((item) => passesFilters(item, filters)),
     [unscheduled, filters],
   );
-  const upcomingCount = useMemo(() => {
-    const horizon = addDays(startOfDay(now), 7);
-    return visibleItems.filter((item) => item.end > now && item.start < horizon).length;
-  }, [visibleItems, now]);
 
   const weekStart = startOfWeek(anchor, WEEK_OPTIONS);
   const days =
@@ -174,9 +162,7 @@ export function CalendarView({ userName, userImage, onToast }: CalendarViewProps
   const subtitle =
     effectiveView === 'week'
       ? rangeSubtitle(weekStart, endOfWeek(anchor, WEEK_OPTIONS))
-      : effectiveView === 'day'
-        ? `${format(anchor, 'EEEE, MMM d')} · Week ${getISOWeek(anchor)}`
-        : `${visibleItems.filter((item) => isSameMonth(item.start, anchor)).length} activities this month`;
+      : `${format(anchor, 'EEEE, MMM d')} · Week ${getISOWeek(anchor)}`;
 
   const goTo = (date: Date) => {
     setAnchor(date);
@@ -186,27 +172,11 @@ export function CalendarView({ userName, userImage, onToast }: CalendarViewProps
 
   const step = (direction: 1 | -1) => {
     if (effectiveView === 'day') goTo(addDays(anchor, direction));
-    else if (effectiveView === 'week') goTo(addWeeks(anchor, direction));
-    else goTo(addMonths(anchor, direction));
+    else goTo(addWeeks(anchor, direction));
   };
 
   const selectItem = (item: CalendarItem, el: HTMLElement) => {
     setSelected((current) => (current?.item.id === item.id ? null : { item, anchor: el }));
-  };
-
-  const selectSection = (next: SidebarSection) => {
-    setSection(next);
-    if (next === 'calendar') setView('week');
-    if (next === 'today') {
-      setView('day');
-      goTo(new Date());
-    }
-    if (next === 'upcoming') {
-      if (isMobile) setRailSheetOpen(true);
-      else goTo(new Date());
-    }
-    if (next === 'tasks') setTrayOpen(true);
-    if (isMobile) setSidebarOpen(false);
   };
 
   const toggleType = (type: CalendarType) =>
@@ -307,37 +277,6 @@ export function CalendarView({ userName, userImage, onToast }: CalendarViewProps
   return (
     <div className="mx-auto max-w-[1600px] md:px-6 md:pt-5">
       <div className="relative flex h-[calc(100dvh-16.5rem)] min-h-[520px] flex-col overflow-hidden border-y border-neutral-200 bg-[#f7f7f6] md:h-[calc(100dvh-9.5rem)] md:min-h-[640px] md:rounded-2xl md:border md:shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        {/* Window chrome */}
-        <div className="flex h-11 shrink-0 items-center gap-3 border-b border-neutral-200 px-3 md:px-4">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((open) => !open)}
-            aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-            aria-expanded={sidebarOpen}
-            className="flex size-8 items-center justify-center rounded-lg text-neutral-500 outline-none hover:bg-neutral-200/60 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400"
-          >
-            <PanelLeft className="size-4" />
-          </button>
-          <span className="flex items-center gap-2 text-[13px] font-semibold text-neutral-900">
-            <span className="flex size-4 items-center justify-center rounded-[4px] bg-neutral-900">
-              <span className="size-1.5 rounded-[2px] bg-emerald-300" />
-            </span>
-            Calendar
-          </span>
-          <span className="ml-auto hidden items-center gap-1.5 text-[13px] text-neutral-500 sm:flex">
-            <Check className="size-3.5" />
-            Preview only · resets on refresh
-          </span>
-          <button
-            type="button"
-            onClick={() => setRailSheetOpen(true)}
-            aria-label="Open month and upcoming"
-            className="ml-auto flex size-8 items-center justify-center rounded-lg text-neutral-500 outline-none hover:bg-neutral-200/60 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400 sm:ml-0 lg:hidden"
-          >
-            <CalendarRange className="size-4" />
-          </button>
-        </div>
-
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}
@@ -357,20 +296,8 @@ export function CalendarView({ userName, userImage, onToast }: CalendarViewProps
                     className="absolute inset-0 z-30 bg-neutral-900/20"
                   />
                 )}
-                <aside className="absolute inset-y-0 left-0 z-40 w-[240px] shrink-0 overflow-y-auto border-r border-neutral-200 bg-[#f7f7f6] md:static md:z-auto">
-                  <CalendarSidebarFilters
-                    active={section}
-                    onSelectSection={selectSection}
-                    upcomingCount={upcomingCount}
-                    tasksCount={unscheduled.length}
-                    filters={filters}
-                    onToggleType={toggleType}
-                    onTogglePriority={togglePriority}
-                    onSettings={() => onToast('Calendar settings are UI only for now')}
-                    userName={userName}
-                    userSubtitle="Personal"
-                    userImage={userImage}
-                  />
+                <aside className="absolute inset-y-0 left-0 z-40 w-[220px] shrink-0 overflow-y-auto border-r border-neutral-200 bg-[#f7f7f6] md:static md:z-auto">
+                  <CalendarSidebarFilters filters={filters} onToggleType={toggleType} onTogglePriority={togglePriority} />
                 </aside>
               </>
             )}
@@ -387,21 +314,11 @@ export function CalendarView({ userName, userImage, onToast }: CalendarViewProps
                 onToday={() => goTo(new Date())}
                 onPrev={() => step(-1)}
                 onNext={() => step(1)}
-                onSearch={() => onToast('Search is UI only for now')}
-                onNew={() => onToast('UI only · nothing is saved')}
+                sidebarOpen={sidebarOpen}
+                onToggleSidebar={() => setSidebarOpen((open) => !open)}
+                onOpenRail={() => setRailSheetOpen(true)}
               />
-              {effectiveView === 'month' ? (
-                <MonthGrid
-                  month={anchor}
-                  items={visibleItems}
-                  today={now}
-                  onSelectDate={(date) => {
-                    setView('day');
-                    goTo(date);
-                  }}
-                />
-              ) : (
-                <WeekGrid
+              <WeekGrid
                   days={days}
                   items={visibleItems}
                   now={now}
@@ -409,7 +326,6 @@ export function CalendarView({ userName, userImage, onToast }: CalendarViewProps
                   dropPreview={dropPreview}
                   onSelectItem={selectItem}
                 />
-              )}
               <UnscheduledTray items={visibleUnscheduled} open={trayOpen} onToggle={() => setTrayOpen((o) => !o)} />
             </section>
 

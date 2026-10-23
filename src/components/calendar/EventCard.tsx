@@ -29,7 +29,6 @@ export function EventCard({ item, top, height, column, columns, selected, onSele
 
   const compact = height < 44;
   const range = formatRange(item.start, item.end);
-  const showLocation = height >= 72 && Boolean(item.location);
   const label = `${item.title}, ${format(item.start, 'EEE d MMM')} ${range}, ${item.kind}`;
 
   const cursor = isDragging ? 'cursor-grabbing' : logged ? 'cursor-pointer' : 'cursor-grab';
@@ -65,11 +64,6 @@ export function EventCard({ item, top, height, column, columns, selected, onSele
         <span className="mt-0.5 flex items-center gap-1 truncate text-xs" style={{ color: theme.textMuted }}>
           {logged && <Clock className="h-3 w-3 shrink-0" aria-hidden />}
           <span className="truncate">{range}</span>
-        </span>
-      )}
-      {showLocation && (
-        <span className="mt-0.5 truncate text-xs" style={{ color: theme.textMuted }}>
-          {item.location}
         </span>
       )}
     </button>

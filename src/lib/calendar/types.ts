@@ -1,14 +1,14 @@
-import type { ActivityPriority } from '@/types/activity';
+import type { ActivityCategory, ActivityPriority } from '@/types/activity';
 
-/** Calendar "types" double as the sidebar's "My calendars" list. */
-export type CalendarType = 'build' | 'learn' | 'focus' | 'personal' | 'social' | 'reminder';
+/** Same as an activity's category, so items map 1:1 onto real activities later. */
+export type CalendarType = ActivityCategory;
 
 export type CalendarPriority = ActivityPriority;
 
 /** Planned = put on the calendar ahead of time. Logged = a focus session that already happened. */
 export type CalendarItemKind = 'planned' | 'logged';
 
-export type CalendarViewMode = 'day' | 'week' | 'month';
+export type CalendarViewMode = 'day' | 'week';
 
 export interface ChecklistProgress {
   done: number;
@@ -23,7 +23,6 @@ export interface CalendarItem {
   kind: CalendarItemKind;
   start: Date;
   end: Date;
-  location?: string;
   notes?: string;
   checklist?: ChecklistProgress;
 }

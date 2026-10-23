@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
-import { AlignLeft, Bell, Clock, Flag, ListChecks, MapPin, Pencil, Trash2, X } from 'lucide-react';
+import { AlignLeft, Clock, Flag, ListChecks, Pencil, Trash2, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { CALENDAR_TYPES, PRIORITY_LABELS } from '@/lib/calendar/theme';
 import { formatRange } from '@/lib/calendar/layout';
@@ -110,12 +110,10 @@ export function EventPopover({ item, anchor, onClose }: EventPopoverProps) {
         <Row icon={Clock}>
           {format(item.start, 'EEE, MMM d')} · {formatRange(item.start, item.end)}
         </Row>
-        {item.location && <Row icon={MapPin}>{item.location}</Row>}
         <Row icon={Flag}>
           {PRIORITY_LABELS[item.priority]}
           {logged ? ' · Logged session' : ' · Planned'}
         </Row>
-        {!logged && <Row icon={Bell}>10 minutes before</Row>}
         {item.notes && (
           <Row icon={AlignLeft}>
             <p className="leading-relaxed text-neutral-500">{item.notes}</p>

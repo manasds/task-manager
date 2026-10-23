@@ -1,11 +1,10 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight, PanelLeft } from 'lucide-react';
 import type { CalendarViewMode } from '@/lib/calendar/types';
 
 const VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
   { id: 'day', label: 'Day' },
   { id: 'week', label: 'Week' },
-  { id: 'month', label: 'Month' },
 ];
 
 const ghostIconClass =
@@ -19,8 +18,10 @@ export interface CalendarHeaderProps {
   onToday: () => void;
   onPrev: () => void;
   onNext: () => void;
-  onSearch: () => void;
-  onNew: () => void;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
+  /** Opens the mini month + upcoming sheet where the right rail is hidden. */
+  onOpenRail: () => void;
 }
 
 export function CalendarHeader({
@@ -31,13 +32,26 @@ export function CalendarHeader({
   onToday,
   onPrev,
   onNext,
-  onSearch,
-  onNew,
+  sidebarOpen,
+  onToggleSidebar,
+  onOpenRail,
 }: CalendarHeaderProps) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-neutral-200 px-4 py-3 md:px-5">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-3 border-b border-neutral-200 px-3 py-3 md:px-4">
+      <button
+        type="button"
+        onClick={onToggleSidebar}
+        aria-label={sidebarOpen ? 'Hide filters' : 'Show filters'}
+        aria-expanded={sidebarOpen}
+        className={`${ghostIconClass} rounded-lg`}
+      >
+        <PanelLeft className="size-4" />
+      </button>
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-[17px] font-semibold leading-tight text-neutral-900">{title}</h2>
+        <h2 className="flex items-center gap-2 truncate text-[17px] font-semibold leading-tight text-neutral-900">
+          {title}
+          <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-500">Preview</span>
+        </h2>
         <p className="mt-0.5 truncate text-[13px] text-neutral-500">{subtitle}</p>
       </div>
 
@@ -79,22 +93,8 @@ export function CalendarHeader({
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={onSearch}
-          aria-label="Search"
-          className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
-        >
-          <Search className="size-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={onNew}
-          className="flex h-8 items-center gap-1.5 rounded-lg bg-neutral-900 pl-2.5 pr-3 text-[13px] font-medium text-white hover:bg-neutral-800 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1"
-        >
-          <Plus className="size-4" />
-          <span className="hidden sm:inline">New activity</span>
+        <button type="button" onClick={onOpenRail} aria-label="Month and upcoming" className={`${ghostIconClass} rounded-lg lg:hidden`}>
+          <CalendarRange className="size-4" />
         </button>
       </div>
     </div>
