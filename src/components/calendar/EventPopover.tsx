@@ -61,6 +61,16 @@ export function EventPopover({
       if (!el) return;
       const rect = anchor.getBoundingClientRect();
       const height = el.offsetHeight;
+      // Too narrow to sit beside the anchor: centre it below (or above) instead of covering it.
+      if (window.innerWidth < WIDTH * 2) {
+        const below = rect.bottom + MARGIN;
+        const top = below + height <= window.innerHeight - MARGIN ? below : rect.top - MARGIN - height;
+        setPos({
+          left: Math.max(MARGIN, (window.innerWidth - el.offsetWidth) / 2),
+          top: Math.max(MARGIN, Math.min(top, window.innerHeight - height - MARGIN)),
+        });
+        return;
+      }
       let left = rect.left - GAP - WIDTH;
       if (left < MARGIN) left = rect.right + GAP;
       left = Math.max(MARGIN, Math.min(left, window.innerWidth - WIDTH - MARGIN));
@@ -108,7 +118,7 @@ export function EventPopover({
       aria-label={item.title}
       tabIndex={-1}
       className="fixed z-50 rounded-xl border border-neutral-200 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.08)] outline-none"
-      style={{ width: WIDTH, left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? 'visible' : 'hidden' }}
+      style={{ width: `min(${WIDTH}px, calc(100vw - ${MARGIN * 2}px))`, left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? 'visible' : 'hidden' }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-neutral-500">

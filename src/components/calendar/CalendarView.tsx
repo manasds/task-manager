@@ -54,6 +54,7 @@ import { formatMinutes, localDateString, parseLocalDate, taskStatsForDate } from
 import { soundManager } from '@/utils/audio';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarSidebarFilters } from './CalendarSidebarFilters';
+import { DayAgenda } from './DayAgenda';
 import { EventPopover } from './EventPopover';
 import { LoggedSummary } from './LoggedSummary';
 import { MiniMonth } from './MiniMonth';
@@ -384,6 +385,17 @@ export function CalendarView({
   const selectedActivity = selectedItem ? findActivity(selectedItem.activityId) : undefined;
   const closePopover = () => setSelected(null);
 
+  const addTaskToDay = (id: string) => {
+    const activity = findActivity(id);
+    if (activity) onUpdateActivity(addToDay(activity, selectedDate));
+  };
+
+  const openTask = (id: string) => {
+    if (justDraggedRef.current) return;
+    const activity = findActivity(id);
+    if (activity) onEditActivity(activity);
+  };
+
   const rail = (
     <>
       <MiniMonth
@@ -456,37 +468,54 @@ export function CalendarView({
                 onToggleSidebar={() => setSidebarOpen((open) => !open)}
                 onOpenRail={() => setRailSheetOpen(true)}
               />
-              <WeekGrid
-                days={days}
-                items={visibleItems}
-                now={now}
-                selectedId={selectedItem?.id ?? null}
-                selectedDay={anchor}
-                activeActivityId={activeTimerTaskId}
-                dropPreview={dropPreview}
-                onSelectItem={selectItem}
-                onSelectDay={(day) => {
-                  onSelectDate(localDateString(day));
-                  setSelected(null);
-                }}
-                onCreateAt={(day, time) => onCreateActivity(localDateString(day), time)}
-              />
-              <UnscheduledTray
-                items={trayItems}
-                open={trayOpen}
-                onToggle={() => setTrayOpen((o) => !o)}
-                dayLabel={selectedDayLabel}
-                addable={addable}
-                onAddToDay={(id) => {
-                  const activity = findActivity(id);
-                  if (activity) onUpdateActivity(addToDay(activity, selectedDate));
-                }}
-                onOpenItem={(id) => {
-                  if (justDraggedRef.current) return;
-                  const activity = findActivity(id);
-                  if (activity) onEditActivity(activity);
-                }}
-              />
+              {isMobile ? (
+                <DayAgenda
+                  items={visibleItems}
+                  isToday={selectedDate === today}
+                  now={now}
+                  unscheduled={trayItems}
+                  addable={addable}
+                  activeActivityId={activeTimerTaskId}
+                  onSelectItem={selectItem}
+                  onSchedule={(id, time) => {
+                    const activity = findActivity(id);
+                    if (!activity) return;
+                    onUpdateActivity(moveToSlot(activity, selectedDate, selectedDate, time, today).activity);
+                    soundManager.playDrop();
+                  }}
+                  onAddToDay={addTaskToDay}
+                  onOpenItem={openTask}
+                  onPrevDay={() => step(-1)}
+                  onNextDay={() => step(1)}
+                />
+              ) : (
+                <>
+                  <WeekGrid
+                    days={days}
+                    items={visibleItems}
+                    now={now}
+                    selectedId={selectedItem?.id ?? null}
+                    selectedDay={anchor}
+                    activeActivityId={activeTimerTaskId}
+                    dropPreview={dropPreview}
+                    onSelectItem={selectItem}
+                    onSelectDay={(day) => {
+                      onSelectDate(localDateString(day));
+                      setSelected(null);
+                    }}
+                    onCreateAt={(day, time) => onCreateActivity(localDateString(day), time)}
+                  />
+                  <UnscheduledTray
+                    items={trayItems}
+                    open={trayOpen}
+                    onToggle={() => setTrayOpen((o) => !o)}
+                    dayLabel={selectedDayLabel}
+                    addable={addable}
+                    onAddToDay={addTaskToDay}
+                    onOpenItem={openTask}
+                  />
+                </>
+              )}
             </section>
 
             <aside className="hidden w-[284px] shrink-0 overflow-y-auto border-l border-neutral-200 bg-[#f7f7f6] px-5 py-4 lg:block">
