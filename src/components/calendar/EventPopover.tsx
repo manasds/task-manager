@@ -86,23 +86,32 @@ export function EventPopover({
     };
   }, [anchor]);
 
+  // The parent passes a new onClose each render; keep the latest without re-running the setup below.
+  const onCloseRef = useRef(onClose);
   useEffect(() => {
-    ref.current?.focus();
+    onCloseRef.current = onClose;
+  });
+
+  useEffect(() => {
+    const popover = ref.current;
+    popover?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     const onDown = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (ref.current?.contains(target) || anchor.contains(target)) return;
-      onClose();
+      if (popover?.contains(target) || anchor.contains(target)) return;
+      onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDown);
     return () => {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onDown);
+      // Hand keyboard focus back to the card it was opened from.
+      if (popover?.contains(document.activeElement) && anchor.isConnected) anchor.focus();
     };
-  }, [anchor, onClose]);
+  }, [anchor]);
 
   const checklist = item.checklist;
   const pct = checklist && checklist.total > 0 ? Math.round((checklist.done / checklist.total) * 100) : 0;

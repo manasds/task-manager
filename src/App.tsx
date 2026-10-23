@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Activity, ActivityStatus, goalNames, normalizeActivity } from './types/activity';
-import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument } from './types/document';
+import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument, SAVED_TABS } from './types/document';
 import { getTodayDateString } from './utils/dates';
 import { soundManager } from './utils/audio';
 import { Navbar, ActiveTab } from './components/Navbar';
@@ -90,7 +90,8 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     // eslint-disable-next-line react/set-state-in-effect
     setActivities(doc.activities.map(normalizeActivity));
     setDailyGoalMinutes(doc.dailyGoalMinutes);
-    setActiveTab(doc.settings.lastTab);
+    // A tab this build doesn't know (e.g. saved by a newer version) falls back to the board.
+    setActiveTab(SAVED_TABS.includes(doc.settings.lastTab) ? doc.settings.lastTab : 'board');
     setSelectedDate(doc.settings.selectedDate || getTodayDateString());
     setIsMuted(doc.settings.muted);
     setTimer(timerFor(doc.timer, doc.activities));
@@ -109,8 +110,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       dailyGoalMinutes,
       settings: {
         muted: isMuted,
-        // The calendar is a UI-only preview, so it is never the saved tab.
-        lastTab: activeTab === 'calendar' ? 'planner' : activeTab,
+        lastTab: activeTab,
         selectedDate,
       },
       activities,

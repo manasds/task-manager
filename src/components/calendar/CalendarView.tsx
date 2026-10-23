@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -23,7 +23,6 @@ import {
   format,
   getISOWeek,
   isSameMonth,
-  startOfDay,
   startOfMonth,
   startOfWeek,
 } from 'date-fns';
@@ -37,8 +36,8 @@ import type {
   CalendarViewMode,
   DragPayload,
 } from '@/lib/calendar/types';
-import { GRID_END_HOUR, GRID_START_HOUR, HOUR_HEIGHT, SNAP_MINUTES, WEEK_OPTIONS } from '@/lib/calendar/theme';
-import { formatRange, passesFilters } from '@/lib/calendar/layout';
+import { GRID_MINUTES, GRID_START_HOUR, HOUR_HEIGHT, SNAP_MINUTES, WEEK_OPTIONS } from '@/lib/calendar/theme';
+import { formatRange, passesFilters, topFor } from '@/lib/calendar/layout';
 import {
   addableTo,
   addToDay,
@@ -67,7 +66,6 @@ const ALL_FILTERS: CalendarFilters = {
   priorities: { urgent: true, high: true, medium: true, low: true },
 };
 
-const GRID_MINUTES = (GRID_END_HOUR - GRID_START_HOUR) * 60;
 
 /**
  * Whatever is under the pointer wins, so a wide tray chip lands on the day you point at.
@@ -102,16 +100,21 @@ const announcements: Announcements = {
   onDragCancel: ({ active }) => `Moving ${dragTitle(active.data)} was cancelled.`,
 };
 
+const MOBILE_QUERY = '(max-width: 767px)';
+
+function subscribeMobile(onChange: () => void): () => void {
+  const query = window.matchMedia(MOBILE_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+/** Read synchronously on the client, so phones never render the desktop grid first. */
 function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(false);
-  useEffect(() => {
-    const query = window.matchMedia('(max-width: 767px)');
-    const update = () => setMobile(query.matches);
-    update();
-    query.addEventListener('change', update);
-    return () => query.removeEventListener('change', update);
-  }, []);
-  return mobile;
+  return useSyncExternalStore(
+    subscribeMobile,
+    () => window.matchMedia(MOBILE_QUERY).matches,
+    () => false,
+  );
 }
 
 /** Ticks once a minute, on the minute, so the current-time line stays honest. */
@@ -165,7 +168,10 @@ function dropStart(
   const raw = ((itemTop - column.getBoundingClientRect().top) / HOUR_HEIGHT) * 60;
   const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
   const minutes = Math.min(Math.max(0, snapped), GRID_MINUTES - Math.min(durationMinutes, GRID_MINUTES));
-  return { day: data.day, start: addMinutes(startOfDay(data.day), GRID_START_HOUR * 60 + minutes) };
+  // setHours keeps wall-clock time, so a DST change day doesn't shift the slot by an hour.
+  const start = new Date(data.day);
+  start.setHours(GRID_START_HOUR, minutes, 0, 0);
+  return { day: data.day, start };
 }
 
 function payloadDuration(payload: DragPayload): number {
@@ -269,8 +275,8 @@ export function CalendarView({
     [activities, selectedDate, filters],
   );
   const addable = useMemo(
-    () => addableTo(activities, selectedDate).map((a) => ({ id: a.id, title: a.title })),
-    [activities, selectedDate],
+    () => addableTo(activities, selectedDate, today).map((a) => ({ id: a.id, title: a.title })),
+    [activities, selectedDate, today],
   );
   const loggedStats = useMemo(
     () =>
@@ -330,7 +336,7 @@ export function CalendarView({
       setDropPreview(null);
       return;
     }
-    const top = ((target.start.getHours() - GRID_START_HOUR) * 60 + target.start.getMinutes()) * (HOUR_HEIGHT / 60);
+    const top = topFor(target.start);
     const next: DropPreview = {
       dropId: String(event.over.id),
       top,
@@ -381,7 +387,10 @@ export function CalendarView({
   };
 
   // Re-resolve the open item each render so the popover follows edits and closes if it disappears.
-  const selectedItem = selected ? visibleItems.find((item) => item.id === selected.id) : undefined;
+  // Upcoming can list days outside the visible range, so look there too.
+  const selectedItem = selected
+    ? (visibleItems.find((item) => item.id === selected.id) ?? upcomingItems.find((item) => item.id === selected.id))
+    : undefined;
   const selectedActivity = selectedItem ? findActivity(selectedItem.activityId) : undefined;
   const closePopover = () => setSelected(null);
 
@@ -499,10 +508,7 @@ export function CalendarView({
                     activeActivityId={activeTimerTaskId}
                     dropPreview={dropPreview}
                     onSelectItem={selectItem}
-                    onSelectDay={(day) => {
-                      onSelectDate(localDateString(day));
-                      setSelected(null);
-                    }}
+                    onSelectDay={goTo}
                     onCreateAt={(day, time) => onCreateActivity(localDateString(day), time)}
                   />
                   <UnscheduledTray

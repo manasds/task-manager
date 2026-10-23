@@ -99,9 +99,14 @@ export function unscheduledOn(activities: Activity[], day: string): UnscheduledI
     }));
 }
 
-/** Open tasks that could be added to `day` (the Planner's "add an existing task"). */
-export function addableTo(activities: Activity[], day: string): Activity[] {
-  return activities.filter((a) => !a.parked && isOpen(a) && !isActivityOnDate(a, day));
+/** Whether the calendar shows it on `day`: as a block if it has a time, else in that day's queue. */
+function visibleOn(activity: Activity, day: string, today: string): boolean {
+  return activity.scheduledTime ? showsPlannedOn(activity, day, today) : isActivityOnDate(activity, day);
+}
+
+/** Open tasks not shown on `day` yet, that could be added to it (the Planner's "add an existing task"). */
+export function addableTo(activities: Activity[], day: string, today: string): Activity[] {
+  return activities.filter((a) => !a.parked && isOpen(a) && !visibleOn(a, day, today));
 }
 
 /** Also planned on `day`, so the task shows there in the calendar too. */

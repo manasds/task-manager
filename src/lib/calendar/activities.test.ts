@@ -91,7 +91,14 @@ describe('queue and adding', () => {
     const b = activity({ id: 'b', scheduledTime: '09:00' });
     const later = activity({ id: 'c', date: '2026-10-30' });
     assert.deepEqual(unscheduledOn([a, b, later], TODAY).map((i) => i.id), ['a']);
-    assert.deepEqual(addableTo([a, b, later], TODAY).map((i) => i.id), ['c']);
+    assert.deepEqual(addableTo([a, b, later], TODAY, TODAY).map((i) => i.id), ['c']);
+  });
+
+  it('offers an open timed task for a later day it is not drawn on, then draws it there', () => {
+    const a = activity({ id: 'a', date: '2026-10-19', scheduledTime: '09:00' });
+    assert.deepEqual(addableTo([a], '2026-10-24', TODAY).map((i) => i.id), ['a']);
+    assert.deepEqual(addableTo([a], TODAY, TODAY), []);
+    assert.equal(showsPlannedOn(addToDay(a, '2026-10-24'), '2026-10-24', TODAY), true);
   });
 
   it('adds a day once and only removes extra planned days', () => {
@@ -154,5 +161,36 @@ describe('moveToSlot', () => {
     assert.equal(next.date, '2026-10-20');
     assert.equal(next.scheduledTime, '13:00');
     assert.equal(showsPlannedOn(next, '2026-10-24', TODAY), true);
+  });
+});
+
+describe('layoutDay', () => {
+  it('puts short back-to-back blocks in separate lanes so their drawn cards do not cover each other', async () => {
+    const { layoutDay } = await import('./layout');
+    const item = (id: string, h: number, m: number, minutes: number) => {
+      const start = new Date(2026, 9, 23, h, m);
+      return {
+        id,
+        activityId: id,
+        day: TODAY,
+        title: id,
+        type: 'build' as const,
+        priority: 'medium' as const,
+        kind: 'logged' as const,
+        start,
+        end: new Date(start.getTime() + minutes * 60_000),
+        completed: false,
+      };
+    };
+    const laid = layoutDay([item('a', 10, 0, 10), item('b', 10, 10, 10), item('c', 12, 0, 60)]);
+    const byId = Object.fromEntries(laid.map((p) => [p.item.id, p]));
+    assert.equal(byId.a.columns, 2);
+    assert.notEqual(byId.a.column, byId.b.column);
+    assert.equal(byId.c.columns, 1);
+    // Before 07:00 is pinned to the top without overlapping a 07:00 block's lane.
+    const early = layoutDay([item('x', 5, 0, 60), item('y', 7, 0, 60)]);
+    const ex = Object.fromEntries(early.map((p) => [p.item.id, p]));
+    assert.equal(ex.x.top, 0);
+    assert.notEqual(ex.x.column, ex.y.column);
   });
 });

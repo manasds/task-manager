@@ -1,8 +1,6 @@
 import { differenceInMinutes, format } from 'date-fns';
 import type { CalendarItem, CalendarFilters } from './types';
-import { GRID_END_HOUR, GRID_START_HOUR, HOUR_HEIGHT, MIN_CARD_HEIGHT } from './theme';
-
-const GRID_HEIGHT = (GRID_END_HOUR - GRID_START_HOUR) * HOUR_HEIGHT;
+import { GRID_HEIGHT, GRID_START_HOUR, HOUR_HEIGHT, MIN_CARD_HEIGHT } from './theme';
 
 export interface PositionedItem {
   item: CalendarItem;
@@ -21,11 +19,23 @@ export function topFor(date: Date): number {
   return (minutesIntoGrid(date) / 60) * HOUR_HEIGHT;
 }
 
-/** Lay out one day's items: overlapping items split the column width evenly. */
+/** Where a card is drawn: pinned inside 07:00–23:00 and at least MIN_CARD_HEIGHT tall. */
+function cardBox(item: CalendarItem): { top: number; height: number } {
+  const rawTop = topFor(item.start);
+  const rawBottom = rawTop + (differenceInMinutes(item.end, item.start) / 60) * HOUR_HEIGHT;
+  const top = Math.min(Math.max(0, rawTop), GRID_HEIGHT - MIN_CARD_HEIGHT);
+  const bottom = Math.min(GRID_HEIGHT, Math.max(top + MIN_CARD_HEIGHT, rawBottom));
+  return { top, height: bottom - top };
+}
+
+/**
+ * Lay out one day's items: cards that overlap as drawn split the column width evenly.
+ * Overlap uses the drawn boxes, so short or pinned blocks never cover each other.
+ */
 export function layoutDay(items: CalendarItem[]): PositionedItem[] {
-  const sorted = [...items].sort(
-    (a, b) => a.start.getTime() - b.start.getTime() || b.end.getTime() - a.end.getTime(),
-  );
+  const boxes = items
+    .map((item) => ({ item, ...cardBox(item) }))
+    .sort((a, b) => a.top - b.top || b.height - a.height);
   const result: PositionedItem[] = [];
   let cluster: PositionedItem[] = [];
   let laneEnds: number[] = [];
@@ -38,28 +48,18 @@ export function layoutDay(items: CalendarItem[]): PositionedItem[] {
     laneEnds = [];
   };
 
-  for (const item of sorted) {
-    const start = item.start.getTime();
-    if (start >= clusterEnd) flush();
-    let lane = laneEnds.findIndex((end) => end <= start);
+  for (const box of boxes) {
+    const bottom = box.top + box.height;
+    if (box.top >= clusterEnd) flush();
+    let lane = laneEnds.findIndex((end) => end <= box.top);
     if (lane === -1) {
       lane = laneEnds.length;
-      laneEnds.push(item.end.getTime());
+      laneEnds.push(bottom);
     } else {
-      laneEnds[lane] = item.end.getTime();
+      laneEnds[lane] = bottom;
     }
-    clusterEnd = Math.max(clusterEnd, item.end.getTime());
-    // Blocks outside 07:00–23:00 are pinned to the nearest edge so they stay visible.
-    const rawTop = topFor(item.start);
-    const rawBottom = rawTop + (differenceInMinutes(item.end, item.start) / 60) * HOUR_HEIGHT;
-    const top = Math.min(Math.max(0, rawTop), GRID_HEIGHT - MIN_CARD_HEIGHT);
-    cluster.push({
-      item,
-      top,
-      height: Math.min(Math.max(MIN_CARD_HEIGHT, Math.min(rawBottom, GRID_HEIGHT) - top), GRID_HEIGHT - top),
-      column: lane,
-      columns: 1,
-    });
+    clusterEnd = Math.max(clusterEnd, bottom);
+    cluster.push({ item: box.item, top: box.top, height: box.height, column: lane, columns: 1 });
   }
   flush();
   return result;

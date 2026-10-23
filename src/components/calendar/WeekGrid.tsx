@@ -1,16 +1,18 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { format, isSameDay, isWeekend } from 'date-fns';
 import type { CalendarItem } from '@/lib/calendar/types';
-import { GRID_END_HOUR, GRID_START_HOUR, HOUR_HEIGHT, SNAP_MINUTES } from '@/lib/calendar/theme';
+import { GRID_END_HOUR, GRID_HEIGHT, GRID_START_HOUR, HOUR_HEIGHT, SNAP_MINUTES } from '@/lib/calendar/theme';
+import { toTimeString } from '@/lib/calendar/activities';
 import { layoutDay, timezoneLabel, topFor } from '@/lib/calendar/layout';
 import { EventCard } from './EventCard';
 
 const HOURS = Array.from({ length: GRID_END_HOUR - GRID_START_HOUR + 1 }, (_, i) => GRID_START_HOUR + i);
-const GRID_HEIGHT = (GRID_END_HOUR - GRID_START_HOUR) * HOUR_HEIGHT;
 /** Room above the 07:00 line so its label isn't clipped. */
 const GRID_PAD_TOP = 16;
 const GUTTER_WIDTH = 76;
+
+const NO_ITEMS: CalendarItem[] = [];
 
 export const dayDropId = (day: Date) => `day:${format(day, 'yyyy-MM-dd')}`;
 
@@ -62,6 +64,7 @@ function DayColumn({
   onCreateAt: WeekGridProps['onCreateAt'];
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDropId(day), data: { day } satisfies DayDropData });
+  const positioned = useMemo(() => layoutDay(items), [items]);
   const isToday = isSameDay(day, now);
   const nowTop = topFor(now);
   const showNow = isToday && nowTop >= 0 && nowTop <= GRID_HEIGHT;
@@ -70,8 +73,9 @@ function DayColumn({
     // Only clicks on the empty column, not on cards or overlays.
     if (event.target !== event.currentTarget) return;
     const minutes = Math.floor(((event.nativeEvent.offsetY / HOUR_HEIGHT) * 60) / SNAP_MINUTES) * SNAP_MINUTES;
-    const total = GRID_START_HOUR * 60 + Math.max(0, minutes);
-    onCreateAt(day, `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`);
+    const slot = new Date(day);
+    slot.setHours(GRID_START_HOUR, Math.max(0, minutes), 0, 0);
+    onCreateAt(day, toTimeString(slot));
   };
 
   return (
@@ -85,16 +89,16 @@ function DayColumn({
       }`}
       style={{ height: GRID_HEIGHT }}
     >
-      {layoutDay(items).map((positioned) => (
+      {positioned.map((card) => (
         <EventCard
-          key={positioned.item.id}
-          item={positioned.item}
-          top={positioned.top}
-          height={positioned.height}
-          column={positioned.column}
-          columns={positioned.columns}
-          selected={positioned.item.id === selectedId}
-          active={positioned.item.activityId === activeActivityId}
+          key={card.item.id}
+          item={card.item}
+          top={card.top}
+          height={card.height}
+          column={card.column}
+          columns={card.columns}
+          selected={card.item.id === selectedId}
+          active={card.item.activityId === activeActivityId}
           onSelect={onSelectItem}
         />
       ))}
@@ -129,6 +133,12 @@ export function WeekGrid({
   onCreateAt,
 }: WeekGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // One pass over the items, so each column gets a stable array and only re-lays-out when it changes.
+  const itemsByDay = useMemo(() => {
+    const map = new Map<string, CalendarItem[]>();
+    for (const item of items) map.set(item.day, [...(map.get(item.day) ?? []), item]);
+    return map;
+  }, [items]);
   const columns = `${GUTTER_WIDTH}px repeat(${days.length}, minmax(0, 1fr))`;
   const showsToday = days.some((day) => isSameDay(day, now));
   const nowTop = topFor(now);
@@ -223,7 +233,7 @@ export function WeekGrid({
             <DayColumn
               key={day.toISOString()}
               day={day}
-              items={items.filter((item) => item.day === format(day, 'yyyy-MM-dd'))}
+              items={itemsByDay.get(format(day, 'yyyy-MM-dd')) ?? NO_ITEMS}
               now={now}
               selectedId={selectedId}
               activeActivityId={activeActivityId}
