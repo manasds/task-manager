@@ -33,6 +33,8 @@ interface TaskModalProps {
   initialActivity?: Activity | null;
   defaultStatus?: ActivityStatus;
   defaultTime?: string;
+  /** Start date for a new task ('YYYY-MM-DD'); defaults to today. */
+  defaultDate?: string;
   /** Goals already in use, offered as suggestions. */
   goals: string[];
   /** Goal for a new task, e.g. the one the board is filtered to. */
@@ -47,6 +49,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   initialActivity,
   defaultStatus = "backlog",
   defaultTime,
+  defaultDate,
   goals,
   defaultGoal,
   doingTasks,
@@ -67,7 +70,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [scheduledTime, setScheduledTime] = useState(
     initialActivity ? initialActivity.scheduledTime || "" : defaultTime || ""
   );
-  const [date, setDate] = useState(initialActivity?.date || today);
+  const [date, setDate] = useState(initialActivity?.date || defaultDate || today);
   const [goal, setGoal] = useState(initialActivity ? initialActivity.goal ?? "" : defaultGoal ?? "");
   const [deadline, setDeadline] = useState(initialActivity?.deadline ?? "");
   const [parked, setParked] = useState(initialActivity?.parked ?? false);
@@ -501,7 +504,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 />
                 <span>
                   <span className="font-semibold">Park for later</span>
-                  <span className="text-slate-500"> · keeps it off the board, planner and daily stats</span>
+                  <span className="text-slate-500"> · keeps it off the board, calendar and daily stats</span>
                 </span>
               </label>
 

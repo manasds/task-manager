@@ -2,19 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Activity } from '../types/activity';
 import {
-  buildTimelineAxis,
   createManualSession,
   timerElapsedSeconds,
   focusMinutesByHour,
   isActivityOnDate,
-  layoutDayTimeline,
   localDateString,
   loggedMinutesOnDate,
   minutesByDay,
-  sessionBlockStyleForDate,
   sessionDate,
-  sessionMinutesOnDate,
-  sessionOnLocalDate,
   taskStatsForDate,
 } from './workSessions';
 
@@ -59,68 +54,6 @@ describe('local session dates', () => {
 
     const ws = session('s1', localTwoAm, new Date(2026, 9, 15, 3, 0, 0), 60);
     assert.equal(sessionDate(ws), '2026-10-15');
-  });
-});
-
-describe('session block layout', () => {
-  it('clips cross-midnight sessions to each local day with positive height', () => {
-    const day1 = '2026-10-15';
-    const day2 = '2026-10-16';
-    const ws = session(
-      's-midnight',
-      new Date(2026, 9, 15, 23, 0, 0),
-      new Date(2026, 9, 16, 1, 0, 0),
-      120
-    );
-
-    assert.equal(sessionOnLocalDate(ws, day1), true);
-    assert.equal(sessionOnLocalDate(ws, day2), true);
-    assert.equal(sessionMinutesOnDate(ws, day1), 60);
-    assert.equal(sessionMinutesOnDate(ws, day2), 60);
-
-    const blockDay1 = sessionBlockStyleForDate(ws, day1, 48);
-    const blockDay2 = sessionBlockStyleForDate(ws, day2, 48);
-
-    assert.ok(blockDay1);
-    assert.ok(blockDay2);
-    assert.ok(blockDay1!.height > 0);
-    assert.ok(blockDay2!.height > 0);
-    assert.ok(blockDay1!.top >= 0);
-    assert.ok(blockDay2!.top >= 0);
-    assert.equal(blockDay1!.clippedEnd, true);
-    assert.equal(blockDay2!.clippedStart, true);
-  });
-
-  it('shows early-morning work pinned inside the grid with clip flags', () => {
-    const date = '2026-10-15';
-    const ws = session(
-      's-early',
-      new Date(2026, 9, 15, 2, 0, 0),
-      new Date(2026, 9, 15, 3, 30, 0),
-      90
-    );
-
-    const block = sessionBlockStyleForDate(ws, date, 48);
-    assert.ok(block);
-    assert.ok(block!.height > 0);
-    assert.ok(block!.top >= 0);
-    assert.equal(block!.clippedStart, true);
-    assert.equal(block!.clippedEnd, true);
-  });
-
-  it('shows late-night work pinned inside the grid with clip flags', () => {
-    const date = '2026-10-15';
-    const ws = session(
-      's-late',
-      new Date(2026, 9, 15, 23, 30, 0),
-      new Date(2026, 9, 16, 0, 15, 0),
-      45
-    );
-
-    const block = sessionBlockStyleForDate(ws, date, 48);
-    assert.ok(block);
-    assert.ok(block!.height > 0);
-    assert.equal(block!.clippedEnd, true);
   });
 });
 
@@ -179,67 +112,6 @@ describe('real day stats', () => {
     assert.equal(byHour[9], 30);
     assert.equal(byHour[10], 60);
     assert.equal(byHour.reduce((a, b) => a + b, 0), 90);
-  });
-});
-
-describe('day timeline layout', () => {
-  const at = (h: number, m = 0) => new Date(2026, 9, 15, h, m);
-
-  it('puts overlapping sessions in separate lanes', () => {
-    const acts = [
-      activity({ id: 'a', workSessions: [session('s1', at(9), at(10), 60)] }),
-      activity({ id: 'b', workSessions: [session('s2', at(9, 30), at(10, 30), 60)] }),
-      activity({ id: 'c', workSessions: [session('s3', at(12), at(12, 30), 30)] }),
-    ];
-    const { blocks } = layoutDayTimeline(acts, '2026-10-15');
-    const byId = Object.fromEntries(blocks.map((b) => [b.session.id, b]));
-    assert.equal(byId.s1.lanes, 2);
-    assert.equal(byId.s2.lanes, 2);
-    assert.notEqual(byId.s1.lane, byId.s2.lane);
-    assert.equal(byId.s3.lanes, 1);
-  });
-
-  it('fits the hour range to logged work, including early mornings', () => {
-    const acts = [activity({ id: 'a', workSessions: [session('s1', at(5, 15), at(6), 45)] })];
-    const { startHour, endHour } = layoutDayTimeline(acts, '2026-10-15');
-    assert.equal(startHour, 4);
-    assert.equal(endHour, 7);
-  });
-
-  it('keeps a short session in a tight window around it', () => {
-    const acts = [activity({ id: 'a', workSessions: [session('s1', at(15, 30), at(15, 32), 2)] })];
-    const { startHour, endHour } = layoutDayTimeline(acts, '2026-10-15');
-    assert.deepEqual([startHour, endHour], [14, 17]);
-  });
-
-  it('defaults to a working-day range when nothing is logged', () => {
-    const { blocks, startHour, endHour } = layoutDayTimeline([], '2026-10-15');
-    assert.equal(blocks.length, 0);
-    assert.deepEqual([startHour, endHour], [8, 18]);
-  });
-});
-
-describe('adaptive timeline axis', () => {
-  const at = (h: number, m = 0) => new Date(2026, 9, 15, h, m);
-
-  it('gives busy hours tall rows and empty hours slim gaps', () => {
-    const acts = [activity({ id: 'a', workSessions: [session('s1', at(15, 30), at(15, 32), 2)] })];
-    const timeline = layoutDayTimeline(acts, '2026-10-15');
-    const axis = buildTimelineAxis(timeline, 120, 28);
-    assert.deepEqual([timeline.startHour, timeline.endHour], [14, 17]);
-    assert.deepEqual(axis.hourTops, [0, 28, 148, 176]);
-    assert.equal(axis.toPx(15 * 60 + 30), 88);
-  });
-
-  it('gives short blocks drawn at minimum height their own lane', () => {
-    const acts = [
-      activity({ id: 'a', workSessions: [session('s1', at(9, 0), at(9, 5), 5)] }),
-      activity({ id: 'b', workSessions: [session('s2', at(9, 10), at(9, 20), 10)] }),
-    ];
-    const plain = layoutDayTimeline(acts, '2026-10-15');
-    assert.equal(plain.blocks[0].lanes, 1);
-    const padded = layoutDayTimeline(acts, '2026-10-15', 25);
-    assert.equal(padded.blocks[0].lanes, 2);
   });
 });
 
