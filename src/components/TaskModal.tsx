@@ -504,7 +504,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 />
                 <span>
                   <span className="font-semibold">Park for later</span>
-                  <span className="text-slate-500"> · keeps it off the board, planner and daily stats</span>
+                  <span className="text-slate-500"> · keeps it off the board, calendar and daily stats</span>
                 </span>
               </label>
 

@@ -86,7 +86,7 @@ describe('calendarItems', () => {
 });
 
 describe('queue and adding', () => {
-  it('lists untimed tasks on the day like the Planner queue', () => {
+  it('lists untimed tasks on the day as the unscheduled queue', () => {
     const a = activity({ id: 'a' });
     const b = activity({ id: 'b', scheduledTime: '09:00' });
     const later = activity({ id: 'c', date: '2026-10-30' });

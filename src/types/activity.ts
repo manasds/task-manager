@@ -31,12 +31,12 @@ export interface Activity {
   scheduledTime?: string; // 'HH:MM' 24h format
   /** Start day ('YYYY-MM-DD'). An unfinished task also shows on every later day. */
   date: string;
-  /** Extra days it was put on in the planner. */
+  /** Extra days it was put on in the calendar. */
   plannedDates?: string[];
   /** 'YYYY-MM-DD'. */
   deadline?: string;
   goal?: string;
-  /** Set aside for later: off the Progress board, planner and daily stats. */
+  /** Set aside for later: off the Progress board, calendar and daily stats. */
   parked?: boolean;
   subtasks: Subtask[];
   tags: string[];

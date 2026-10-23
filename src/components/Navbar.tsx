@@ -6,13 +6,11 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 import { CloudUser } from '../types/document';
 import { SyncPhase } from '../hooks/useSessionPersistence';
 
-export type ActiveTab = 'board' | 'types' | 'planner' | 'activity' | 'calendar' | 'analytics';
+export type ActiveTab = 'board' | 'types' | 'calendar' | 'analytics';
 
 const TABS: { id: ActiveTab; label: string }[] = [
   { id: 'board', label: 'Progress' },
   { id: 'types', label: 'By type' },
-  { id: 'planner', label: 'Planner' },
-  { id: 'activity', label: 'Activity' },
   { id: 'calendar', label: 'Calendar' },
   { id: 'analytics', label: 'Analytics' },
 ];

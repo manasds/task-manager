@@ -2,15 +2,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Activity, ActivityStatus, goalNames, normalizeActivity } from './types/activity';
-import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument, SAVED_TABS } from './types/document';
+import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument, tabToOpen } from './types/document';
 import { getTodayDateString } from './utils/dates';
 import { soundManager } from './utils/audio';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { StatSummaryStrip } from './components/StatSummaryStrip';
 import { BoardView } from './components/BoardView';
 import { ByTypeView } from './components/ByTypeView';
-import { DayPlannerView } from './components/DayPlannerView';
-import { DayActivityView } from './components/DayActivityView';
 import { CalendarView } from './components/calendar/CalendarView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { TaskModal } from './components/TaskModal';
@@ -90,8 +88,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     // eslint-disable-next-line react/set-state-in-effect
     setActivities(doc.activities.map(normalizeActivity));
     setDailyGoalMinutes(doc.dailyGoalMinutes);
-    // A tab this build doesn't know (e.g. saved by a newer version) falls back to the board.
-    setActiveTab(SAVED_TABS.includes(doc.settings.lastTab) ? doc.settings.lastTab : 'board');
+    setActiveTab(tabToOpen(doc.settings.lastTab));
     setSelectedDate(doc.settings.selectedDate || getTodayDateString());
     setIsMuted(doc.settings.muted);
     setTimer(timerFor(doc.timer, doc.activities));
@@ -371,28 +368,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
             onEdit={handleEditActivity}
             onDelete={handleDeleteActivity}
             onAddTask={() => handleOpenNewTaskModal('backlog')}
-          />
-        )}
-
-        {activeTab === 'planner' && (
-          <DayPlannerView
-            activities={activities}
-            onUpdateActivity={handleUpdateActivity}
-            onOpenNewTaskModal={handleOpenNewTaskModal}
-            onStartFocus={handleStartFocus}
-            onEditActivity={handleEditActivity}
-            selectedDate={dayViewDate}
-            onSelectDate={setSelectedDate}
-            activeTimerTaskId={activeTimerTask?.id}
-          />
-        )}
-
-        {activeTab === 'activity' && (
-          <DayActivityView
-            activities={activities}
-            selectedDate={dayViewDate}
-            onSelectDate={setSelectedDate}
-            onEditActivity={handleEditActivity}
           />
         )}
 

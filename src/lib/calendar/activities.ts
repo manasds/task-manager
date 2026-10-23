@@ -39,8 +39,8 @@ function explicitlyOn(activity: Activity, day: string): boolean {
 const isOpen = (activity: Activity) => activity.status !== 'completed';
 
 /**
- * Whether its scheduled block is drawn on `day`. Unlike the Planner, an open task is not
- * repeated on every later day: it shows where it was planned, plus today while it is open.
+ * Whether its scheduled block is drawn on `day`. An open task is not repeated on every later
+ * day: it shows where it was planned, plus today while it is open.
  */
 export function showsPlannedOn(activity: Activity, day: string, today: string): boolean {
   if (!activity.scheduledTime || !isActivityOnDate(activity, day)) return false;
@@ -72,7 +72,7 @@ export function calendarItems(activities: Activity[], days: string[], today: str
           end: addMinutes(start, blockMinutes(activity)),
         });
       }
-      // Logged work happened whatever the task's state, as on the Activity tab.
+      // Logged work happened whatever the task's state, so parked tasks still show it.
       for (const session of activity.workSessions ?? []) {
         const clipped = clipSessionToDate(session, day);
         if (!clipped) continue;
@@ -83,7 +83,7 @@ export function calendarItems(activities: Activity[], days: string[], today: str
   return items;
 }
 
-/** The Planner's unscheduled queue for `day`. */
+/** Tasks on `day` with no time yet: the unscheduled queue. */
 export function unscheduledOn(activities: Activity[], day: string): UnscheduledItem[] {
   return activities
     .filter((a) => !a.scheduledTime && isActivityOnDate(a, day))
@@ -104,7 +104,7 @@ function visibleOn(activity: Activity, day: string, today: string): boolean {
   return activity.scheduledTime ? showsPlannedOn(activity, day, today) : isActivityOnDate(activity, day);
 }
 
-/** Open tasks not shown on `day` yet, that could be added to it (the Planner's "add an existing task"). */
+/** Open tasks not shown on `day` yet, that could be added to it. */
 export function addableTo(activities: Activity[], day: string, today: string): Activity[] {
   return activities.filter((a) => !a.parked && isOpen(a) && !visibleOn(a, day, today));
 }
@@ -126,7 +126,7 @@ export function removeFromDay(activity: Activity, day: string): Activity {
   return { ...activity, plannedDates: activity.plannedDates?.filter((d) => d !== day) };
 }
 
-/** Clear the time: it goes back to the unscheduled queue (on every day, as in the Planner). */
+/** Clear the time: it goes back to the unscheduled queue on every day it is on. */
 export function unschedule(activity: Activity): Activity {
   return { ...activity, scheduledTime: undefined };
 }

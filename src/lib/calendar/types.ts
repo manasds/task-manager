@@ -33,7 +33,7 @@ export interface CalendarItem {
   checklist?: ChecklistProgress;
 }
 
-/** An activity on the selected day with no time yet (the Planner's unscheduled queue). */
+/** An activity on the selected day with no time yet. */
 export interface UnscheduledItem {
   /** The activity id. */
   id: string;

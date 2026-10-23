@@ -182,7 +182,7 @@ function payloadDuration(payload: DragPayload): number {
 
 export interface CalendarViewProps {
   activities: Activity[];
-  /** 'YYYY-MM-DD', shared with the Planner and Activity tabs. */
+  /** 'YYYY-MM-DD', the app's selected day. */
   selectedDate: string;
   onSelectDate: (date: string) => void;
   activeTimerTaskId?: string;
@@ -195,7 +195,7 @@ export interface CalendarViewProps {
   onToast: (message: string) => void;
 }
 
-/** Planner and Activity in one week view: planned blocks, logged sessions and the unscheduled queue. */
+/** Plan and review in one view: planned blocks, logged sessions and the unscheduled queue. */
 export function CalendarView({
   activities,
   selectedDate,

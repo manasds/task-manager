@@ -51,7 +51,7 @@ export const PRIORITY_LABELS: Record<CalendarPriority, string> = {
   low: 'Low',
 };
 
-/** Grid geometry. Hours match the Planner/Activity timeline so the views line up. */
+/** Grid geometry, on the app's shared 07:00–23:00 timeline. */
 export const GRID_START_HOUR = TIMELINE_START_MINUTES / 60;
 export const GRID_END_HOUR = TIMELINE_END_MINUTES / 60;
 export const HOUR_HEIGHT = 64;
