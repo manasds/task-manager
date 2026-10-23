@@ -11,6 +11,7 @@ import { BoardView } from './components/BoardView';
 import { ByTypeView } from './components/ByTypeView';
 import { DayPlannerView } from './components/DayPlannerView';
 import { DayActivityView } from './components/DayActivityView';
+import { CalendarView } from './components/calendar/CalendarView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { TaskModal } from './components/TaskModal';
 import { FocusTimerBar } from './components/FocusTimerBar';
@@ -107,7 +108,8 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       dailyGoalMinutes,
       settings: {
         muted: isMuted,
-        lastTab: activeTab,
+        // The calendar is a UI-only preview, so it is never the saved tab.
+        lastTab: activeTab === 'calendar' ? 'planner' : activeTab,
         selectedDate,
       },
       activities,
@@ -389,6 +391,14 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
             selectedDate={dayViewDate}
             onSelectDate={setSelectedDate}
             onEditActivity={handleEditActivity}
+          />
+        )}
+
+        {activeTab === 'calendar' && (
+          <CalendarView
+            userName={persistence.user?.name || 'You'}
+            userImage={persistence.user?.image ?? undefined}
+            onToast={showToast}
           />
         )}
 
