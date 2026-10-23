@@ -238,10 +238,11 @@ export function DayAgenda({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div className="px-3 py-3">
-        <section aria-label="Schedule" className="space-y-1">
+        {/* Keeps Unscheduled well below the schedule on light days. */}
+        <section aria-label="Schedule" className="flex min-h-[40dvh] flex-col gap-1">
           {rows}
           {sorted.length === 0 && (
-            <p className="py-6 text-center text-[13px] text-neutral-500">Nothing scheduled. Pick a time for a task below.</p>
+            <p className="my-auto py-6 text-center text-[13px] text-neutral-500">Nothing scheduled. Pick a time for a task below.</p>
           )}
         </section>
 
