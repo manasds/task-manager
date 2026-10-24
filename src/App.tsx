@@ -2,15 +2,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Activity, ActivityStatus, goalNames, normalizeActivity } from './types/activity';
-import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument } from './types/document';
+import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument, tabToOpen } from './types/document';
 import { getTodayDateString } from './utils/dates';
 import { soundManager } from './utils/audio';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { StatSummaryStrip } from './components/StatSummaryStrip';
 import { BoardView } from './components/BoardView';
 import { ByTypeView } from './components/ByTypeView';
-import { DayPlannerView } from './components/DayPlannerView';
-import { DayActivityView } from './components/DayActivityView';
+import { CalendarView } from './components/calendar/CalendarView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { TaskModal } from './components/TaskModal';
 import { FocusTimerBar } from './components/FocusTimerBar';
@@ -48,6 +47,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [modalDefaultStatus, setModalDefaultStatus] = useState<ActivityStatus>('backlog');
   const [modalDefaultTime, setModalDefaultTime] = useState<string | undefined>(undefined);
+  const [modalDefaultDate, setModalDefaultDate] = useState<string | undefined>(undefined);
   const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -88,7 +88,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     // eslint-disable-next-line react/set-state-in-effect
     setActivities(doc.activities.map(normalizeActivity));
     setDailyGoalMinutes(doc.dailyGoalMinutes);
-    setActiveTab(doc.settings.lastTab);
+    setActiveTab(tabToOpen(doc.settings.lastTab));
     setSelectedDate(doc.settings.selectedDate || getTodayDateString());
     setIsMuted(doc.settings.muted);
     setTimer(timerFor(doc.timer, doc.activities));
@@ -162,10 +162,11 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     );
   };
 
-  const handleOpenNewTaskModal = (initialStatus: ActivityStatus = 'backlog', initialTime?: string) => {
+  const handleOpenNewTaskModal = (initialStatus: ActivityStatus = 'backlog', initialTime?: string, initialDate?: string) => {
     setEditingActivity(null);
     setModalDefaultStatus(initialStatus);
     setModalDefaultTime(initialTime);
+    setModalDefaultDate(initialDate);
     setIsModalOpen(true);
   };
 
@@ -370,25 +371,20 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
           />
         )}
 
-        {activeTab === 'planner' && (
-          <DayPlannerView
+        {activeTab === 'calendar' && (
+          <CalendarView
             activities={activities}
-            onUpdateActivity={handleUpdateActivity}
-            onOpenNewTaskModal={handleOpenNewTaskModal}
-            onStartFocus={handleStartFocus}
-            onEditActivity={handleEditActivity}
             selectedDate={dayViewDate}
             onSelectDate={setSelectedDate}
             activeTimerTaskId={activeTimerTask?.id}
-          />
-        )}
-
-        {activeTab === 'activity' && (
-          <DayActivityView
-            activities={activities}
-            selectedDate={dayViewDate}
-            onSelectDate={setSelectedDate}
+            onUpdateActivity={handleUpdateActivity}
+            onDeleteActivity={handleDeleteActivity}
             onEditActivity={handleEditActivity}
+            onStartFocus={handleStartFocus}
+            onCreateActivity={(date, time) =>
+              handleOpenNewTaskModal(date === getTodayDateString() ? 'in_progress' : 'backlog', time, date)
+            }
+            onToast={showToast}
           />
         )}
 
@@ -408,6 +404,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
           initialActivity={editingActivity}
           defaultStatus={modalDefaultStatus}
           defaultTime={modalDefaultTime}
+          defaultDate={modalDefaultDate}
           goals={goalNames(activities)}
           defaultGoal={goal === 'all' ? undefined : goal}
           doingTasks={activities.filter((a) => a.status === 'in_progress')}

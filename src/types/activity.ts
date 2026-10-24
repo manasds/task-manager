@@ -3,7 +3,7 @@ export type ActivityCategory = 'build' | 'learn';
 
 export type ActivityPriority = 'urgent' | 'high' | 'medium' | 'low';
 
-/** 'parked': set aside for later, kept off the planner and daily stats. */
+/** 'parked': set aside for later, kept off the calendar and daily stats. */
 export type ActivityStatus = 'backlog' | 'in_progress' | 'completed' | 'parked';
 
 export interface Subtask {
@@ -32,7 +32,7 @@ export interface Activity {
   scheduledTime?: string; // 'HH:MM' 24h format
   /** Start day ('YYYY-MM-DD'). An unfinished task also shows on every later day. */
   date: string;
-  /** Extra days it was put on in the planner. */
+  /** Extra days it was put on in the calendar. */
   plannedDates?: string[];
   /** 'YYYY-MM-DD'. */
   deadline?: string;
