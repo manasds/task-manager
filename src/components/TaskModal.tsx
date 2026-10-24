@@ -70,7 +70,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [date, setDate] = useState(initialActivity?.date || today);
   const [goal, setGoal] = useState(initialActivity ? initialActivity.goal ?? "" : defaultGoal ?? "");
   const [deadline, setDeadline] = useState(initialActivity?.deadline ?? "");
-  const [parked, setParked] = useState(initialActivity?.parked ?? false);
   const [subtasks, setSubtasks] = useState<Subtask[]>(initialActivity?.subtasks ?? []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [tagInput, setTagInput] = useState("");
@@ -207,7 +206,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       plannedDates: initialActivity?.plannedDates,
       deadline: deadline || undefined,
       goal: goal.trim() || undefined,
-      parked: parked || undefined,
       subtasks,
       tags,
       notes: initialActivity?.notes,
@@ -491,19 +489,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   />
                 </div>
               </div>
-
-              <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={parked}
-                  onChange={(e) => setParked(e.target.checked)}
-                  className="size-4 accent-indigo-600"
-                />
-                <span>
-                  <span className="font-semibold">Park for later</span>
-                  <span className="text-slate-500"> · keeps it off the board, planner and daily stats</span>
-                </span>
-              </label>
 
               {/* Description */}
               <div className="space-y-1.5 pt-1">

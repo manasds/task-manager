@@ -280,7 +280,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
                   typeof item.title === 'string' &&
                   typeof item.status === 'string'
               )
-              .map((item) => ({ ...item, updatedAt: now }));
+              .map((item) => ({ ...normalizeActivity(item), updatedAt: now }));
             setActivities(imported);
             setTimer((current) => timerFor(current, imported));
             soundManager.playDrop();
@@ -410,7 +410,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
           defaultTime={modalDefaultTime}
           goals={goalNames(activities)}
           defaultGoal={goal === 'all' ? undefined : goal}
-          doingTasks={activities.filter((a) => a.status === 'in_progress' && !a.parked)}
+          doingTasks={activities.filter((a) => a.status === 'in_progress')}
         />
       )}
 

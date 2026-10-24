@@ -81,10 +81,10 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
 
   const visible = activities.filter((a) => goal === 'all' || a.goal === goal);
   const ofType = (category: Activity['category']) => {
-    const mine = visible.filter((a) => a.category === category && !a.parked);
+    const mine = visible.filter((a) => a.category === category && a.status !== 'parked');
     return [...mine.filter((a) => a.status !== 'completed'), ...mine.filter((a) => a.status === 'completed')];
   };
-  const parked = visible.filter((a) => a.parked);
+  const parked = visible.filter((a) => a.status === 'parked');
   const tiles =
     links.phase === 'ready'
       ? [...links.tiles.filter((t) => t.status !== 'done'), ...links.tiles.filter((t) => t.status === 'done')]

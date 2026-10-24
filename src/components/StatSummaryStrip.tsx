@@ -44,8 +44,31 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
 
   return (
     <div className="bg-white border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-3.5">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-6">
+      {/* Phones: all four stats on one line. */}
+      <div className="md:hidden px-3 sm:px-6 h-9 flex items-center justify-between text-xs font-semibold text-slate-700 tabular-nums">
+        <span className="flex items-center gap-1" title="Completed today">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+          {completedTasks}/{totalTasks}
+        </span>
+        <span className="flex items-center gap-1" title="Focus logged today">
+          <Clock className="w-3.5 h-3.5 text-indigo-600" />
+          {loggedHours}h {String(loggedRemMinutes).padStart(2, '0')}m
+        </span>
+        <span className="flex items-center gap-1.5" title="Daily target">
+          <Target className="w-3.5 h-3.5 text-amber-600" />
+          <span className="w-12 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+            <span className="block h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${goalPercent}%` }} />
+          </span>
+          {goalPercent}%
+        </span>
+        <span className="flex items-center gap-1" title="Streak">
+          <Flame className="w-3.5 h-3.5 text-rose-600" />
+          {streak}d
+        </span>
+      </div>
+
+      <div className="hidden md:block max-w-7xl mx-auto px-6 lg:px-8 py-3.5">
+        <div className="grid grid-cols-4 gap-6">
           
           {/* Stat 1: Daily Completion */}
           <div className="flex items-center gap-2.5 sm:gap-3 p-2 sm:p-0 bg-slate-50/80 sm:bg-transparent rounded-xl border sm:border-0 border-slate-100">

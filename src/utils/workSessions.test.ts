@@ -298,7 +298,7 @@ describe('isActivityOnDate', () => {
   });
 
   it('is on no day while parked', () => {
-    const parked = { ...base, parked: true, plannedDates: ['2026-10-13'] } as Activity;
+    const parked = { ...base, status: 'parked', plannedDates: ['2026-10-13'] } as Activity;
     assert.equal(isActivityOnDate(parked, '2026-10-13'), false);
     assert.equal(isActivityOnDate(parked, '2026-10-20'), false);
   });

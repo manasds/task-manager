@@ -76,7 +76,7 @@ export const DayPlannerView: React.FC<DayPlannerViewProps> = ({
   const unscheduledActivities = dayActivities.filter((a) => !a.scheduledTime);
 
   const addable = activities.filter(
-    (a) => !a.parked && a.status !== 'completed' && !isActivityOnDate(a, plannerDate)
+    (a) => a.status !== 'parked' && a.status !== 'completed' && !isActivityOnDate(a, plannerDate)
   );
 
   const totalScheduledMinutes = scheduledActivities.reduce((acc, c) => acc + (c.estimatedMinutes || 0), 0);

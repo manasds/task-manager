@@ -3,7 +3,8 @@ export type ActivityCategory = 'build' | 'learn';
 
 export type ActivityPriority = 'urgent' | 'high' | 'medium' | 'low';
 
-export type ActivityStatus = 'backlog' | 'in_progress' | 'completed';
+/** 'parked': set aside for later, kept off the planner and daily stats. */
+export type ActivityStatus = 'backlog' | 'in_progress' | 'completed' | 'parked';
 
 export interface Subtask {
   id: string;
@@ -36,8 +37,6 @@ export interface Activity {
   /** 'YYYY-MM-DD'. */
   deadline?: string;
   goal?: string;
-  /** Set aside for later: off the Progress board, planner and daily stats. */
-  parked?: boolean;
   subtasks: Subtask[];
   tags: string[];
   notes?: string;
@@ -79,6 +78,7 @@ export const STATUS_COLUMNS: { id: ActivityStatus; title: string; shortTitle: st
   { id: 'backlog', title: 'To do', shortTitle: 'To do', hint: 'Not started yet' },
   { id: 'in_progress', title: 'Doing', shortTitle: 'Doing', hint: 'Being worked on' },
   { id: 'completed', title: 'Done', shortTitle: 'Done', hint: 'Finished' },
+  { id: 'parked', title: 'Parking', shortTitle: 'Parked', hint: 'Set aside for later' },
 ];
 
 export const PRIORITY_CONFIG: Record<ActivityPriority, { label: string; dotColor: string; textColor: string }> = {
@@ -90,14 +90,24 @@ export const PRIORITY_CONFIG: Record<ActivityPriority, { label: string; dotColor
 
 /**
  * Bring a task saved by an older version up to date: the six old categories become Build
- * or Learn, and the old Review column becomes Doing. Returns the same object if nothing changed.
+ * or Learn, the old Review column becomes Doing, and the old `parked` flag becomes the
+ * Parking status. Returns the same object if nothing changed.
  */
 export function normalizeActivity(activity: Activity): Activity {
-  const raw = activity as Omit<Activity, 'category' | 'status'> & { category: string; status: string };
+  const raw = activity as Omit<Activity, 'category' | 'status'> & {
+    category: string;
+    status: string;
+    parked?: boolean;
+  };
   const category: ActivityCategory = raw.category === 'learn' || raw.category === 'learning' ? 'learn' : 'build';
-  const status: ActivityStatus = raw.status === 'review' ? 'in_progress' : (raw.status as ActivityStatus);
-  if (category === raw.category && status === raw.status) return activity;
-  return { ...activity, category, status };
+  const status: ActivityStatus = raw.parked
+    ? 'parked'
+    : raw.status === 'review'
+      ? 'in_progress'
+      : (raw.status as ActivityStatus);
+  if (category === raw.category && status === raw.status && !('parked' in raw)) return activity;
+  const { parked: _parked, ...rest } = raw;
+  return { ...rest, category, status };
 }
 
 /** Goals in use, most used first. */

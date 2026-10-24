@@ -17,6 +17,13 @@ describe('normalizeActivity', () => {
     assert.equal(normalizeActivity(task({ status: 'review' })).status, 'in_progress');
   });
 
+  it('turns the old parked flag into the Parking status', () => {
+    const parked = normalizeActivity(task({ status: 'in_progress', parked: true }));
+    assert.equal(parked.status, 'parked');
+    assert.equal('parked' in parked, false);
+    assert.equal('parked' in normalizeActivity(task({ parked: false })), false);
+  });
+
   it('returns the same object when nothing changes', () => {
     const current = task({ category: 'learn', status: 'completed' });
     assert.equal(normalizeActivity(current), current);

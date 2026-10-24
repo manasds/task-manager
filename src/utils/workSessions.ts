@@ -133,7 +133,7 @@ export function minutesByDay(activity: Pick<Activity, 'workSessions'>): { date: 
  * while unfinished (up to the day it was completed once done). Parked tasks belong nowhere.
  */
 export function isActivityOnDate(activity: Activity, date: string): boolean {
-  if (activity.parked) return false;
+  if (activity.status === 'parked') return false;
   if (activity.plannedDates?.includes(date)) return true;
   if (date < activity.date) return false;
   if (activity.status !== 'completed') return true;

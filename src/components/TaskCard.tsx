@@ -10,8 +10,7 @@ import {
   Edit3, 
   ListChecks, 
   GripVertical,
-  ArrowRight,
-  Archive
+  ArrowRight
 } from 'lucide-react';
 import { Activity, CATEGORIES, PRIORITY_CONFIG, ActivityStatus, STATUS_COLUMNS } from '../types/activity';
 import { soundManager } from '../utils/audio';
@@ -30,7 +29,6 @@ interface TaskCardProps {
   onEdit: (activity: Activity) => void;
   onDelete: (activityId: string) => void;
   onMoveToStatus?: (activityId: string, targetStatus: ActivityStatus) => void;
-  onPark?: (activity: Activity) => void;
   isTimerActiveForTask?: boolean;
 }
 
@@ -46,7 +44,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onEdit,
   onDelete,
   onMoveToStatus,
-  onPark,
   isTimerActiveForTask,
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
@@ -125,7 +122,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   // Determine next status for 1-tap mobile advancement
   const currentStatusIdx = STATUS_COLUMNS.findIndex((c) => c.id === activity.status);
-  const nextStatus = currentStatusIdx >= 0 && currentStatusIdx < STATUS_COLUMNS.length - 1
+  const nextStatus = activity.status === 'backlog' || activity.status === 'in_progress'
     ? STATUS_COLUMNS[currentStatusIdx + 1]
     : null;
 
@@ -246,21 +243,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                         );
                       })}
                     </>
-                  )}
-
-                  {onPark && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMenu(false);
-                        onPark(activity);
-                      }}
-                      className="flex items-center gap-2 w-full px-3.5 py-2 text-slate-700 hover:bg-slate-50 text-left min-h-9.5"
-                    >
-                      <Archive className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Park for later</span>
-                    </button>
                   )}
 
                   <div className="border-t border-slate-100 my-1" />

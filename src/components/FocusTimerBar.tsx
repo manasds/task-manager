@@ -10,7 +10,7 @@ import {
 import { Activity, CATEGORIES } from '../types/activity';
 import { FocusTimerSnapshot } from '../types/document';
 import { soundManager } from '../utils/audio';
-import { timerElapsedSeconds } from '../utils/workSessions';
+import { formatMinutes, timerElapsedSeconds } from '../utils/workSessions';
 
 /** Rendered only while a timer runs on an existing task. */
 interface FocusTimerBarProps {
@@ -23,6 +23,18 @@ interface FocusTimerBarProps {
   /** Stop the timer, saving any elapsed time. */
   onStop: () => void;
 }
+
+function formatClock(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const mmss = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return h > 0 ? `${h}:${mmss}` : mmss;
+}
+
+const buttonShape =
+  'min-h-11 min-w-11 flex items-center justify-center rounded-xl transition-colors active:scale-95';
+const quietButton = `${buttonShape} text-slate-300 hover:text-white hover:bg-white/10`;
 
 export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   activity,
@@ -50,9 +62,15 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
 
   const secondsElapsed = timerElapsedSeconds(timer);
   const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.build;
-  const minutes = Math.floor(secondsElapsed / 60);
-  const seconds = secondsElapsed % 60;
   const isCompleted = activity.status === 'completed';
+  const pendingMinutes = Math.max(1, Math.round(secondsElapsed / 60));
+
+  // Progress counts time already logged on the task plus the running clock.
+  const estimateMinutes = activity.estimatedMinutes || 0;
+  const spentMinutes = (activity.actualMinutes || 0) + secondsElapsed / 60;
+  const progress = estimateMinutes > 0 ? Math.min(1, spentMinutes / estimateMinutes) : 0;
+  const overMinutes = estimateMinutes > 0 ? Math.floor(spentMinutes - estimateMinutes) : 0;
+  const isOver = overMinutes > 0;
 
   const handleToggleTimer = () => {
     soundManager.playDragStart();
@@ -70,7 +88,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
 
   const handleCommitLoggedTime = () => {
     soundManager.playDrop();
-    onLogTime(Math.max(1, Math.round(secondsElapsed / 60)));
+    onLogTime(pendingMinutes);
   };
 
   const handleCompleteAndLog = () => {
@@ -84,102 +102,145 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
 
   return (
     <div className="fixed bottom-20 md:bottom-4 inset-x-3 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 z-40 md:w-full max-w-3xl">
-      <div className="bg-slate-900/95 backdrop-blur-md text-white rounded-2xl p-2.5 sm:px-5 sm:py-3.5 shadow-2xl border border-slate-800 flex items-center justify-between gap-2 sm:gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+      <div
+        role="region"
+        aria-label="Focus timer"
+        className="relative overflow-hidden bg-slate-900 text-white rounded-2xl shadow-2xl ring-1 ring-white/10 animate-in fade-in slide-in-from-bottom-2 duration-200"
+      >
+        {estimateMinutes > 0 && (
+          <div
+            className="absolute inset-x-0 top-0 h-1 bg-white/5"
+            role="progressbar"
+            aria-label="Time spent against estimate"
+            aria-valuemin={0}
+            aria-valuemax={estimateMinutes}
+            aria-valuenow={Math.round(Math.min(spentMinutes, estimateMinutes))}
+          >
+            <div
+              className={`h-full transition-[width] duration-1000 ease-linear ${isOver ? 'bg-amber-400' : 'bg-indigo-400'}`}
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+        )}
 
-        {/* Left: Activity Details */}
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <span
-            className={`w-2.5 h-2.5 rounded-full shrink-0 ${isRunning ? 'animate-pulse' : ''}`}
-            style={{ backgroundColor: categoryMeta.color }}
-          />
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-400">
-              <span className="uppercase tracking-wider font-semibold text-slate-300">
-                {isRunning ? 'Focus' : 'Paused'}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2.5 px-3.5 pt-3.5 pb-3 sm:px-4">
+          {/* Task */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider">
+              <span className="relative flex size-2 shrink-0">
+                {isRunning && (
+                  <span
+                    className="absolute inset-0 rounded-full animate-ping opacity-60"
+                    style={{ backgroundColor: categoryMeta.color }}
+                  />
+                )}
+                <span
+                  className="relative size-2 rounded-full"
+                  style={{ backgroundColor: isRunning ? categoryMeta.color : '#94a3b8' }}
+                />
               </span>
-              <span>·</span>
-              <span className="truncate">{categoryMeta.label}</span>
+              <span className={isRunning ? 'text-indigo-300' : 'text-amber-300'}>
+                {isRunning ? 'Focusing' : 'Paused'}
+              </span>
+              <span className="text-slate-600" aria-hidden="true">·</span>
+              <span className="text-slate-400 normal-case tracking-normal font-medium truncate">
+                {categoryMeta.label}
+              </span>
             </div>
-            <h4 className="text-xs sm:text-sm font-bold text-white truncate">
+            <h4 className="mt-0.5 text-sm font-semibold text-white truncate" title={activity.title}>
               {activity.title}
             </h4>
           </div>
-        </div>
 
-        {/* Center: Running Timer Display */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="font-mono font-bold text-sm sm:text-xl text-indigo-400 tabular-nums px-2 sm:px-2.5 py-1 bg-slate-800/80 rounded-xl border border-slate-700/60 shadow-inner">
-            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+          {/* Clock */}
+          <div className="shrink-0 text-right">
+            <div
+              className={`font-mono text-2xl sm:text-[28px] leading-none font-semibold tabular-nums tracking-tight transition-opacity ${
+                isRunning ? 'text-white' : 'text-slate-400'
+              }`}
+              aria-live="off"
+            >
+              {formatClock(secondsElapsed)}
+            </div>
+            {estimateMinutes > 0 && (
+              <div className={`mt-1 text-[11px] tabular-nums ${isOver ? 'text-amber-300' : 'text-slate-400'}`}>
+                {isOver
+                  ? `${formatMinutes(overMinutes)} over estimate`
+                  : `${formatMinutes(Math.floor(spentMinutes))} of ${formatMinutes(estimateMinutes)}`}
+              </div>
+            )}
           </div>
 
-          {/* Play/Pause (Touch Target >= 44px) */}
-          <button
-            onClick={handleToggleTimer}
-            className="min-h-11 min-w-11 flex items-center justify-center p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-xs transition-colors active:scale-95"
-            title={isRunning ? 'Pause timer' : 'Resume timer'}
-            aria-label={isRunning ? 'Pause timer' : 'Resume timer'}
-          >
-            {isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-          </button>
+          {/* Controls */}
+          <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-2 sm:pl-4 sm:border-l sm:border-white/10">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleToggleTimer}
+                className="size-11 shrink-0 flex items-center justify-center rounded-full bg-white text-slate-900 hover:bg-indigo-100 shadow-sm transition-colors active:scale-95"
+                title={isRunning ? 'Pause timer' : 'Resume timer'}
+                aria-label={isRunning ? 'Pause timer' : 'Resume timer'}
+              >
+                {isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+              </button>
 
-          {/* Ambient Noise */}
-          <button
-            onClick={handleToggleAmbient}
-            className={`min-h-11 min-w-11 flex items-center justify-center p-2 rounded-xl transition-colors active:scale-95 ${
-              isAmbientOn
-                ? 'bg-emerald-600 text-white'
-                : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
-            }`}
-            title={isAmbientOn ? 'Stop ambient rain' : 'Play ambient focus rain'}
-            aria-label={isAmbientOn ? 'Stop ambient rain' : 'Play ambient focus rain'}
-          >
-            <Headphones className="w-4 h-4" />
-          </button>
+              <button
+                onClick={handleToggleAmbient}
+                className={
+                  isAmbientOn
+                    ? `${buttonShape} text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25`
+                    : quietButton
+                }
+                title={isAmbientOn ? 'Stop ambient rain' : 'Play ambient focus rain'}
+                aria-label={isAmbientOn ? 'Stop ambient rain' : 'Play ambient focus rain'}
+                aria-pressed={isAmbientOn}
+              >
+                <Headphones className="w-4 h-4" />
+              </button>
 
-          {/* Quick +5m on desktop */}
-          <button
-            onClick={handleAddFiveMinutes}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors tabular-nums min-h-11"
-            title="Add 5 minutes"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>5m</span>
-          </button>
+              <button
+                onClick={handleAddFiveMinutes}
+                className={`${quietButton} gap-0.5 px-2 text-xs font-semibold tabular-nums`}
+                title="Add 5 minutes"
+                aria-label="Add 5 minutes"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                5m
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              {secondsElapsed >= 30 && (
+                <button
+                  onClick={handleCommitLoggedTime}
+                  className={`${quietButton} px-2.5 text-xs font-semibold whitespace-nowrap tabular-nums`}
+                  title="Save elapsed minutes and keep focusing"
+                >
+                  Log {formatMinutes(pendingMinutes)}
+                </button>
+              )}
+
+              {!isCompleted && (
+                <button
+                  onClick={handleCompleteAndLog}
+                  className="min-h-11 flex items-center gap-1.5 px-3.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl transition-colors whitespace-nowrap active:scale-95"
+                  title="Save time and mark activity completed"
+                >
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  Done
+                </button>
+              )}
+
+              <button
+                onClick={onStop}
+                className={`${buttonShape} text-slate-400 hover:text-white hover:bg-white/10`}
+                title="Stop and save time"
+                aria-label="Stop and save time"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+              </button>
+            </div>
+          </div>
         </div>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          {secondsElapsed >= 30 && (
-            <button
-              onClick={handleCommitLoggedTime}
-              className="min-h-11 px-2.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl transition-colors whitespace-nowrap active:scale-95"
-              title="Save elapsed minutes and keep focusing"
-            >
-              Log
-            </button>
-          )}
-
-          {!isCompleted && (
-            <button
-              onClick={handleCompleteAndLog}
-              className="min-h-11 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition-colors whitespace-nowrap active:scale-95"
-              title="Save time and mark activity completed"
-            >
-              <Check className="w-4 h-4 stroke-[2.5]" />
-              <span className="hidden sm:inline">Done</span>
-            </button>
-          )}
-
-          <button
-            onClick={onStop}
-            className="min-h-11 min-w-11 flex items-center justify-center p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
-            title="Stop and save time"
-            aria-label="Stop and save time"
-          >
-            <Square className="w-3.5 h-3.5 fill-current" />
-          </button>
-        </div>
-
       </div>
     </div>
   );
