@@ -12,6 +12,7 @@ const SAVED_TABS: readonly string[] = ['board', 'types', 'calendar', 'analytics'
  */
 export function tabToOpen(saved: unknown): SavedTab {
   if (saved === 'planner' || saved === 'activity') return 'calendar';
+
   return typeof saved === 'string' && SAVED_TABS.includes(saved) ? (saved as SavedTab) : 'board';
 }
 

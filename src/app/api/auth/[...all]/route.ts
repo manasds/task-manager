@@ -6,6 +6,7 @@ const handlers = toNextJsHandler(auth);
 
 async function withSchema(request: Request, method: 'GET' | 'POST') {
   await ensureMigrated();
+
   return handlers[method](request);
 }
 

@@ -14,17 +14,22 @@ export default function AuthErrorPage() {
     (async () => {
       try {
         const userId = await getSessionUserId();
+
         if (cancelled) return;
+
         if (userId) {
           setSignedIn(true);
           router.replace('/');
+
           return;
         }
       } catch {
         // Show the retry message below.
       }
+
       if (!cancelled) setSignedIn(false);
     })();
+
     return () => {
       cancelled = true;
     };

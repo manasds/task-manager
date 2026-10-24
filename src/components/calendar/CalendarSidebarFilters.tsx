@@ -18,6 +18,7 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
         {CALENDAR_TYPE_ORDER.map((type) => {
           const on = filters.types[type];
           const color = CALENDAR_TYPES[type].dot;
+
           return (
             <li key={type}>
               <button
@@ -49,6 +50,7 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
       <div className="mt-2 flex flex-wrap gap-1.5 px-3">
         {PRIORITY_ORDER.map((priority) => {
           const on = filters.priorities[priority];
+
           return (
             <button
               key={priority}

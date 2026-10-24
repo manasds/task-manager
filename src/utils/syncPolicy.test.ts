@@ -78,12 +78,14 @@ describe('local edit tracking', () => {
   it('gives each quick edit a strictly newer marker', () => {
     const now = '2026-10-15T12:00:00.000Z';
     const first = recordLocalEdits(meta({}), doc({}), doc({ activities: [activity({ id: 'a' })] }), now);
+
     const second = recordLocalEdits(
       first,
       doc({ activities: [activity({ id: 'a' })] }),
       doc({ activities: [activity({ id: 'a', title: 'again' })] }),
       now
     );
+
     assert.ok(Date.parse(second.pending.a.at) > Date.parse(first.pending.a.at));
   });
 
@@ -101,9 +103,11 @@ describe('push results', () => {
     const a = activity({ id: 'a' });
     const b = activity({ id: 'b' });
     const local = doc({ activities: [a, b] });
+
     const before = meta({
       pending: { a: { at: '2026-10-15T12:00:00.000Z' }, b: { at: '2026-10-15T12:00:00.000Z' } },
     });
+
     const sent = buildPush(local, before)!;
     const during = { ...before, pending: { ...before.pending, b: { at: '2026-10-15T12:00:01.000Z' } } };
 
@@ -113,6 +117,7 @@ describe('push results', () => {
       goalApplied: null,
       goalRejected: null,
     });
+
     assert.deepEqual(Object.keys(result.meta.pending), ['b']);
     assert.equal(result.meta.seqs.a, 3);
     assert.equal(result.meta.seqs.b, 4);
@@ -123,12 +128,14 @@ describe('push results', () => {
     const m = meta({ pending: { a: { at: '2026-10-15T11:00:00.000Z' } } });
     const sent = buildPush(local, m)!;
     const server = activity({ id: 'a', title: 'Theirs' });
+
     const result = applyPushResult(local, m, sent, {
       applied: [],
       rejected: [{ id: 'a', data: server, updatedAt: '2026-10-15T11:30:00.000Z', seq: 9 }],
       goalApplied: null,
       goalRejected: null,
     });
+
     assert.equal(result.doc.activities[0].title, 'Theirs');
     assert.equal(hasPending(result.meta), false);
     assert.equal(result.meta.seqs.a, 9);
@@ -139,6 +146,7 @@ describe('pull', () => {
   it('applies remote upserts and deletes and advances the cursor', () => {
     const local = doc({ activities: [activity({ id: 'old' }), activity({ id: 'removed' })] });
     const incoming = activity({ id: 'new' });
+
     const result = applyPull(
       local,
       meta({ cursor: 2, seqs: { removed: 1 } }),
@@ -150,6 +158,7 @@ describe('pull', () => {
         4
       )
     );
+
     assert.deepEqual(result.doc.activities.map((a) => a.id).sort(), ['new', 'old']);
     assert.deepEqual(result.update.deletes, ['removed']);
     assert.equal(result.meta.cursor, 4);
@@ -159,11 +168,13 @@ describe('pull', () => {
   it('keeps a newer local edit and its old baseSeq so the server compares timestamps', () => {
     const local = doc({ activities: [activity({ id: 'a', title: 'Mine' })] });
     const m = meta({ seqs: { a: 1 }, pending: { a: { at: '2026-10-15T12:00:00.000Z' } } });
+
     const result = applyPull(
       local,
       m,
       pull([{ id: 'a', data: activity({ id: 'a', title: 'Theirs' }), updatedAt: '2026-10-15T11:00:00.000Z', seq: 5 }], 5)
     );
+
     assert.equal(result.doc.activities[0].title, 'Mine');
     assert.equal(result.meta.seqs.a, 1);
     assert.ok(result.meta.pending.a);
@@ -172,11 +183,13 @@ describe('pull', () => {
   it('drops a local edit that a newer remote edit beat', () => {
     const local = doc({ activities: [activity({ id: 'a', title: 'Mine' })] });
     const m = meta({ pending: { a: { at: '2026-10-15T11:00:00.000Z' } } });
+
     const result = applyPull(
       local,
       m,
       pull([{ id: 'a', data: activity({ id: 'a', title: 'Theirs' }), updatedAt: '2026-10-15T12:00:00.000Z', seq: 5 }], 5)
     );
+
     assert.equal(result.doc.activities[0].title, 'Theirs');
     assert.equal(hasPending(result.meta), false);
   });
@@ -197,6 +210,7 @@ describe('pull', () => {
       meta({}),
       pull([], 2, { dailyGoalMinutes: 240, updatedAt: '2026-10-15T12:00:00.000Z', seq: 2 })
     );
+
     assert.equal(result.doc.dailyGoalMinutes, 240);
     assert.equal(result.update.dailyGoalMinutes, 240);
   });
@@ -211,7 +225,9 @@ describe('first sync on a device', () => {
         activity({ id: 'only-local', updatedAt: '2026-10-15T09:00:00.000Z' }),
       ],
     });
+
     const seeded = seedPendingFromLocal(local, meta({}));
+
     const result = applyPull(
       local,
       seeded,
@@ -224,6 +240,7 @@ describe('first sync on a device', () => {
         3
       )
     );
+
     const byId = new Map(result.doc.activities.map((a) => [a.id, a.title]));
     assert.equal(byId.get('local-newer'), 'Local');
     assert.equal(byId.get('server-newer'), 'Server');

@@ -20,7 +20,9 @@ interface DayGroup {
 
 function dayLabel(day: Date, today: Date): string {
   if (isSameDay(day, today)) return `Today, ${format(day, 'EEE d')}`;
+
   if (isSameDay(day, addDays(today, 1))) return `Tomorrow, ${format(day, 'EEE d')}`;
+
   return format(day, 'EEE d');
 }
 
@@ -34,8 +36,10 @@ export function UpcomingRail({ items, today, now, onSelectItem }: UpcomingRailPr
 
   // Today's group is always present, even when empty.
   const groups: DayGroup[] = [{ day: todayStart, items: [] }];
+
   for (const item of upcoming) {
     const last = groups[groups.length - 1];
+
     if (isSameDay(last.day, item.start)) last.items.push(item);
     else groups.push({ day: startOfDay(item.start), items: [item] });
   }

@@ -28,6 +28,7 @@ export interface DayAgendaProps {
 
 const NOW_COLOR = '#e0624a';
 const QUICK_TIMES = ['09:00', '13:00', '16:00'];
+
 const TIME_BUTTON_CLASS =
   'inline-flex h-9 min-w-16 items-center justify-center rounded-lg bg-neutral-100 px-3 text-[13px] font-medium tabular-nums text-neutral-800 active:bg-neutral-200';
 
@@ -44,6 +45,7 @@ function AgendaRow({
   const logged = item.kind === 'logged';
   const minutes = differenceInMinutes(item.end, item.start);
   const range = formatRange(item.start, item.end);
+
   const cardStyle: React.CSSProperties = logged
     ? { background: theme.fillSoft, border: `1.5px dashed ${theme.border}` }
     : { background: theme.fill, boxShadow: focusing ? 'inset 0 0 0 2px #6366f1' : undefined };
@@ -121,6 +123,7 @@ function UnscheduledCard({
   onOpenItem: DayAgendaProps['onOpenItem'];
 }) {
   const theme = CALENDAR_TYPES[item.type];
+
   return (
     <li className="space-y-2.5 rounded-xl border border-neutral-200 p-3">
       <button
@@ -166,6 +169,7 @@ function UnscheduledCard({
                 className="absolute inset-0 h-full w-full opacity-0"
                 onChange={(e) => {
                   const value = e.currentTarget.value;
+
                   if (!value) return;
                   onSchedule(item.id, value.slice(0, 5));
                   e.currentTarget.value = '';
@@ -198,6 +202,7 @@ export function DayAgenda({
   const sorted = [...items].sort(
     (a, b) => a.start.getTime() - b.start.getTime() || Number(a.kind === 'logged') - Number(b.kind === 'logged'),
   );
+
   const nowIndex = isToday ? sorted.findIndex((item) => item.start.getTime() > now.getTime()) : -1;
   const nowAt = isToday ? (nowIndex === -1 ? sorted.length : nowIndex) : -1;
 
@@ -212,9 +217,11 @@ export function DayAgenda({
     const start = touchStart.current;
     const touch = e.changedTouches[0];
     touchStart.current = null;
+
     if (!start || !touch) return;
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
+
     if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) {
       if (dx < 0) onNextDay();
       else onPrevDay();
@@ -233,6 +240,7 @@ export function DayAgenda({
       />,
     );
   });
+
   if (nowAt === sorted.length) rows.push(<NowMarker key="now" now={now} />);
 
   return (

@@ -10,16 +10,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   });
+
   const data = (await response.json().catch(() => ({}))) as T & { error?: string };
+
   if (!response.ok) {
     const error = new Error(data.error || `Request failed (${response.status})`) as Error & {
       status: number;
       payload: unknown;
     };
+
     error.status = response.status;
     error.payload = data;
     throw error;
   }
+
   return data;
 }
 
@@ -52,10 +56,13 @@ const BEACON_LIMIT_BYTES = 60_000;
 /** Best-effort push while the tab closes. The response is never seen. */
 export function pushChangesBeacon(payload: PushRequest): boolean {
   const body = JSON.stringify(payload);
+
   if (new Blob([body]).size > BEACON_LIMIT_BYTES) return false;
+
   if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
     return navigator.sendBeacon('/api/sync', new Blob([body], { type: 'application/json' }));
   }
+
   void fetch('/api/sync', {
     method: 'POST',
     credentials: 'include',
@@ -63,5 +70,6 @@ export function pushChangesBeacon(payload: PushRequest): boolean {
     body,
     keepalive: true,
   }).catch(() => {});
+
   return true;
 }

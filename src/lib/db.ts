@@ -27,5 +27,6 @@ export function ensureMigrated(): Promise<void> {
       throw error;
     },
   );
+
   return migrating;
 }

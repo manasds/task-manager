@@ -23,6 +23,7 @@ export interface EventCardProps {
 export function EventCard({ item, top, height, column, columns, selected, active, onSelect }: EventCardProps) {
   const theme = CALENDAR_TYPES[item.type];
   const logged = item.kind === 'logged';
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `grid:${item.id}`,
     data: { source: 'grid', item } satisfies DragPayload,

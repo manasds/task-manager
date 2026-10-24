@@ -61,6 +61,7 @@ describe('task stats untimed minutes', () => {
   it('counts untimed minutes only on activity.date, not on session days', () => {
     const scheduledDate = '2026-10-14';
     const sessionDay = '2026-10-15';
+
     const act = activity({
       id: 'a1',
       date: scheduledDate,
@@ -100,6 +101,7 @@ describe('real day stats', () => {
       }),
       activity({ id: 'b', actualMinutes: 15 }),
     ];
+
     assert.equal(loggedMinutesOnDate(acts, '2026-10-15'), 65);
     assert.equal(loggedMinutesOnDate(acts, '2026-10-14'), 0);
   });
@@ -108,6 +110,7 @@ describe('real day stats', () => {
     const acts = [
       activity({ id: 'a', workSessions: [session('s1', at(9, 30), at(11, 0), 90)] }),
     ];
+
     const byHour = focusMinutesByHour(acts, ['2026-10-15']);
     assert.equal(byHour[9], 30);
     assert.equal(byHour[10], 60);
@@ -185,6 +188,7 @@ describe('isActivityOnDate', () => {
 describe('minutesByDay', () => {
   it('sums session minutes per local day, newest first', () => {
     const at = (d: number, h: number) => new Date(2026, 9, d, h);
+
     const activity = {
       workSessions: [
         session('s1', at(13, 9), at(13, 10), 60),
@@ -192,6 +196,7 @@ describe('minutesByDay', () => {
         session('s3', at(15, 14), at(15, 14), 40),
       ],
     } as Activity;
+
     assert.deepEqual(minutesByDay(activity), [
       { date: '2026-10-15', minutes: 70 },
       { date: '2026-10-13', minutes: 60 },

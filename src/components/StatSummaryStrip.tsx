@@ -9,14 +9,17 @@ function currentStreak(activities: Activity[], today: string): number {
   const completedDates = new Set(
     activities.filter((a) => a.completedAt).map((a) => localDateString(new Date(a.completedAt as string)))
   );
+
   const active = (date: string) => completedDates.has(date) || loggedMinutesOnDate(activities, date) > 0;
 
   let date = active(today) ? today : shiftIsoDate(today, -1);
   let streak = 0;
+
   while (streak < 366 && active(date)) {
     streak++;
     date = shiftIsoDate(date, -1);
   }
+
   return streak;
 }
 

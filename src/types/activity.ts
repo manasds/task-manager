@@ -99,20 +99,26 @@ export function normalizeActivity(activity: Activity): Activity {
     status: string;
     parked?: boolean;
   };
+
   const category: ActivityCategory = raw.category === 'learn' || raw.category === 'learning' ? 'learn' : 'build';
+
   const status: ActivityStatus = raw.parked
     ? 'parked'
     : raw.status === 'review'
       ? 'in_progress'
       : (raw.status as ActivityStatus);
+
   if (category === raw.category && status === raw.status && !('parked' in raw)) return activity;
   const { parked: _parked, ...rest } = raw;
+
   return { ...rest, category, status };
 }
 
 /** Goals in use, most used first. */
 export function goalNames(activities: Activity[]): string[] {
   const counts = new Map<string, number>();
+
   for (const a of activities) if (a.goal) counts.set(a.goal, (counts.get(a.goal) ?? 0) + 1);
+
   return [...counts.keys()].sort((a, b) => counts.get(b)! - counts.get(a)! || a.localeCompare(b));
 }

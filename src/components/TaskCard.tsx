@@ -63,23 +63,28 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
+
       if (menuRef.current?.contains(target) || menuButtonRef.current?.contains(target)) return;
       setShowMenu(false);
     };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setShowMenu(false);
     };
+
     // The menu is fixed to the viewport, so close it rather than let it drift on scroll.
     const handleScrollOrResize = (e: Event) => {
       if (menuRef.current?.contains(e.target as Node)) return;
       setShowMenu(false);
     };
+
     if (showMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
       window.addEventListener('scroll', handleScrollOrResize, true);
       window.addEventListener('resize', handleScrollOrResize);
     }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
@@ -95,6 +100,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     if (!showMenu) return;
     const button = menuButtonRef.current;
     const menu = menuRef.current;
+
     if (!button || !menu) return;
     const rect = button.getBoundingClientRect();
     const { offsetWidth: width, offsetHeight: height } = menu;
@@ -102,9 +108,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     const edge = 8;
     const bottomLimit = window.innerHeight - (window.innerWidth < 768 ? 80 : edge);
     const fitsBelow = rect.bottom + gap + height <= bottomLimit;
+
     const top = fitsBelow || rect.top - gap - height < edge
       ? Math.min(rect.bottom + gap, Math.max(edge, bottomLimit - height))
       : rect.top - gap - height;
+
     const left = Math.min(Math.max(rect.right - width, edge), window.innerWidth - width - edge);
     setMenuPos({ top, left });
   }, [showMenu]);
@@ -122,6 +130,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   // Determine next status for 1-tap mobile advancement
   const currentStatusIdx = STATUS_COLUMNS.findIndex((c) => c.id === activity.status);
+
   const nextStatus = activity.status === 'backlog' || activity.status === 'in_progress'
     ? STATUS_COLUMNS[currentStatusIdx + 1]
     : null;
@@ -226,6 +235,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                       <div className="border-t border-slate-100 my-1" />
                       {STATUS_COLUMNS.map((col) => {
                         if (col.id === activity.status) return null;
+
                         return (
                           <button
                             key={col.id}

@@ -23,6 +23,7 @@ export interface UnscheduledTrayProps {
 
 function ChipBody({ item }: { item: UnscheduledItem }) {
   const theme = CALENDAR_TYPES[item.type];
+
   return (
     <>
       <GripVertical className="w-3.5 shrink-0" style={{ color: theme.textMuted }} aria-hidden />
@@ -56,6 +57,7 @@ function TrayChip({ item, onOpen }: { item: UnscheduledItem; onOpen: (activityId
     id: `tray:${item.id}`,
     data: { source: 'tray', item } satisfies DragPayload,
   });
+
   return (
     <div
       ref={setNodeRef}
@@ -64,6 +66,7 @@ function TrayChip({ item, onOpen }: { item: UnscheduledItem; onOpen: (activityId
       onClick={() => onOpen(item.id)}
       onKeyDown={(e) => {
         listeners?.onKeyDown?.(e);
+
         if (e.key === 'Enter') onOpen(item.id);
       }}
       className={`${CHIP_CLASS} outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 ${
@@ -79,6 +82,7 @@ function TrayChip({ item, onOpen }: { item: UnscheduledItem; onOpen: (activityId
 export function UnscheduledTray({ items, open, onToggle, dayLabel, addable, onAddToDay, onOpenItem }: UnscheduledTrayProps) {
   const Chevron = open ? ChevronDown : ChevronUp;
   const { setNodeRef, isOver } = useDroppable({ id: TRAY_DROP_ID });
+
   return (
     <div ref={setNodeRef} className={`border-t border-neutral-200 transition-colors ${isOver ? 'bg-neutral-50' : 'bg-white'}`}>
       <div className="flex h-11 items-center gap-2 pr-4">
@@ -102,6 +106,7 @@ export function UnscheduledTray({ items, open, onToggle, dayLabel, addable, onAd
             value=""
             onChange={(e) => {
               const id = e.target.value;
+
               if (id) onAddToDay(id);
               e.target.value = '';
             }}

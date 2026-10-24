@@ -82,22 +82,28 @@ export const BoardView: React.FC<BoardViewProps> = ({
   // Filter activities
   const filteredActivities = activities.filter((act) => {
     if (goal !== 'all' && act.goal !== goal) return false;
+
     if (act.status !== 'parked' && selectedDate !== 'all' && !isActivityOnDate(act, selectedDate)) {
       return false;
     }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = act.title.toLowerCase().includes(q);
       const matchDesc = act.description?.toLowerCase().includes(q);
       const matchTag = act.tags.some((t) => t.toLowerCase().includes(q));
+
       if (!matchTitle && !matchDesc && !matchTag) return false;
     }
+
     if (selectedCategory !== 'all' && act.category !== selectedCategory) {
       return false;
     }
+
     if (selectedPriority !== 'all' && act.priority !== selectedPriority) {
       return false;
     }
+
     return true;
   });
 
@@ -116,6 +122,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
   const handleDragOverColumn = (e: React.DragEvent<HTMLDivElement>, colStatus: ActivityStatus) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+
     if (activeDropColumn !== colStatus) {
       setActiveDropColumn(colStatus);
     }
@@ -124,16 +131,19 @@ export const BoardView: React.FC<BoardViewProps> = ({
   const handleDropOnColumn = (e: React.DragEvent<HTMLDivElement>, colStatus: ActivityStatus) => {
     e.preventDefault();
     const actId = e.dataTransfer.getData('text/plain') || draggedActivityId;
+
     if (actId) {
       soundManager.playDrop();
       onMoveActivityStatus(actId, colStatus);
     }
+
     setDraggedActivityId(null);
     setActiveDropColumn(null);
   };
 
   const handleToggleComplete = (activityId: string) => {
     const act = activities.find((a) => a.id === activityId);
+
     if (!act) return;
 
     if (act.status === 'completed') {
@@ -155,6 +165,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
   const handleQuickAddSubmit = (status: ActivityStatus) => {
     if (!quickAddTitle.trim()) {
       setQuickAddColumn(null);
+
       return;
     }
 
@@ -377,6 +388,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                     onChange={(e) => setQuickAddTitle(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleQuickAddSubmit(col.id);
+
                       if (e.key === 'Escape') setQuickAddColumn(null);
                     }}
                     className="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 min-h-10"

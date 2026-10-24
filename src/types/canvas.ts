@@ -13,5 +13,7 @@ export const canvasTileSchema = z.object({
 });
 
 export type CanvasTile = z.infer<typeof canvasTileSchema>;
+
 export type CanvasKind = CanvasTile['kind'];
+
 export type CanvasStatus = CanvasTile['status'];

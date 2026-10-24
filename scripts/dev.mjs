@@ -33,8 +33,10 @@ async function openUrl(url) {
 function onOutput(stream) {
   return (chunk) => {
     stream.write(chunk);
+
     if (opened) return;
     const text = stripVTControlCharacters(chunk.toString());
+
     if (!/Ready in|Local:/.test(text)) return;
     opened = true;
     const port = text.match(/Local:\s+https?:\/\/[^:\s]+:(\d+)/)?.[1] ?? '3000';
@@ -43,11 +45,14 @@ function onOutput(stream) {
 }
 
 child.stdout.on('data', onOutput(process.stdout));
+
 child.stderr.on('data', onOutput(process.stderr));
 
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => child.kill(sig));
+
 child.on('error', (err) => {
   console.error(err.message);
   process.exit(1);
 });
+
 child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)));

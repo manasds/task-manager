@@ -55,13 +55,16 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     (update) => {
       const upserts = update.upserts.map(normalizeActivity);
       setActivities((prev) => applyRemoteActivities(prev, { ...update, upserts }));
+
       if (update.deletes.length > 0) {
         setTimer((current) => (current && update.deletes.includes(current.activityId) ? null : current));
       }
+
       if (update.dailyGoalMinutes !== undefined) setDailyGoalMinutes(update.dailyGoalMinutes);
     },
     { initialUser, sessionError }
   );
+
   const { authReady, currentDocument, persistLocal } = persistence;
   const userId = persistence.user?.id;
 
@@ -93,15 +96,18 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     setIsMuted(doc.settings.muted);
     setTimer(timerFor(doc.timer, doc.activities));
     setHydrated(true);
+
     if (sessionStorage.getItem(SIGNED_OUT_FLAG)) {
       sessionStorage.removeItem(SIGNED_OUT_FLAG);
       showToast('Signed out');
     }
+
     soundManager.setMuted(doc.settings.muted);
   }, [authReady, userId, currentDocument]);
 
   useEffect(() => {
     if (!hydrated) return;
+
     const doc: PersistedDocument = {
       schemaVersion: DOCUMENT_SCHEMA_VERSION,
       dailyGoalMinutes,
@@ -114,6 +120,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       timer,
       updatedAt: new Date().toISOString(),
     };
+
     const markDirty = !skipDirtyRef.current;
     skipDirtyRef.current = false;
     persistLocal(doc, markDirty);
@@ -126,7 +133,9 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     const next = withUpdatedAt(updated);
     setActivities((prev) => {
       const exists = prev.some((a) => a.id === next.id);
+
       if (exists) return prev.map((a) => (a.id === next.id ? next : a));
+
       return [next, ...prev];
     });
   };
@@ -152,6 +161,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     setActivities((prev) =>
       prev.map((a) => {
         if (a.id !== activityId) return a;
+
         return {
           ...a,
           status: newStatus,
@@ -184,6 +194,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     setActivities((prev) =>
       prev.map((a) => {
         if (a.id !== activityId) return a;
+
         return {
           ...a,
           actualMinutes: (a.actualMinutes || 0) + minutes,
@@ -197,7 +208,9 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   /** Save a timer's elapsed time (rounded to minutes) and return what was saved. */
   const saveTimer = (current: FocusTimerSnapshot): number => {
     const minutes = Math.round(timerElapsedSeconds(current) / 60);
+
     if (minutes > 0) logMinutes(current.activityId, minutes);
+
     return minutes;
   };
 
@@ -205,8 +218,10 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     if (timer?.activityId === act.id) {
       if (!timer.isRunning) setTimer({ ...timer, isRunning: true, startedAt: new Date().toISOString() });
       showToast(`Already focusing on ${act.title}`);
+
       return;
     }
+
     const saved = timer ? saveTimer(timer) : 0;
     setTimer({ activityId: act.id, secondsElapsed: 0, isRunning: true, startedAt: new Date().toISOString() });
     showToast(
@@ -240,6 +255,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     setActivities((prev) =>
       prev.map((a) => {
         if (a.id !== activityId) return a;
+
         return {
           ...a,
           status: 'completed',
@@ -255,6 +271,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   const handleExportData = () => {
     const dataStr =
       'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(activities, null, 2));
+
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
     downloadAnchor.setAttribute('download', `orbittask_export_${getTodayDateString()}.json`);
@@ -266,13 +283,16 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
 
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileReader = new FileReader();
+
     if (e.target.files && e.target.files[0]) {
       fileReader.readAsText(e.target.files[0], 'UTF-8');
       fileReader.onload = (event) => {
         try {
           const parsed = JSON.parse(event.target?.result as string);
+
           if (Array.isArray(parsed)) {
             const now = new Date().toISOString();
+
             const imported: Activity[] = parsed
               .filter(
                 (item): item is Activity =>
@@ -282,6 +302,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
                   typeof item.status === 'string'
               )
               .map((item) => ({ ...normalizeActivity(item), updatedAt: now }));
+
             setActivities(imported);
             setTimer((current) => timerFor(current, imported));
             soundManager.playDrop();
@@ -300,6 +321,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     const next = !isMuted;
     setIsMuted(next);
     soundManager.setMuted(next);
+
     if (!next) soundManager.playDragStart();
   };
 
@@ -308,8 +330,10 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       await persistence.logout();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Sign out failed');
+
       return;
     }
+
     // A fresh page load resets every bit of the signed-in session's state.
     sessionStorage.setItem(SIGNED_OUT_FLAG, '1');
     window.location.reload();

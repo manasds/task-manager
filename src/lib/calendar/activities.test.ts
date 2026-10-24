@@ -53,6 +53,7 @@ describe('showsPlannedOn', () => {
       status: 'completed',
       completedAt: new Date(2026, 9, 20, 12).toISOString(),
     });
+
     assert.equal(showsPlannedOn(a, '2026-10-20', TODAY), true);
     assert.equal(showsPlannedOn(a, TODAY, TODAY), false);
   });
@@ -62,6 +63,7 @@ describe('calendarItems', () => {
   it('builds planned blocks from scheduledTime + estimate and logged blocks from sessions', () => {
     const start = new Date(2026, 9, 23, 14, 0);
     const end = new Date(2026, 9, 23, 14, 50);
+
     const a = activity({
       id: 'a',
       scheduledTime: '10:30',
@@ -72,6 +74,7 @@ describe('calendarItems', () => {
       ],
       workSessions: [{ id: 'w1', activityId: 'a', start: start.toISOString(), end: end.toISOString(), minutes: 50 }],
     });
+
     const items = calendarItems([a], ['2026-10-22', TODAY], TODAY);
     assert.equal(items.length, 2);
     const planned = items.find((i) => i.kind === 'planned');
@@ -167,8 +170,10 @@ describe('moveToSlot', () => {
 describe('layoutDay', () => {
   it('puts short back-to-back blocks in separate lanes so their drawn cards do not cover each other', async () => {
     const { layoutDay } = await import('./layout');
+
     const item = (id: string, h: number, m: number, minutes: number) => {
       const start = new Date(2026, 9, 23, h, m);
+
       return {
         id,
         activityId: id,
@@ -182,6 +187,7 @@ describe('layoutDay', () => {
         completed: false,
       };
     };
+
     const laid = layoutDay([item('a', 10, 0, 10), item('b', 10, 10, 10), item('c', 12, 0, 60)]);
     const byId = Object.fromEntries(laid.map((p) => [p.item.id, p]));
     assert.equal(byId.a.columns, 2);

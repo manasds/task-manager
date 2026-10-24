@@ -51,6 +51,7 @@ export function shouldSafetyFlush(
   inFlight: boolean
 ): boolean {
   if (!dirty || inFlight) return false;
+
   return nowMs - lastAttemptMs >= BACKGROUND_SYNC_INTERVAL_MS;
 }
 
@@ -74,6 +75,7 @@ function nextEditMarker(nowIso: string, previous?: PendingEdit | null): PendingE
   if (!previous) return { at: nowIso };
   const prevMs = Date.parse(previous.at);
   const nowMs = Date.parse(nowIso);
+
   return { at: new Date(Math.max(nowMs, prevMs + 1)).toISOString() };
 }
 
@@ -81,14 +83,19 @@ function nextEditMarker(nowIso: string, previous?: PendingEdit | null): PendingE
 export function diffActivities(prev: Activity[], next: Activity[]): string[] {
   const before = new Map(prev.map((a) => [a.id, a]));
   const changed: string[] = [];
+
   for (const activity of next) {
     const old = before.get(activity.id);
     before.delete(activity.id);
+
     if (old === activity) continue;
+
     if (old && JSON.stringify(old) === JSON.stringify(activity)) continue;
     changed.push(activity.id);
   }
+
   for (const id of before.keys()) changed.push(id);
+
   return changed;
 }
 
@@ -101,10 +108,13 @@ export function recordLocalEdits(
 ): SyncMeta {
   const changed = diffActivities(prev.activities, next.activities);
   const goalChanged = prev.dailyGoalMinutes !== next.dailyGoalMinutes;
+
   if (changed.length === 0 && !goalChanged) return meta;
 
   const pending = { ...meta.pending };
+
   for (const id of changed) pending[id] = nextEditMarker(nowIso, pending[id]);
+
   return {
     ...meta,
     pending,
@@ -115,14 +125,17 @@ export function recordLocalEdits(
 /** First sync on this device: every local task is a candidate edit at its own timestamp. */
 export function seedPendingFromLocal(doc: PersistedDocument, meta: SyncMeta): SyncMeta {
   const pending: Record<string, PendingEdit> = {};
+
   for (const activity of doc.activities) pending[activity.id] = { at: activityTimestamp(activity) };
   const goalPending = doc.dailyGoalMinutes !== emptyDocument().dailyGoalMinutes ? { at: doc.updatedAt } : null;
+
   return { ...meta, pending, goalPending };
 }
 
 /** Next push batch, or null when there is nothing to send. */
 export function buildPush(doc: PersistedDocument, meta: SyncMeta): PushRequest | null {
   const byId = new Map(doc.activities.map((a) => [a.id, a]));
+
   const changes = Object.entries(meta.pending)
     .slice(0, MAX_CHANGES_PER_PUSH)
     .map(([id, edit]) => ({
@@ -131,10 +144,13 @@ export function buildPush(doc: PersistedDocument, meta: SyncMeta): PushRequest |
       updatedAt: edit.at,
       baseSeq: meta.seqs[id] ?? 0,
     }));
+
   const goal = meta.goalPending
     ? { dailyGoalMinutes: doc.dailyGoalMinutes, updatedAt: meta.goalPending.at, baseSeq: meta.goalSeq }
     : undefined;
+
   if (changes.length === 0 && !goal) return null;
+
   return goal ? { changes, goal } : { changes };
 }
 
@@ -154,9 +170,11 @@ export function applyRemoteActivities(activities: Activity[], update: RemoteUpda
   const removed = new Set(update.deletes);
   const upserts = new Map(update.upserts.map((a) => [a.id, a]));
   const next: Activity[] = [];
+
   for (const activity of activities) {
     if (removed.has(activity.id)) continue;
     const replacement = upserts.get(activity.id);
+
     if (replacement) {
       next.push(replacement);
       upserts.delete(activity.id);
@@ -164,6 +182,7 @@ export function applyRemoteActivities(activities: Activity[], update: RemoteUpda
       next.push(activity);
     }
   }
+
   return [...upserts.values(), ...next];
 }
 
@@ -181,15 +200,18 @@ function adoptRow(meta: SyncMeta, update: RemoteUpdate, row: ActivityRow) {
     update.deletes.push(row.id);
     delete meta.seqs[row.id];
   }
+
   delete meta.pending[row.id];
 }
 
 function finish(doc: PersistedDocument, meta: SyncMeta, update: RemoteUpdate): SyncStep {
   const activities = applyRemoteActivities(doc.activities, update);
   const dailyGoalMinutes = update.dailyGoalMinutes ?? doc.dailyGoalMinutes;
+
   if (activities === doc.activities && dailyGoalMinutes === doc.dailyGoalMinutes) {
     return { doc, meta, update };
   }
+
   return { doc: { ...doc, activities, dailyGoalMinutes }, meta, update };
 }
 
@@ -205,14 +227,18 @@ export function applyPull(doc: PersistedDocument, current: SyncMeta, pull: PullR
     pending: { ...current.pending },
     cursor: pull.cursor,
   };
+
   const update: RemoteUpdate = { upserts: [], deletes: [] };
 
   for (const row of pull.rows) {
     const edit = meta.pending[row.id];
+
     if (edit) {
       const serverMs = Date.parse(row.updatedAt);
       const localMs = Date.parse(edit.at);
+
       if (serverMs < localMs) continue;
+
       if (serverMs === localMs) {
         if (row.data) meta.seqs[row.id] = row.seq;
         else delete meta.seqs[row.id];
@@ -220,16 +246,19 @@ export function applyPull(doc: PersistedDocument, current: SyncMeta, pull: PullR
         continue;
       }
     }
+
     adoptRow(meta, update, row);
   }
 
   if (pull.goal) {
     const goalEdit = meta.goalPending;
     const serverMs = Date.parse(pull.goal.updatedAt);
+
     if (!goalEdit || serverMs >= Date.parse(goalEdit.at)) {
       if (!goalEdit || serverMs > Date.parse(goalEdit.at)) {
         update.dailyGoalMinutes = pull.goal.dailyGoalMinutes;
       }
+
       meta.goalSeq = pull.goal.seq;
       meta.goalPending = null;
     }
@@ -254,13 +283,16 @@ export function applyPushResult(
 
   for (const { id, seq } of result.applied) {
     const change = sentAt.get(id);
+
     if (change?.data) meta.seqs[id] = seq;
     else delete meta.seqs[id];
+
     if (change && meta.pending[id]?.at === change.updatedAt) delete meta.pending[id];
   }
 
   for (const row of result.rejected) {
     const change = sentAt.get(row.id);
+
     if (change && meta.pending[row.id]?.at === change.updatedAt) {
       adoptRow(meta, update, row);
     } else {
@@ -270,12 +302,16 @@ export function applyPushResult(
 
   const goalSentAt = sent.goal?.updatedAt;
   const goalUnchanged = goalSentAt !== undefined && meta.goalPending?.at === goalSentAt;
+
   if (result.goalApplied) {
     meta.goalSeq = result.goalApplied.seq;
+
     if (goalUnchanged) meta.goalPending = null;
   }
+
   if (result.goalRejected) {
     meta.goalSeq = result.goalRejected.seq;
+
     if (goalUnchanged) {
       meta.goalPending = null;
       update.dailyGoalMinutes = result.goalRejected.dailyGoalMinutes;
@@ -288,6 +324,7 @@ export function applyPushResult(
 export function isValidDocument(value: unknown): value is PersistedDocument {
   if (!value || typeof value !== 'object') return false;
   const doc = value as PersistedDocument;
+
   return (
     typeof doc.schemaVersion === 'number' &&
     typeof doc.dailyGoalMinutes === 'number' &&
@@ -300,6 +337,7 @@ export function isValidDocument(value: unknown): value is PersistedDocument {
 export function isValidSyncMeta(value: unknown): value is SyncMeta {
   if (!value || typeof value !== 'object') return false;
   const meta = value as SyncMeta;
+
   return (
     typeof meta.initialized === 'boolean' &&
     typeof meta.cursor === 'number' &&

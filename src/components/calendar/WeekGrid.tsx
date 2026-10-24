@@ -8,6 +8,7 @@ import { layoutDay, timezoneLabel, topFor } from '@/lib/calendar/layout';
 import { EventCard } from './EventCard';
 
 const HOURS = Array.from({ length: GRID_END_HOUR - GRID_START_HOUR + 1 }, (_, i) => GRID_START_HOUR + i);
+
 /** Room above the 07:00 line so its label isn't clipped. */
 const GRID_PAD_TOP = 16;
 const GUTTER_WIDTH = 76;
@@ -133,12 +134,16 @@ export function WeekGrid({
   onCreateAt,
 }: WeekGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+
   // One pass over the items, so each column gets a stable array and only re-lays-out when it changes.
   const itemsByDay = useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
+
     for (const item of items) map.set(item.day, [...(map.get(item.day) ?? []), item]);
+
     return map;
   }, [items]);
+
   const columns = `${GUTTER_WIDTH}px repeat(${days.length}, minmax(0, 1fr))`;
   const showsToday = days.some((day) => isSameDay(day, now));
   const nowTop = topFor(now);
@@ -147,6 +152,7 @@ export function WeekGrid({
   // Open scrolled to an hour before now (or 08:00), like a desktop calendar.
   useEffect(() => {
     const el = scrollRef.current;
+
     if (!el) return;
     const target = nowInRange ? nowTop - HOUR_HEIGHT * 1.5 : HOUR_HEIGHT;
     el.scrollTop = Math.max(0, target);
@@ -166,6 +172,7 @@ export function WeekGrid({
           {days.map((day) => {
             const isToday = isSameDay(day, now);
             const isSelected = days.length > 1 && isSameDay(day, selectedDay);
+
             return (
               <button
                 key={day.toISOString()}

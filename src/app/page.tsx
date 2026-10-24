@@ -6,6 +6,7 @@ import { getSessionUser } from '@/lib/session';
 export default async function HomePage() {
   let user: CloudUser | null = null;
   let sessionError = false;
+
   try {
     await ensureMigrated();
     user = await getSessionUser();
@@ -14,5 +15,6 @@ export default async function HomePage() {
     console.error(error);
     sessionError = true;
   }
+
   return <OrbitApp initialUser={user} sessionError={sessionError} />;
 }

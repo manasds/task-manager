@@ -18,6 +18,7 @@ export async function listTiles(userId: string): Promise<CanvasTile[]> {
      FROM canvas_tiles WHERE user_id = $1 ORDER BY position, created_at DESC`,
     [userId]
   );
+
   return result.rows.map((row) => ({
     id: row.id,
     url: row.url,
@@ -47,5 +48,6 @@ export async function deleteTile(userId: string, id: string): Promise<void> {
 /** A clean tile from a request body, or null if anything is off. */
 export function parseTile(body: unknown, id: string): CanvasTile | null {
   const result = canvasTileSchema.safeParse(body);
+
   return result.success && result.data.id === id ? result.data : null;
 }

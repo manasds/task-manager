@@ -34,10 +34,12 @@ function starterActivity(): Activity {
 export function loadSyncMeta(userId: string): SyncMeta {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(`${SYNC_KEY_PREFIX}${userId}`) ?? 'null');
+
     if (isValidSyncMeta(parsed)) return parsed;
   } catch {
     // Corrupt entry: start bookkeeping over.
   }
+
   return emptySyncMeta();
 }
 
@@ -47,16 +49,21 @@ export function saveSyncMeta(userId: string, meta: SyncMeta): void {
 
 export function loadLocalDocument(scope: string): PersistedDocument {
   const raw = localStorage.getItem(`${DOC_KEY_PREFIX}${scope}`);
+
   if (raw === null) {
     const doc = emptyDocument();
+
     return scope === GUEST_SCOPE ? { ...doc, activities: [starterActivity()] } : doc;
   }
+
   try {
     const parsed: unknown = JSON.parse(raw);
+
     if (isValidDocument(parsed)) return parsed;
   } catch {
     // Corrupt entry: fall back to an empty board.
   }
+
   return emptyDocument();
 }
 

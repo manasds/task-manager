@@ -31,6 +31,7 @@ export type SyncPhase = 'idle' | 'dirty' | 'flushing' | 'synced' | 'offline' | '
 
 /** Lets a signed-in user keep working on their own data when the app opens offline. */
 const LAST_USER_KEY = 'orbittask_last_user';
+
 /** Upper bound on push batches per sync so a busy editor cannot pin the loop. */
 const MAX_PUSH_BATCHES = 20;
 const OFFLINE_MESSAGE = 'Offline · changes are saved on this device';
@@ -38,6 +39,7 @@ const OFFLINE_MESSAGE = 'Offline · changes are saved on this device';
 function loadLastUser(): CloudUser | null {
   try {
     const raw = localStorage.getItem(LAST_USER_KEY);
+
     return raw ? (JSON.parse(raw) as CloudUser) : null;
   } catch {
     return null;
@@ -99,6 +101,7 @@ export function useSessionPersistence(
 
   const saveMeta = useCallback((meta: SyncMeta) => {
     metaRef.current = meta;
+
     if (userRef.current) saveSyncMeta(userRef.current.id, meta);
   }, []);
 
@@ -108,6 +111,7 @@ export function useSessionPersistence(
       documentRef.current = step.doc;
       saveLocalDocument(user.id, step.doc);
       saveMeta(step.meta);
+
       if (!isEmptyRemoteUpdate(step.update)) onRemoteRef.current(step.update);
     },
     [saveMeta]
@@ -118,15 +122,20 @@ export function useSessionPersistence(
     async (user: CloudUser): Promise<boolean> => {
       for (let batch = 0; batch < MAX_PUSH_BATCHES; batch += 1) {
         const push = buildPush(documentRef.current, metaRef.current);
+
         if (!push) break;
         const result = await pushChanges(push);
+
         if (userRef.current?.id !== user.id) return false;
         commit(user, applyPushResult(documentRef.current, metaRef.current, push, result));
       }
+
       for (;;) {
         const pull = await pullChanges(metaRef.current.cursor);
+
         if (userRef.current?.id !== user.id) return false;
         commit(user, applyPull(documentRef.current, metaRef.current, pull));
+
         if (!pull.hasMore) return true;
       }
     },
@@ -135,11 +144,15 @@ export function useSessionPersistence(
 
   const sync = useCallback(async (): Promise<boolean> => {
     const user = userRef.current;
+
     if (!user) return false;
+
     if (inFlightRef.current) {
       rerunRef.current = true;
+
       return false;
     }
+
     if (debounceRef.current !== null) {
       window.clearTimeout(debounceRef.current);
       debounceRef.current = null;
@@ -148,12 +161,15 @@ export function useSessionPersistence(
     inFlightRef.current = true;
     lastAttemptRef.current = Date.now();
     setState((prev) => ({ ...prev, phase: 'flushing' }));
+
     try {
       let ok: boolean;
+
       do {
         rerunRef.current = false;
         ok = await syncOnce(user);
       } while (ok && rerunRef.current);
+
       if (!ok) return false;
 
       setState((prev) => ({
@@ -162,6 +178,7 @@ export function useSessionPersistence(
         lastSyncedAt: new Date().toISOString(),
         lastError: null,
       }));
+
       return true;
     } catch (error) {
       const offline = isNetworkFailure(error);
@@ -175,6 +192,7 @@ export function useSessionPersistence(
             ? 'Your session expired. Sign in again to sync.'
             : (error as Error).message || 'Cloud sync failed. Work is still on this device.',
       }));
+
       return false;
     } finally {
       inFlightRef.current = false;
@@ -186,6 +204,7 @@ export function useSessionPersistence(
       const previous = documentRef.current;
       documentRef.current = document;
       const user = userRef.current;
+
       try {
         saveLocalDocument(user?.id ?? GUEST_SCOPE, document);
       } catch {
@@ -194,14 +213,18 @@ export function useSessionPersistence(
           lastError: 'This device could not save locally (storage full?)',
           phase: 'error',
         }));
+
         return;
       }
+
       if (!markDirty || !user) return;
 
       const meta = recordLocalEdits(metaRef.current, previous, document);
+
       if (meta === metaRef.current) return;
       saveMeta(meta);
       setState((prev) => ({ ...prev, phase: prev.phase === 'flushing' ? prev.phase : 'dirty' }));
+
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
       debounceRef.current = window.setTimeout(() => {
         debounceRef.current = null;
@@ -218,6 +241,7 @@ export function useSessionPersistence(
       let phase: SyncPhase = 'idle';
       let lastError: string | null = null;
       const { initialUser, sessionError } = initialSessionRef.current;
+
       if (sessionError || (!initialUser && !navigator.onLine)) {
         // Keep the last signed-in user's board usable until the server is reachable.
         user = loadLastUser();
@@ -228,36 +252,44 @@ export function useSessionPersistence(
         user = initialUser;
         saveLastUser(user);
       }
+
       if (cancelled) return;
       userRef.current = user;
 
       if (!user) {
         documentRef.current = loadLocalDocument(GUEST_SCOPE);
         setState((prev) => ({ ...prev, user: null, authReady: true, phase, lastError }));
+
         return;
       }
 
       let local = loadLocalDocument(user.id);
       let meta = loadSyncMeta(user.id);
+
       if (!meta.initialized) {
         // First sign-in on this device: bring along real guest work, not the untouched starter task.
         if (local.activities.length === 0) {
           const guest = loadLocalDocument(GUEST_SCOPE);
           const adopted = guest.activities.filter((a) => a.id !== STARTER_ACTIVITY_ID || a.updatedAt);
+
           if (adopted.length > 0) {
             local = { ...local, activities: adopted, dailyGoalMinutes: guest.dailyGoalMinutes };
           }
         }
+
         meta = { ...seedPendingFromLocal(local, emptySyncMeta()), initialized: true };
       }
 
       documentRef.current = local;
       saveLocalDocument(user.id, local);
       saveMeta(meta);
+
       if (phase === 'idle' && hasPending(meta)) phase = 'dirty';
       setState((prev) => ({ ...prev, user, authReady: true, phase, lastError }));
+
       if (!lastError) void sync();
     })();
+
     return () => {
       cancelled = true;
     };
@@ -268,15 +300,19 @@ export function useSessionPersistence(
     const beaconPush = () => {
       if (!userRef.current) return;
       const push = buildPush(documentRef.current, metaRef.current);
+
       if (push) pushChangesBeacon(push);
     };
+
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') beaconPush();
       else void sync();
     };
+
     const onOnline = () => {
       void sync();
     };
+
     const onOffline = () => {
       if (!userRef.current) return;
       setState((prev) => ({ ...prev, phase: 'offline', lastError: OFFLINE_MESSAGE }));
@@ -289,6 +325,7 @@ export function useSessionPersistence(
 
     const interval = window.setInterval(() => {
       const wanted = hasPending(metaRef.current) || document.visibilityState === 'visible';
+
       if (shouldSafetyFlush(Date.now(), lastAttemptRef.current, wanted, inFlightRef.current)) {
         void sync();
       }
@@ -300,6 +337,7 @@ export function useSessionPersistence(
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
       window.clearInterval(interval);
+
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
     };
   }, [sync]);

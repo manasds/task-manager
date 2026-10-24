@@ -61,7 +61,9 @@ function matches(tile: CanvasTile, filter: Filter): boolean {
 
 function normalizeUrl(raw: string): string {
   const v = raw.trim();
+
   if (!v) return v;
+
   return /^[a-z][a-z0-9+.-]*:/i.test(v) ? v : `https://${v}`;
 }
 
@@ -116,10 +118,12 @@ export default function CanvasView() {
       tilesRef.current = saved;
       setTiles(saved);
       setLoad('ready');
+
       return true;
     } catch (err) {
       if (errorStatus(err) === 401) setLoad('signed-out');
       else setLoad((current) => (current === 'ready' ? current : 'failed'));
+
       return false;
     }
   }, []);
@@ -129,14 +133,17 @@ export default function CanvasView() {
       if (!(await reload())) return;
       // Tiles saved on this device before the canvas moved to the database.
       let old: unknown;
+
       try {
         old = JSON.parse(localStorage.getItem('orbittask_canvas_v1') ?? '[]');
       } catch {
         return;
       }
+
       if (!Array.isArray(old) || old.length === 0) return;
       const lastPos = tilesRef.current.at(-1)?.position ?? 0;
       let failed = false;
+
       for (const [i, item] of old.entries()) {
         try {
           await saveCanvasTile({ ...item, position: lastPos + i + 1 });
@@ -144,16 +151,19 @@ export default function CanvasView() {
           if (errorStatus(err) !== 400) failed = true;
         }
       }
+
       if (failed) return setError('Could not move the links saved on this device to your account.');
       localStorage.removeItem('orbittask_canvas_v1');
       await reload();
     })();
+
     return () => cleanupRef.current?.();
   }, [reload]);
 
   /** Show an edit at once and save it in the background. If the save fails, show the server's copy. */
   const update = (next: CanvasTile[], save?: () => Promise<unknown>) => {
     show(next);
+
     if (!save) return;
     setError(null);
     writesRef.current = writesRef.current.then(save).then(
@@ -161,8 +171,10 @@ export default function CanvasView() {
       async (err) => {
         if (errorStatus(err) === 401) {
           setLoad('signed-out');
+
           return;
         }
+
         setError('Could not save that change. Showing what is saved.');
         await reload();
       }
@@ -180,6 +192,7 @@ export default function CanvasView() {
 
   const startGesture = (e: React.PointerEvent<HTMLElement>, id: string) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+
     if ((e.target as HTMLElement).closest('button')) return;
     cleanupRef.current?.();
     const el = e.currentTarget;
@@ -211,11 +224,13 @@ export default function CanvasView() {
       grabX = sx - r.left;
       grabY = sy - r.top;
       el.style.pointerEvents = 'none';
+
       try {
         el.setPointerCapture(pid);
       } catch {
         /* window listeners still track the pointer */
       }
+
       applyDragRef.current = apply;
       setDragId(id);
       apply();
@@ -229,23 +244,29 @@ export default function CanvasView() {
       if (ev.pointerId !== pid) return;
       px = ev.clientX;
       py = ev.clientY;
+
       if (!dragging) {
         const dist = Math.hypot(px - sx, py - sy);
+
         if (touch) {
           if (dist > 8) cleanup();
         } else if (dist > 6) {
           begin();
         }
+
         return;
       }
+
       if (ev.cancelable) ev.preventDefault();
       apply();
       const over = document.elementFromPoint(px, py)?.closest<HTMLElement>('[data-tile-id]');
       const overId = over?.dataset.tileId;
+
       if (overId && overId !== id) {
         const list = tilesRef.current;
         const from = list.findIndex(t => t.id === id);
         const to = list.findIndex(t => t.id === overId);
+
         if (from !== -1 && to !== -1 && from !== to) {
           const next = list.slice();
           const [moved] = next.splice(from, 1);
@@ -260,6 +281,7 @@ export default function CanvasView() {
       if (ev.pointerId !== pid) return;
       const wasDragging = dragging;
       cleanup();
+
       if (wasDragging) {
         suppressClickRef.current = true;
         setTimeout(() => {
@@ -267,9 +289,11 @@ export default function CanvasView() {
         }, 60);
         const list = tilesRef.current;
         const index = list.findIndex(t => t.id === id);
+
         if (index === -1) return;
         const prev = list[index - 1];
         const next = list[index + 1];
+
         if (prev?.id === before?.prev && next?.id === before?.next) return;
         const tile = { ...list[index], position: positionBetween(prev?.position, next?.position) };
         update(
@@ -285,19 +309,24 @@ export default function CanvasView() {
       window.removeEventListener('pointerup', onEnd);
       window.removeEventListener('pointercancel', onEnd);
       window.removeEventListener('touchmove', blockTouchScroll);
+
       if (dragging) {
         el.style.transform = '';
         el.style.pointerEvents = '';
+
         try {
           el.releasePointerCapture(pid);
         } catch {
           /* already released */
         }
+
         setDragId(null);
       }
+
       dragging = false;
       draggingRef.current = false;
       applyDragRef.current = null;
+
       if (cleanupRef.current === cleanup) cleanupRef.current = null;
     }
 
@@ -306,6 +335,7 @@ export default function CanvasView() {
     window.addEventListener('pointerup', onEnd);
     window.addEventListener('pointercancel', onEnd);
     window.addEventListener('touchmove', blockTouchScroll, { passive: false });
+
     if (touch) timer = setTimeout(begin, 250);
   };
 
@@ -324,13 +354,18 @@ export default function CanvasView() {
   const onAdd = (e: React.FormEvent) => {
     e.preventDefault();
     const finalUrl = normalizeUrl(url);
+
     if (!finalUrl) return;
+
     if (!getDomain(finalUrl)) {
       setError('Enter a web link that starts with http:// or https://.');
+
       return;
     }
+
     const k = kind;
     const fallback = getDomain(finalUrl) || (k === 'youtube' ? 'YouTube video' : finalUrl);
+
     const tile: CanvasTile = {
       id: newId(),
       url: finalUrl,
@@ -341,6 +376,7 @@ export default function CanvasView() {
       position: positionBetween(undefined, tiles[0]?.position),
       createdAt: new Date().toISOString(),
     };
+
     update([tile, ...tiles], () => saveCanvasTile(tile));
     resetAdd();
   };
@@ -362,6 +398,7 @@ export default function CanvasView() {
   const saveEdit = (tile: CanvasTile) => {
     const changes = { title: editTitle.trim() || tile.title, note: editNote.trim() };
     setEditingId(null);
+
     if (changes.title === tile.title && changes.note === tile.note) return;
     const next = { ...tile, ...changes };
     update(

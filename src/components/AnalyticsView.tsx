@@ -12,6 +12,7 @@ import { focusMinutesByHour, formatMinutes, isActivityOnDate, localDateString, l
 
 function hourLabel(hour: number): string {
   const h = hour % 24;
+
   return `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? 'a' : 'p'}`;
 }
 
@@ -39,9 +40,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     const dayActs = activities.filter((a) => isActivityOnDate(a, dateStr));
     
     const totalMinutes = loggedMinutesOnDate(activities, dateStr);
+
     const completedTasks = dayActs.filter(
       (a) => a.completedAt && localDateString(new Date(a.completedAt)) === dateStr
     ).length;
+
     const totalTasks = dayActs.length;
 
     const dateObj = new Date(dateStr + 'T00:00:00');
@@ -70,6 +73,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const grandTotalMinutes = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
 
   let accumulatedAngle = 0;
+
   const donutSlices = Object.entries(categoryTotals).map(([catKey, minutes]) => {
     const category = catKey as ActivityCategory;
     const meta = CATEGORIES[category];
@@ -95,16 +99,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const lastHour = 23 - [...minutesByHour].reverse().findIndex((m) => m > 0);
   const hourRangeStart = firstHour === -1 ? 7 : Math.min(7, firstHour);
   const hourRangeEnd = firstHour === -1 ? 22 : Math.max(22, lastHour);
+
   const hourlyFocus = Array.from({ length: hourRangeEnd - hourRangeStart + 1 }, (_, i) => {
     const hour = hourRangeStart + i;
+
     return { hour, hourLabel: hourLabel(hour), minutes: minutesByHour[hour] };
   });
+
   const maxHourlyMinutes = Math.max(1, ...hourlyFocus.map((h) => h.minutes));
   const peakHour = firstHour === -1 ? null : minutesByHour.indexOf(Math.max(...minutesByHour));
 
   const today = getTodayDateString();
   const todayLoggedMinutes = loggedMinutesOnDate(activities, today);
   const todayGoalPercent = Math.min(100, Math.round((todayLoggedMinutes / (dailyGoalMinutes || 360)) * 100));
+
   const primaryCategory = grandTotalMinutes > 0
     ? (Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0][0] as ActivityCategory)
     : null;
@@ -220,6 +228,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   const max = velocityMetric === 'hours' ? maxHours : maxTasks;
                   const heightPercent = val > 0 ? Math.max(3, Math.min(100, (val / max) * 100)) : 0;
                   const isHovered = hoveredDayIndex === idx;
+
                   // Keep edge tooltips inside the chart instead of hanging off the card.
                   const tooltipAlign =
                     idx < 2 ? 'left-0' : idx > daySeries.length - 3 ? 'right-0' : 'left-1/2 -translate-x-1/2';

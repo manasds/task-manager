@@ -8,6 +8,7 @@ const task = (overrides: Record<string, unknown>) =>
 describe('normalizeActivity', () => {
   it('maps the old categories to Build and Learn', () => {
     assert.equal(normalizeActivity(task({ category: 'learning' })).category, 'learn');
+
     for (const old of ['deep_work', 'health_fitness', 'creative', 'admin_meetings', 'personal']) {
       assert.equal(normalizeActivity(task({ category: old })).category, 'build');
     }

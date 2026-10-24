@@ -26,6 +26,7 @@ export function LoggedSummary({ dayLabel, stats, totalMinutes, onOpen }: LoggedS
           {stats.map((stat) => {
             const dot = CALENDAR_TYPES[stat.activity.category].dot;
             const pct = totalMinutes > 0 ? Math.round((stat.totalMinutes / totalMinutes) * 100) : 0;
+
             return (
               <li key={stat.activity.id}>
                 <button

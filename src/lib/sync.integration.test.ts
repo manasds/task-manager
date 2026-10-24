@@ -23,8 +23,10 @@ describe('postgres per-task sync', () => {
     // Writes and deletes a throwaway user, so it never runs against DATABASE_URL by accident.
     if (!process.env.TEST_DATABASE_URL) {
       t.skip('TEST_DATABASE_URL not set');
+
       return;
     }
+
     process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
     const { ensureMigrated, pool } = await import('./db');
     const { pullChanges, pushChanges } = await import('./sync');
@@ -33,8 +35,10 @@ describe('postgres per-task sync', () => {
       await ensureMigrated();
     } catch (error) {
       t.skip(`Postgres unavailable: ${(error as Error).message}`);
+
       return;
     }
+
     const user = { id: crypto.randomUUID(), email: `sync-test-${Date.now()}@example.com` };
     await pool.query(
       `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
@@ -50,6 +54,7 @@ describe('postgres per-task sync', () => {
         ],
         goal: { dailyGoalMinutes: 240, updatedAt: '2026-10-15T10:00:00.000Z', baseSeq: 0 },
       });
+
       assert.deepEqual(first.applied.map((r) => r.seq), [1, 2]);
       assert.deepEqual(first.goalApplied, { seq: 3 });
 
@@ -67,6 +72,7 @@ describe('postgres per-task sync', () => {
       const stale = await pushChanges(user.id, {
         changes: [{ id: 'a', data: activity('a', 'A-stale'), updatedAt: '2026-10-15T10:30:00.000Z', baseSeq: 1 }],
       });
+
       assert.equal(stale.applied.length, 0);
       assert.equal(stale.rejected[0].data?.title, 'A2');
 
@@ -74,6 +80,7 @@ describe('postgres per-task sync', () => {
       const deleted = await pushChanges(user.id, {
         changes: [{ id: 'b', data: null, updatedAt: '2026-10-15T09:00:00.000Z', baseSeq: 2 }],
       });
+
       assert.equal(deleted.applied.length, 1);
 
       const since = await pullChanges(user.id, all.cursor);

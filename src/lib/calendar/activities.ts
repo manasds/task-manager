@@ -12,6 +12,7 @@ export function blockMinutes(activity: Activity): number {
 
 function checklistOf(activity: Activity): ChecklistProgress | undefined {
   if (activity.subtasks.length === 0) return undefined;
+
   return { done: activity.subtasks.filter((s) => s.completed).length, total: activity.subtasks.length };
 }
 
@@ -20,6 +21,7 @@ export function timeOnDay(day: string, time: string): Date {
   const [hours, minutes] = time.split(':').map(Number);
   const date = parseLocalDate(day);
   date.setHours(hours || 0, minutes || 0, 0, 0);
+
   return date;
 }
 
@@ -44,12 +46,14 @@ const isOpen = (activity: Activity) => activity.status !== 'completed';
  */
 export function showsPlannedOn(activity: Activity, day: string, today: string): boolean {
   if (!activity.scheduledTime || !isActivityOnDate(activity, day)) return false;
+
   return explicitlyOn(activity, day) || (day === today && isOpen(activity));
 }
 
 /** Planned blocks and logged sessions for the given days. */
 export function calendarItems(activities: Activity[], days: string[], today: string): CalendarItem[] {
   const items: CalendarItem[] = [];
+
   for (const activity of activities) {
     const base = {
       activityId: activity.id,
@@ -60,6 +64,7 @@ export function calendarItems(activities: Activity[], days: string[], today: str
       notes: activity.notes || activity.description || undefined,
       checklist: checklistOf(activity),
     };
+
     for (const day of days) {
       if (activity.scheduledTime && showsPlannedOn(activity, day, today)) {
         const start = timeOnDay(day, activity.scheduledTime);
@@ -72,14 +77,17 @@ export function calendarItems(activities: Activity[], days: string[], today: str
           end: addMinutes(start, blockMinutes(activity)),
         });
       }
+
       // Logged work happened whatever the task's state, so parked tasks still show it.
       for (const session of activity.workSessions ?? []) {
         const clipped = clipSessionToDate(session, day);
+
         if (!clipped) continue;
         items.push({ ...base, id: `${session.id}@${day}`, day, kind: 'logged', start: clipped.start, end: clipped.end });
       }
     }
   }
+
   return items;
 }
 
@@ -112,12 +120,14 @@ export function addableTo(activities: Activity[], day: string, today: string): A
 /** Also planned on `day`, so the task shows there in the calendar too. */
 export function addToDay(activity: Activity, day: string): Activity {
   if (explicitlyOn(activity, day)) return activity;
+
   return { ...activity, plannedDates: [...(activity.plannedDates ?? []), day] };
 }
 
 /** On `day` only as an extra planned day, so taking it off leaves its start day alone. */
 export function canRemoveFromDay(activity: Activity, day: string, today: string): boolean {
   if (activity.date === day || !activity.plannedDates?.includes(day)) return false;
+
   // An open task stays on today regardless, so removing it there would do nothing visible.
   return !(day === today && isOpen(activity));
 }

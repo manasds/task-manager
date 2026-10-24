@@ -9,5 +9,6 @@ export function ServiceWorkerRegister() {
       // Offline cache is optional.
     });
   }, []);
+
   return null;
 }

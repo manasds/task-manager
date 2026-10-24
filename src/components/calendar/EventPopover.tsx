@@ -58,9 +58,11 @@ export function EventPopover({
   useLayoutEffect(() => {
     const place = () => {
       const el = ref.current;
+
       if (!el) return;
       const rect = anchor.getBoundingClientRect();
       const height = el.offsetHeight;
+
       // Too narrow to sit beside the anchor: centre it below (or above) instead of covering it.
       if (window.innerWidth < WIDTH * 2) {
         const below = rect.bottom + MARGIN;
@@ -69,17 +71,22 @@ export function EventPopover({
           left: Math.max(MARGIN, (window.innerWidth - el.offsetWidth) / 2),
           top: Math.max(MARGIN, Math.min(top, window.innerHeight - height - MARGIN)),
         });
+
         return;
       }
+
       let left = rect.left - GAP - WIDTH;
+
       if (left < MARGIN) left = rect.right + GAP;
       left = Math.max(MARGIN, Math.min(left, window.innerWidth - WIDTH - MARGIN));
       const top = Math.max(MARGIN, Math.min(rect.top, window.innerHeight - height - MARGIN));
       setPos({ left, top });
     };
+
     place();
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
+
     return () => {
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place, true);
@@ -95,19 +102,25 @@ export function EventPopover({
   useEffect(() => {
     const popover = ref.current;
     popover?.focus();
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCloseRef.current();
     };
+
     const onDown = (e: MouseEvent) => {
       const target = e.target as Node;
+
       if (popover?.contains(target) || anchor.contains(target)) return;
       onCloseRef.current();
     };
+
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDown);
+
     return () => {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onDown);
+
       // Hand keyboard focus back to the card it was opened from.
       if (popover?.contains(document.activeElement) && anchor.isConnected) anchor.focus();
     };
@@ -115,8 +128,10 @@ export function EventPopover({
 
   const checklist = item.checklist;
   const pct = checklist && checklist.total > 0 ? Math.round((checklist.done / checklist.total) * 100) : 0;
+
   const iconButton =
     'flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 outline-none hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:ring-neutral-400';
+
   const footerButton = 'h-8 rounded-lg px-3 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-neutral-400';
   const secondary = `${footerButton} border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50`;
 

@@ -17,10 +17,12 @@ const FOCUS = 'outline-none focus-visible:ring-2 focus-visible:ring-neutral-400'
 
 export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDate }: MiniMonthProps) {
   const first = startOfMonth(month);
+
   const days = eachDayOfInterval({
     start: startOfWeek(first, WEEK_OPTIONS),
     end: endOfWeek(endOfMonth(first), WEEK_OPTIONS),
   });
+
   const weeks = Array.from({ length: days.length / 7 }, (_, i) => days.slice(i * 7, i * 7 + 7));
   const anchorWeekStart = startOfWeek(anchorDate, WEEK_OPTIONS);
 
@@ -59,6 +61,7 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
       <div className="flex flex-col">
         {weeks.map((week) => {
           const isAnchorWeek = isSameDay(week[0], anchorWeekStart);
+
           return (
             <div
               key={week[0].toISOString()}
@@ -67,6 +70,7 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
               {week.map((day) => {
                 const isToday = isSameDay(day, today);
                 const inMonth = isSameMonth(day, first);
+
                 return (
                   <button
                     key={day.toISOString()}

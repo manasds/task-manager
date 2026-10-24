@@ -10,12 +10,15 @@ export async function GET() {
   try {
     await ensureMigrated();
     const user = await getSessionUser();
+
     if (!user) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
+
     return NextResponse.json({ tiles: await listTiles(user.id) });
   } catch (error) {
     console.error(error);
+
     return NextResponse.json({ error: 'Could not load the canvas' }, { status: 500 });
   }
 }

@@ -74,7 +74,9 @@ const ALL_FILTERS: CalendarFilters = {
 const collisionDetection: CollisionDetection = (args) => {
   const hits = pointerWithin(args);
   const tray = hits.find((hit) => hit.id === TRAY_DROP_ID);
+
   if (tray) return [tray];
+
   return hits.length > 0 ? hits : rectIntersection(args);
 };
 
@@ -86,8 +88,10 @@ function dragTitle(data: { current?: unknown }): string {
 
 function targetLabel(over: DragTarget): string {
   if (!over) return 'nowhere';
+
   if (over.id === TRAY_DROP_ID) return 'Unscheduled';
   const day = (over.data.current as DayDropData | undefined)?.day;
+
   return day ? format(day, 'EEEE, MMMM d') : 'the calendar';
 }
 
@@ -105,6 +109,7 @@ const MOBILE_QUERY = '(max-width: 767px)';
 function subscribeMobile(onChange: () => void): () => void {
   const query = window.matchMedia(MOBILE_QUERY);
   query.addEventListener('change', onChange);
+
   return () => query.removeEventListener('change', onChange);
 }
 
@@ -122,29 +127,37 @@ function useNow(): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
+
     const timeout = setTimeout(() => {
       setNow(new Date());
       interval = setInterval(() => setNow(new Date()), 60_000);
     }, 60_000 - (Date.now() % 60_000));
+
     return () => {
       clearTimeout(timeout);
+
       if (interval) clearInterval(interval);
     };
   }, []);
+
   return now;
 }
 
 function rangeSubtitle(start: Date, end: Date): string {
   const tail = isSameMonth(start, end) ? format(end, 'd') : format(end, 'MMM d');
+
   return `Week ${getISOWeek(start)} · ${format(start, 'MMM d')} – ${tail}`;
 }
 
 function clientY(event: Event | null): number | null {
   if (!event) return null;
+
   if ('touches' in event) {
     const touch = (event as TouchEvent).touches[0] ?? (event as TouchEvent).changedTouches[0];
+
     return touch ? touch.clientY : null;
   }
+
   return 'clientY' in event ? (event as MouseEvent).clientY : null;
 }
 
@@ -163,6 +176,7 @@ function dropStart(
   const startY = clientY(event.activatorEvent);
   const initial = active.rect.current.initial;
   const column = over ? document.querySelector(`[data-drop-id="${String(over.id)}"]`) : null;
+
   if (!data?.day || pointerY === null || startY === null || !initial || !column) return null;
   const itemTop = pointerY - (startY - initial.top);
   const raw = ((itemTop - column.getBoundingClientRect().top) / HOUR_HEIGHT) * 60;
@@ -171,6 +185,7 @@ function dropStart(
   // setHours keeps wall-clock time, so a DST change day doesn't shift the slot by an hour.
   const start = new Date(data.day);
   start.setHours(GRID_START_HOUR, minutes, 0, 0);
+
   return { day: data.day, start };
 }
 
@@ -230,11 +245,14 @@ export function CalendarView({
 
   useEffect(() => {
     if (!dragging) return;
+
     const track = (event: MouseEvent | TouchEvent) => {
       pointerYRef.current = clientY(event);
     };
+
     window.addEventListener('mousemove', track, { passive: true });
     window.addEventListener('touchmove', track, { passive: true });
+
     return () => {
       window.removeEventListener('mousemove', track);
       window.removeEventListener('touchmove', track);
@@ -252,32 +270,41 @@ export function CalendarView({
   );
 
   const weekStart = startOfWeek(anchor, WEEK_OPTIONS);
+
   const days = useMemo(() => {
     const day = parseLocalDate(selectedDate);
+
     if (effectiveView === 'day') return [day];
     const monday = startOfWeek(day, WEEK_OPTIONS);
+
     return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   }, [effectiveView, selectedDate]);
+
   const dayKeys = useMemo(() => days.map(localDateString), [days]);
 
   const visibleItems = useMemo(
     () => calendarItems(activities, dayKeys, today).filter((item) => passesFilters(item, filters)),
     [activities, dayKeys, today, filters],
   );
+
   const upcomingItems = useMemo(() => {
     const next7 = Array.from({ length: 7 }, (_, i) => localDateString(addDays(parseLocalDate(today), i)));
+
     return calendarItems(activities, next7, today).filter(
       (item) => item.kind === 'planned' && passesFilters(item, filters),
     );
   }, [activities, today, filters]);
+
   const trayItems = useMemo(
     () => unscheduledOn(activities, selectedDate).filter((item) => passesFilters(item, filters)),
     [activities, selectedDate, filters],
   );
+
   const addable = useMemo(
     () => addableTo(activities, selectedDate, today).map((a) => ({ id: a.id, title: a.title })),
     [activities, selectedDate, today],
   );
+
   const loggedStats = useMemo(
     () =>
       taskStatsForDate(activities, selectedDate).filter(
@@ -285,7 +312,9 @@ export function CalendarView({
       ),
     [activities, selectedDate, filters],
   );
+
   const loggedTotal = loggedStats.reduce((sum, s) => sum + s.totalMinutes, 0);
+
   const plannedTotal = visibleItems
     .filter((item) => item.kind === 'planned' && item.day === selectedDate)
     .reduce((sum, item) => sum + differenceInMinutes(item.end, item.start), 0);
@@ -293,6 +322,7 @@ export function CalendarView({
   const selectedDayLabel = selectedDate === today ? 'Today' : format(anchor, 'EEE d');
   const title = format(anchor, 'MMMM yyyy');
   const dayStats = `${selectedDayLabel}: ${formatMinutes(plannedTotal)} planned · ${formatMinutes(loggedTotal)} logged`;
+
   const subtitle =
     effectiveView === 'week'
       ? `${rangeSubtitle(weekStart, endOfWeek(anchor, WEEK_OPTIONS))} · ${dayStats}`
@@ -315,6 +345,7 @@ export function CalendarView({
 
   const toggleType = (type: CalendarType) =>
     setFilters((f) => ({ ...f, types: { ...f.types, [type]: !f.types[type] } }));
+
   const togglePriority = (priority: CalendarPriority) =>
     setFilters((f) => ({ ...f, priorities: { ...f.priorities, [priority]: !f.priorities[priority] } }));
 
@@ -328,21 +359,28 @@ export function CalendarView({
   const handleDragMove = (event: DragMoveEvent) => {
     if (!dragging || !event.over) {
       setDropPreview(null);
+
       return;
     }
+
     const minutes = payloadDuration(dragging);
     const target = dropStart(event, pointerYRef.current, minutes);
+
     if (!target) {
       setDropPreview(null);
+
       return;
     }
+
     const top = topFor(target.start);
+
     const next: DropPreview = {
       dropId: String(event.over.id),
       top,
       height: Math.max(24, (minutes / 60) * HOUR_HEIGHT),
       label: formatRange(target.start, addMinutes(target.start, minutes)),
     };
+
     setDropPreview((current) => (current && current.dropId === next.dropId && current.top === next.top ? current : next));
   };
 
@@ -358,9 +396,11 @@ export function CalendarView({
   const handleDragEnd = (event: DragEndEvent) => {
     const payload = dragging;
     finishDrag();
+
     if (!payload) return;
     const activityId = payload.source === 'grid' ? payload.item.activityId : payload.item.id;
     const activity = findActivity(activityId);
+
     if (!activity) return;
 
     if (event.over?.id === TRAY_DROP_ID) {
@@ -368,12 +408,15 @@ export function CalendarView({
         onUpdateActivity(unschedule(activity));
         soundManager.playDrop();
       }
+
       return;
     }
 
     const target = dropStart(event, pointerYRef.current, payloadDuration(payload));
+
     if (!target) return;
     const sourceDay = payload.source === 'grid' ? payload.item.day : selectedDate;
+
     const result = moveToSlot(
       activity,
       sourceDay,
@@ -381,8 +424,10 @@ export function CalendarView({
       toTimeString(target.start),
       today,
     );
+
     onUpdateActivity(result.activity);
     soundManager.playDrop();
+
     if (result.note) onToast(result.note);
   };
 
@@ -391,17 +436,20 @@ export function CalendarView({
   const selectedItem = selected
     ? (visibleItems.find((item) => item.id === selected.id) ?? upcomingItems.find((item) => item.id === selected.id))
     : undefined;
+
   const selectedActivity = selectedItem ? findActivity(selectedItem.activityId) : undefined;
   const closePopover = () => setSelected(null);
 
   const addTaskToDay = (id: string) => {
     const activity = findActivity(id);
+
     if (activity) onUpdateActivity(addToDay(activity, selectedDate));
   };
 
   const openTask = (id: string) => {
     if (justDraggedRef.current) return;
     const activity = findActivity(id);
+
     if (activity) onEditActivity(activity);
   };
 
@@ -488,6 +536,7 @@ export function CalendarView({
                   onSelectItem={selectItem}
                   onSchedule={(id, time) => {
                     const activity = findActivity(id);
+
                     if (!activity) return;
                     onUpdateActivity(moveToSlot(activity, selectedDate, selectedDate, time, today).activity);
                     soundManager.playDrop();

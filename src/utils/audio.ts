@@ -10,20 +10,25 @@ class SoundEffectsManager {
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
+
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
     }
+
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
+
     return this.ctx;
   }
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
+
     if (muted && this.ambientNoiseNode) {
       this.stopAmbient();
     }
@@ -38,8 +43,10 @@ class SoundEffectsManager {
    */
   public playDragStart() {
     if (this.isMuted) return;
+
     try {
       const ctx = this.getContext();
+
       if (!ctx) return;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -66,8 +73,10 @@ class SoundEffectsManager {
    */
   public playDrop() {
     if (this.isMuted) return;
+
     try {
       const ctx = this.getContext();
+
       if (!ctx) return;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -94,8 +103,10 @@ class SoundEffectsManager {
    */
   public playComplete() {
     if (this.isMuted) return;
+
     try {
       const ctx = this.getContext();
+
       if (!ctx) return;
       const now = ctx.currentTime;
 
@@ -127,8 +138,10 @@ class SoundEffectsManager {
    */
   public startAmbientFocus(): boolean {
     if (this.isMuted) return false;
+
     try {
       const ctx = this.getContext();
+
       if (!ctx) return false;
       this.stopAmbient();
 
@@ -138,6 +151,7 @@ class SoundEffectsManager {
 
       // Pink noise algorithm (Paul Kellet's filtered white noise)
       let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+
       for (let i = 0; i < bufferSize; i++) {
         const white = Math.random() * 2 - 1;
         b0 = 0.99886 * b0 + white * 0.0555179;
@@ -168,6 +182,7 @@ class SoundEffectsManager {
 
       whiteNoise.start();
       this.ambientNoiseNode = whiteNoise;
+
       return true;
     } catch {
       return false;
@@ -182,6 +197,7 @@ class SoundEffectsManager {
       } catch {
         // Safe disconnect
       }
+
       this.ambientNoiseNode = null;
     }
   }

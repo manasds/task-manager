@@ -23,6 +23,7 @@ import {
 
 function currentTimeString(): string {
   const now = new Date();
+
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
@@ -60,16 +61,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [category, setCategory] = useState<ActivityCategory>(initialActivity?.category ?? "build");
   const [priority, setPriority] = useState<ActivityPriority>(initialActivity?.priority ?? "medium");
   const [status, setStatus] = useState<ActivityStatus>(initialActivity?.status ?? defaultStatus);
+
   const [estimatedMinutes, setEstimatedMinutes] = useState(
     initialActivity ? initialActivity.estimatedMinutes || 30 : 45
   );
+
   const [workSessions, setWorkSessions] = useState<WorkSession[]>(initialActivity?.workSessions ?? []);
   const [logDate, setLogDate] = useState(today);
   const [logTime, setLogTime] = useState(currentTimeString);
   const [logMinutes, setLogMinutes] = useState("");
+
   const [scheduledTime, setScheduledTime] = useState(
     initialActivity ? initialActivity.scheduledTime || "" : defaultTime || ""
   );
+
   const [date, setDate] = useState(initialActivity?.date || defaultDate || today);
   const [goal, setGoal] = useState(initialActivity ? initialActivity.goal ?? "" : defaultGoal ?? "");
   const [deadline, setDeadline] = useState(initialActivity?.deadline ?? "");
@@ -85,7 +90,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+
     document.addEventListener("keydown", onKeyDown);
+
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
@@ -119,6 +126,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       const val = tagInput.trim().replace(/^#/, "");
+
       if (val && !tags.includes(val)) {
         setTags([...tags, val]);
         setTagInput("");
@@ -142,15 +150,19 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   /** Session for the "Log time worked" fields, or null if they are incomplete. */
   const buildPendingSession = (): WorkSession | null => {
     if (pendingLogMinutes <= 0 || !logDate || !logTime) return null;
+
     return createManualSession(initialActivity?.id ?? "", logDate, logTime, pendingLogMinutes);
   };
 
   const handleAddTimeEntry = () => {
     const session = buildPendingSession();
+
     if (!session) {
       setError("Enter minutes worked, plus the date and time you started");
+
       return;
     }
+
     soundManager.playDrop();
     setWorkSessions([...workSessions, session]);
     setLogMinutes("");
@@ -163,16 +175,21 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (target) {
       const pending = buildPendingSession();
+
       const added = (pending ? [...workSessions, pending] : workSessions).map((s) => ({
         ...s,
         activityId: target.id,
       }));
+
       if (added.length === 0) {
         setError("Add the time you worked first");
+
         return;
       }
+
       soundManager.playDrop();
       onSave({
         ...target,
@@ -180,19 +197,24 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         actualMinutes: target.actualMinutes + totalSessionMinutes(added),
       });
       onClose();
+
       return;
     }
+
     if (!title.trim()) {
       setError("Please provide a title for the activity");
+
       return;
     }
 
     // Filled-in time entry that wasn't added yet still counts.
     const pending = buildPendingSession();
     const id = initialActivity ? initialActivity.id : `task-${crypto.randomUUID()}`;
+
     const sessions = (pending ? [...workSessions, pending] : workSessions)
       .map((s) => ({ ...s, activityId: id }))
       .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+
     const baseUntimed = initialActivity ? untimedMinutes(initialActivity) : 0;
 
     const activityToSave: Activity = {
@@ -764,6 +786,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                         const start = new Date(s.start);
                         const end = new Date(s.end);
                         const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
                         return (
                           <div
                             key={s.id}

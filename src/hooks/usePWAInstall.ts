@@ -30,6 +30,7 @@ export function usePWAInstall() {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
+
     const handleAppInstalled = () => {
       setInstalledNow(true);
       setDeferredPrompt(null);
@@ -37,6 +38,7 @@ export function usePWAInstall() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
@@ -47,9 +49,11 @@ export function usePWAInstall() {
     if (!deferredPrompt) return false;
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
+
     if (outcome !== 'accepted') return false;
     setInstalledNow(true);
     setDeferredPrompt(null);
+
     return true;
   };
 
@@ -64,6 +68,7 @@ export function usePWAInstall() {
 function subscribeOnline(onChange: () => void) {
   window.addEventListener('online', onChange);
   window.addEventListener('offline', onChange);
+
   return () => {
     window.removeEventListener('online', onChange);
     window.removeEventListener('offline', onChange);

@@ -23,8 +23,10 @@ type LinksState = { phase: 'loading' } | { phase: 'error' } | { phase: 'ready'; 
 
 const mutedText =
   'h-40 border-2 border-dashed border-slate-200/90 rounded-2xl flex items-center justify-center p-4 text-center text-xs text-slate-400';
+
 const cardClass =
   'block bg-white rounded-2xl border border-slate-200 hover:border-slate-300 p-3 space-y-2.5 text-left transition-[color,background-color,border-color,opacity,filter] duration-200';
+
 const doneClass = 'bg-slate-50/70 opacity-60 saturate-50 hover:opacity-100 hover:saturate-100';
 
 const PRIORITY_PILL: Record<Activity['priority'], string> = {
@@ -74,17 +76,22 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
     fetchCanvas()
       .then(({ tiles }) => !cancelled && setLinks({ phase: 'ready', tiles }))
       .catch(() => !cancelled && setLinks({ phase: 'error' }));
+
     return () => {
       cancelled = true;
     };
   }, [signedIn]);
 
   const visible = activities.filter((a) => goal === 'all' || a.goal === goal);
+
   const ofType = (category: Activity['category']) => {
     const mine = visible.filter((a) => a.category === category && a.status !== 'parked');
+
     return [...mine.filter((a) => a.status !== 'completed'), ...mine.filter((a) => a.status === 'completed')];
   };
+
   const parked = visible.filter((a) => a.status === 'parked');
+
   const tiles =
     links.phase === 'ready'
       ? [...links.tiles.filter((t) => t.status !== 'done'), ...links.tiles.filter((t) => t.status === 'done')]
@@ -93,6 +100,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
   const taskCard = (a: Activity) => {
     const done = a.status === 'completed';
     const overdue = !!a.deadline && a.deadline < today && !done;
+
     return (
       <div
         key={a.id}
@@ -187,6 +195,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
           ) : (
             tiles.map((t) => {
               const ytId = getYouTubeId(t.url);
+
               return (
                 <a
                   key={t.id}

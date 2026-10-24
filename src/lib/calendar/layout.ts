@@ -25,6 +25,7 @@ function cardBox(item: CalendarItem): { top: number; height: number } {
   const rawBottom = rawTop + (differenceInMinutes(item.end, item.start) / 60) * HOUR_HEIGHT;
   const top = Math.min(Math.max(0, rawTop), GRID_HEIGHT - MIN_CARD_HEIGHT);
   const bottom = Math.min(GRID_HEIGHT, Math.max(top + MIN_CARD_HEIGHT, rawBottom));
+
   return { top, height: bottom - top };
 }
 
@@ -36,6 +37,7 @@ export function layoutDay(items: CalendarItem[]): PositionedItem[] {
   const boxes = items
     .map((item) => ({ item, ...cardBox(item) }))
     .sort((a, b) => a.top - b.top || b.height - a.height);
+
   const result: PositionedItem[] = [];
   let cluster: PositionedItem[] = [];
   let laneEnds: number[] = [];
@@ -50,18 +52,23 @@ export function layoutDay(items: CalendarItem[]): PositionedItem[] {
 
   for (const box of boxes) {
     const bottom = box.top + box.height;
+
     if (box.top >= clusterEnd) flush();
     let lane = laneEnds.findIndex((end) => end <= box.top);
+
     if (lane === -1) {
       lane = laneEnds.length;
       laneEnds.push(bottom);
     } else {
       laneEnds[lane] = bottom;
     }
+
     clusterEnd = Math.max(clusterEnd, bottom);
     cluster.push({ item: box.item, top: box.top, height: box.height, column: lane, columns: 1 });
   }
+
   flush();
+
   return result;
 }
 
@@ -79,5 +86,6 @@ export function timezoneLabel(date: Date = new Date()): string {
   const sign = offset >= 0 ? '+' : '-';
   const hours = Math.floor(Math.abs(offset) / 60);
   const minutes = Math.abs(offset) % 60;
+
   return `GMT${sign}${hours}${minutes ? `:${String(minutes).padStart(2, '0')}` : ''}`;
 }

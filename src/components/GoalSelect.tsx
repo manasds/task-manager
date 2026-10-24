@@ -12,7 +12,9 @@ interface GoalSelectProps {
 /** Goal filter. Each option shows how many of that goal's tasks are done. */
 export const GoalSelect: React.FC<GoalSelectProps> = ({ activities, value, onChange, className }) => {
   const goals = goalNames(activities);
+
   if (goals.length === 0) return null;
+
   return (
     <select
       value={value}
@@ -24,6 +26,7 @@ export const GoalSelect: React.FC<GoalSelectProps> = ({ activities, value, onCha
       {goals.map((goal) => {
         const tasks = activities.filter((a) => a.goal === goal);
         const done = tasks.filter((a) => a.status === 'completed').length;
+
         return (
           <option key={goal} value={goal}>
             {goal} · {done}/{tasks.length}

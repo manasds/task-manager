@@ -29,11 +29,13 @@ function formatClock(totalSeconds: number): string {
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
   const mmss = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
   return h > 0 ? `${h}:${mmss}` : mmss;
 }
 
 const buttonShape =
   'min-h-11 min-w-11 flex items-center justify-center rounded-xl transition-colors active:scale-95';
+
 const quietButton = `${buttonShape} text-slate-300 hover:text-white hover:bg-white/10`;
 
 export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
@@ -51,12 +53,14 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   useEffect(() => {
     if (!isRunning) return;
     const interval = setInterval(() => setTick((t) => t + 1), 1000);
+
     return () => clearInterval(interval);
   }, [isRunning]);
 
   // Rain stops when toggled off or when the bar goes away (timer stopped, task gone).
   useEffect(() => {
     if (!isAmbientOn) return;
+
     return () => soundManager.stopAmbient();
   }, [isAmbientOn]);
 
@@ -74,6 +78,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
 
   const handleToggleTimer = () => {
     soundManager.playDragStart();
+
     if (timer.isRunning) {
       onTimerChange({ ...timer, secondsElapsed, isRunning: false, startedAt: undefined });
     } else {
