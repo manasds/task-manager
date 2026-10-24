@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "skills/hallmark/SKILL.md",
       "computedHash": "32269cfda7e467ba1e2534428a1186c1b7b28d196d0f3b3227d293512fa5f7ec"
+    },
+    "install-anti-slop": {
+      "source": "dmmulroy/anti-slop",
+      "sourceType": "github",
+      "skillPath": "skills/install-anti-slop/SKILL.md",
+      "computedHash": "1b9b5d3c0d9e0ef8dd7631f4d637e66b62a73e34dceaf4ae07c0d3de376fd7d7"
     }
   }
 }
