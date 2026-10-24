@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureMigrated } from '@/lib/db';
 import { getSessionUser } from '@/lib/session';
-import { parsePushRequest, pullChanges, pushChanges } from '@/lib/sync';
+import { pullChanges, pushChanges, pushRequestSchema } from '@/lib/sync';
 
 export const runtime = 'nodejs';
 
@@ -39,14 +39,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
-    const body = await request.json().catch(() => null);
-    const push = parsePushRequest(body);
+    const push = pushRequestSchema.safeParse(await request.json().catch(() => null));
 
-    if (!push) {
+    if (!push.success) {
       return NextResponse.json({ error: 'Invalid sync payload' }, { status: 400 });
     }
 
-    return NextResponse.json(await pushChanges(user.id, push));
+    return NextResponse.json(await pushChanges(user.id, push.data));
   } catch (error) {
     console.error(error);
 

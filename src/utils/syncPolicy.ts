@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Activity } from '../types/activity';
 import { DOCUMENT_SCHEMA_VERSION, PersistedDocument } from '../types/document';
 import {
@@ -321,30 +322,26 @@ export function applyPushResult(
   return finish(doc, meta, update);
 }
 
-export function isValidDocument(value: unknown): value is PersistedDocument {
-  if (!value || typeof value !== 'object') return false;
-  const doc = value as PersistedDocument;
+const savedDocumentSchema = z.looseObject({
+  schemaVersion: z.number(),
+  dailyGoalMinutes: z.number(),
+  activities: z.array(z.unknown()),
+  settings: z.looseObject({}),
+  updatedAt: z.string(),
+});
 
-  return (
-    typeof doc.schemaVersion === 'number' &&
-    typeof doc.dailyGoalMinutes === 'number' &&
-    Array.isArray(doc.activities) &&
-    !!doc.settings &&
-    typeof doc.updatedAt === 'string'
-  );
+const savedSyncMetaSchema = z.looseObject({
+  initialized: z.boolean(),
+  cursor: z.number(),
+  seqs: z.looseObject({}),
+  pending: z.looseObject({}),
+  goalSeq: z.number(),
+});
+
+export function isValidDocument(value: unknown): value is PersistedDocument {
+  return savedDocumentSchema.safeParse(value).success;
 }
 
 export function isValidSyncMeta(value: unknown): value is SyncMeta {
-  if (!value || typeof value !== 'object') return false;
-  const meta = value as SyncMeta;
-
-  return (
-    typeof meta.initialized === 'boolean' &&
-    typeof meta.cursor === 'number' &&
-    !!meta.seqs &&
-    typeof meta.seqs === 'object' &&
-    !!meta.pending &&
-    typeof meta.pending === 'object' &&
-    typeof meta.goalSeq === 'number'
-  );
+  return savedSyncMetaSchema.safeParse(value).success;
 }

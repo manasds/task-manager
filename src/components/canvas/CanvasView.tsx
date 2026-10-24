@@ -18,9 +18,9 @@ import {
   Youtube,
   type LucideIcon,
 } from 'lucide-react';
-import { deleteCanvasTile, fetchCanvas, saveCanvasTile } from '@/api/client';
+import { ApiError, deleteCanvasTile, fetchCanvas, saveCanvasTile } from '@/api/client';
 import { signInWithGoogle } from '@/auth/client';
-import type { CanvasKind, CanvasTile } from '@/types/canvas';
+import { canvasKindSchema, type CanvasKind, type CanvasTile } from '@/types/canvas';
 import { detectKind, getDomain, getYouTubeId, positionBetween, youtubeThumbnail } from '@/utils/canvas';
 
 const KIND_META: Record<CanvasKind, { label: string; icon: LucideIcon; cover: string; iconColor: string }> = {
@@ -73,10 +73,6 @@ function newId(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function errorStatus(error: unknown): number | undefined {
-  return (error as { status?: number }).status;
-}
-
 function stop(e: React.SyntheticEvent) {
   e.preventDefault();
   e.stopPropagation();
@@ -121,7 +117,7 @@ export default function CanvasView() {
 
       return true;
     } catch (err) {
-      if (errorStatus(err) === 401) setLoad('signed-out');
+      if (err instanceof ApiError && err.status === 401) setLoad('signed-out');
       else setLoad((current) => (current === 'ready' ? current : 'failed'));
 
       return false;
@@ -148,7 +144,7 @@ export default function CanvasView() {
         try {
           await saveCanvasTile({ ...item, position: lastPos + i + 1 });
         } catch (err) {
-          if (errorStatus(err) !== 400) failed = true;
+          if (!(err instanceof ApiError && err.status === 400)) failed = true;
         }
       }
 
@@ -161,7 +157,7 @@ export default function CanvasView() {
   }, [reload]);
 
   /** Show an edit at once and save it in the background. If the save fails, show the server's copy. */
-  const update = (next: CanvasTile[], save?: () => Promise<unknown>) => {
+  const update = <T,>(next: CanvasTile[], save?: () => Promise<T>) => {
     show(next);
 
     if (!save) return;
@@ -169,7 +165,7 @@ export default function CanvasView() {
     writesRef.current = writesRef.current.then(save).then(
       () => undefined,
       async (err) => {
-        if (errorStatus(err) === 401) {
+        if (err instanceof ApiError && err.status === 401) {
           setLoad('signed-out');
 
           return;
@@ -182,7 +178,7 @@ export default function CanvasView() {
   };
 
   const signIn = () => {
-    signInWithGoogle().catch((err) => setError((err as Error).message));
+    signInWithGoogle().catch((err) => setError(err instanceof Error ? err.message : 'Could not start sign-in.'));
   };
 
   // Keep the dragged tile glued to the pointer after live reorders change its natural slot.
@@ -193,7 +189,7 @@ export default function CanvasView() {
   const startGesture = (e: React.PointerEvent<HTMLElement>, id: string) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
 
-    if ((e.target as HTMLElement).closest('button')) return;
+    if (e.target instanceof Element && e.target.closest('button')) return;
     cleanupRef.current?.();
     const el = e.currentTarget;
     const pid = e.pointerId;
@@ -524,11 +520,15 @@ export default function CanvasView() {
               />
               <select
                 value={kind}
-                onChange={e => setKind(e.target.value as CanvasKind)}
+                onChange={e => {
+                  const picked = canvasKindSchema.safeParse(e.target.value);
+
+                  if (picked.success) setKind(picked.data);
+                }}
                 aria-label="Kind"
                 className={inputClass}
               >
-                {(Object.keys(KIND_META) as CanvasKind[]).map(k => (
+                {canvasKindSchema.options.map(k => (
                   <option key={k} value={k}>
                     {KIND_META[k].label}
                   </option>

@@ -1,5 +1,6 @@
+import { z } from 'zod';
 import { pool } from './db';
-import type { Activity } from '../types/activity';
+import { storedActivitySchema, type Activity } from '../types/activity';
 import {
   ActivityChange,
   ActivityRow,
@@ -199,64 +200,34 @@ export async function pushChanges(userId: string, request: PushRequest): Promise
   }
 }
 
-function isIsoTimestamp(value: unknown): value is string {
-  return typeof value === 'string' && !Number.isNaN(Date.parse(value));
-}
+const isoTimestampSchema = z.string().refine((value) => !Number.isNaN(Date.parse(value)));
 
-function isSeq(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
-}
+const seqSchema = z.int().nonnegative();
 
-function parseChange(value: unknown): ActivityChange | null {
-  if (!value || typeof value !== 'object') return null;
-  const change = value as ActivityChange;
+const activityChangeSchema = z
+  .object({
+    id: z.string().min(1).max(200),
+    data: storedActivitySchema
+      .refine((activity) => JSON.stringify(activity).length <= MAX_ACTIVITY_BYTES)
+      .nullable(),
+    updatedAt: isoTimestampSchema,
+    baseSeq: seqSchema,
+  })
+  .refine((change) => change.data === null || change.data.id === change.id) satisfies z.ZodType<ActivityChange>;
 
-  if (typeof change.id !== 'string' || change.id.length === 0 || change.id.length > 200) return null;
+const goalChangeSchema = z.object({
+  dailyGoalMinutes: z.int().positive(),
+  updatedAt: isoTimestampSchema,
+  baseSeq: seqSchema,
+}) satisfies z.ZodType<GoalChange>;
 
-  if (!isIsoTimestamp(change.updatedAt) || !isSeq(change.baseSeq)) return null;
-
-  if (change.data !== null) {
-    const data = change.data as Activity;
-
-    if (!data || typeof data !== 'object' || data.id !== change.id) return null;
-
-    if (typeof data.title !== 'string' || typeof data.status !== 'string') return null;
-
-    if (JSON.stringify(data).length > MAX_ACTIVITY_BYTES) return null;
-  }
-
-  return { id: change.id, data: change.data, updatedAt: change.updatedAt, baseSeq: change.baseSeq };
-}
-
-function parseGoal(value: unknown): GoalChange | null {
-  if (!value || typeof value !== 'object') return null;
-  const goal = value as GoalChange;
-
-  if (!Number.isInteger(goal.dailyGoalMinutes) || goal.dailyGoalMinutes <= 0) return null;
-
-  if (!isIsoTimestamp(goal.updatedAt) || !isSeq(goal.baseSeq)) return null;
-
-  return { dailyGoalMinutes: goal.dailyGoalMinutes, updatedAt: goal.updatedAt, baseSeq: goal.baseSeq };
-}
-
-export function parsePushRequest(body: unknown): PushRequest | null {
-  if (!body || typeof body !== 'object') return null;
-  const raw = body as { changes?: unknown; goal?: unknown };
-
-  if (!Array.isArray(raw.changes) || raw.changes.length > MAX_CHANGES_PER_PUSH) return null;
-  const changes: ActivityChange[] = [];
-  const seen = new Set<string>();
-
-  for (const item of raw.changes) {
-    const change = parseChange(item);
-
-    if (!change || seen.has(change.id)) return null;
-    seen.add(change.id);
-    changes.push(change);
-  }
-
-  if (raw.goal === undefined || raw.goal === null) return { changes };
-  const goal = parseGoal(raw.goal);
-
-  return goal ? { changes, goal } : null;
-}
+/** A push body from a client. Each task appears at most once. */
+export const pushRequestSchema = z
+  .object({
+    changes: z
+      .array(activityChangeSchema)
+      .max(MAX_CHANGES_PER_PUSH)
+      .refine((changes) => new Set(changes.map((change) => change.id)).size === changes.length),
+    goal: goalChangeSchema.nullish(),
+  })
+  .transform(({ changes, goal }): PushRequest => (goal ? { changes, goal } : { changes }));

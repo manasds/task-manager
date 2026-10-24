@@ -20,7 +20,7 @@ export function topFor(date: Date): number {
 }
 
 /** Where a card is drawn: pinned inside 07:00–23:00 and at least MIN_CARD_HEIGHT tall. */
-function cardBox(item: CalendarItem): { top: number; height: number } {
+function cardBox(item: CalendarItem) {
   const rawTop = topFor(item.start);
   const rawBottom = rawTop + (differenceInMinutes(item.end, item.start) / 60) * HOUR_HEIGHT;
   const top = Math.min(Math.max(0, rawTop), GRID_HEIGHT - MIN_CARD_HEIGHT);

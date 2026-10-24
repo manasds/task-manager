@@ -108,9 +108,9 @@ export function EventPopover({
     };
 
     const onDown = (e: MouseEvent) => {
-      const target = e.target as Node;
+      const target = e.target;
 
-      if (popover?.contains(target) || anchor.contains(target)) return;
+      if (target instanceof Node && (popover?.contains(target) || anchor.contains(target))) return;
       onCloseRef.current();
     };
 

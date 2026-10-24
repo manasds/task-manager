@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { signInWithGoogle, signOut } from '../auth/client';
-import { pullChanges, pushChanges, pushChangesBeacon } from '../api/client';
-import { CloudUser, PersistedDocument } from '../types/document';
+import { ApiError, pullChanges, pushChanges, pushChangesBeacon } from '../api/client';
+import { CloudUser, cloudUserSchema, PersistedDocument } from '../types/document';
 import {
   GUEST_SCOPE,
   loadLocalDocument,
@@ -40,7 +40,9 @@ function loadLastUser(): CloudUser | null {
   try {
     const raw = localStorage.getItem(LAST_USER_KEY);
 
-    return raw ? (JSON.parse(raw) as CloudUser) : null;
+    const saved = raw ? cloudUserSchema.safeParse(JSON.parse(raw)) : null;
+
+    return saved?.success ? saved.data : null;
   } catch {
     return null;
   }
@@ -49,11 +51,6 @@ function loadLastUser(): CloudUser | null {
 function saveLastUser(user: CloudUser | null) {
   if (user) localStorage.setItem(LAST_USER_KEY, JSON.stringify(user));
   else localStorage.removeItem(LAST_USER_KEY);
-}
-
-/** A thrown fetch with no HTTP status never reached the server. */
-function isNetworkFailure(error: unknown): boolean {
-  return !navigator.onLine || typeof (error as { status?: unknown }).status !== 'number';
 }
 
 interface PersistenceState {
@@ -181,16 +178,16 @@ export function useSessionPersistence(
 
       return true;
     } catch (error) {
-      const offline = isNetworkFailure(error);
-      const status = (error as { status?: number }).status;
+      // A failure with no HTTP status never reached the server.
+      const offline = !navigator.onLine || !(error instanceof ApiError);
       setState((prev) => ({
         ...prev,
         phase: offline ? 'offline' : 'error',
         lastError: offline
           ? OFFLINE_MESSAGE
-          : status === 401
+          : error.status === 401
             ? 'Your session expired. Sign in again to sync.'
-            : (error as Error).message || 'Cloud sync failed. Work is still on this device.',
+            : error.message || 'Cloud sync failed. Work is still on this device.',
       }));
 
       return false;

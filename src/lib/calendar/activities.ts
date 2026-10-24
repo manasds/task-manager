@@ -93,18 +93,22 @@ export function calendarItems(activities: Activity[], days: string[], today: str
 
 /** Tasks on `day` with no time yet: the unscheduled queue. */
 export function unscheduledOn(activities: Activity[], day: string): UnscheduledItem[] {
-  return activities
-    .filter((a) => !a.scheduledTime && isActivityOnDate(a, day))
-    .map((a) => ({
-      id: a.id,
-      title: a.title,
-      type: a.category,
-      priority: a.priority,
-      durationMinutes: blockMinutes(a),
-      completed: a.status === 'completed',
-      notes: a.notes || a.description || undefined,
-      checklist: checklistOf(a),
-    }));
+  return activities.flatMap((a) =>
+    !a.scheduledTime && isActivityOnDate(a, day)
+      ? [
+          {
+            id: a.id,
+            title: a.title,
+            type: a.category,
+            priority: a.priority,
+            durationMinutes: blockMinutes(a),
+            completed: a.status === 'completed',
+            notes: a.notes || a.description || undefined,
+            checklist: checklistOf(a),
+          },
+        ]
+      : [],
+  );
 }
 
 /** Whether the calendar shows it on `day`: as a block if it has a time, else in that day's queue. */

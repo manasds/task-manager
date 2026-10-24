@@ -57,7 +57,7 @@ function UtilityMenu({
     if (!open) return;
 
     const onPointerDown = (event: MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!(event.target instanceof Node && menuRef.current?.contains(event.target))) setOpen(false);
     };
 
     const onKeyDown = (event: KeyboardEvent) => {

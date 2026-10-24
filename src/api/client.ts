@@ -1,5 +1,18 @@
+import { z } from 'zod';
 import { CanvasTile } from '../types/canvas';
 import { PullResponse, PushRequest, PushResponse } from '../types/sync';
+
+/** The server answered with an error status. A fetch that never reached it throws a plain TypeError. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+const errorBodySchema = z.object({ error: z.string().min(1) });
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -11,20 +24,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
 
-  const data = (await response.json().catch(() => ({}))) as T & { error?: string };
+  const body: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const error = new Error(data.error || `Request failed (${response.status})`) as Error & {
-      status: number;
-      payload: unknown;
-    };
+    const parsed = errorBodySchema.safeParse(body);
 
-    error.status = response.status;
-    error.payload = data;
-    throw error;
+    throw new ApiError(parsed.success ? parsed.data.error : `Request failed (${response.status})`, response.status);
   }
 
-  return data;
+  // SAFETY: these paths are this app's own API routes, whose handlers return T on success.
+  return body as T;
 }
 
 export function pullChanges(since: number): Promise<PullResponse> {
@@ -59,7 +68,7 @@ export function pushChangesBeacon(payload: PushRequest): boolean {
 
   if (new Blob([body]).size > BEACON_LIMIT_BYTES) return false;
 
-  if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+  if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
     return navigator.sendBeacon('/api/sync', new Blob([body], { type: 'application/json' }));
   }
 

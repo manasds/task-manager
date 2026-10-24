@@ -1,5 +1,5 @@
 import { pool } from './db';
-import { canvasTileSchema, type CanvasTile } from '../types/canvas';
+import type { CanvasTile } from '../types/canvas';
 
 interface DbTile {
   id: string;
@@ -43,11 +43,4 @@ export async function saveTile(userId: string, tile: CanvasTile): Promise<void> 
 
 export async function deleteTile(userId: string, id: string): Promise<void> {
   await pool.query('DELETE FROM canvas_tiles WHERE user_id = $1 AND id = $2', [userId, id]);
-}
-
-/** A clean tile from a request body, or null if anything is off. */
-export function parseTile(body: unknown, id: string): CanvasTile | null {
-  const result = canvasTileSchema.safeParse(body);
-
-  return result.success && result.data.id === id ? result.data : null;
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, ActivityStatus, goalNames, normalizeActivity } from './types/activity';
+import { z } from 'zod';
+import { Activity, ActivityStatus, goalNames, normalizeActivity, storedActivitySchema } from './types/activity';
 import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument, tabToOpen } from './types/document';
 import { getTodayDateString } from './utils/dates';
 import { soundManager } from './utils/audio';
@@ -282,39 +283,35 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   };
 
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileReader = new FileReader();
+    const file = e.target.files?.[0];
 
-    if (e.target.files && e.target.files[0]) {
-      fileReader.readAsText(e.target.files[0], 'UTF-8');
-      fileReader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target?.result as string);
+    if (!file) return;
 
-          if (Array.isArray(parsed)) {
-            const now = new Date().toISOString();
+    file
+      .text()
+      .then((text) => {
+        const parsed = z.array(z.unknown()).safeParse(JSON.parse(text));
 
-            const imported: Activity[] = parsed
-              .filter(
-                (item): item is Activity =>
-                  !!item &&
-                  typeof item.id === 'string' &&
-                  typeof item.title === 'string' &&
-                  typeof item.status === 'string'
-              )
-              .map((item) => ({ ...normalizeActivity(item), updatedAt: now }));
+        if (!parsed.success) {
+          showToast('Invalid JSON file format');
 
-            setActivities(imported);
-            setTimer((current) => timerFor(current, imported));
-            soundManager.playDrop();
-            showToast(`Imported ${imported.length} activities`);
-          } else {
-            showToast('Invalid JSON file format');
-          }
-        } catch {
-          showToast('Failed to parse JSON file');
+          return;
         }
-      };
-    }
+
+        const now = new Date().toISOString();
+
+        const imported: Activity[] = parsed.data.flatMap((item) => {
+          const activity = storedActivitySchema.safeParse(item);
+
+          return activity.success ? [{ ...activity.data, updatedAt: now }] : [];
+        });
+
+        setActivities(imported);
+        setTimer((current) => timerFor(current, imported));
+        soundManager.playDrop();
+        showToast(`Imported ${imported.length} activities`);
+      })
+      .catch(() => showToast('Failed to parse JSON file'));
   };
 
   const handleToggleMute = () => {

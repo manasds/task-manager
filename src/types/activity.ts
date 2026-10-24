@@ -1,10 +1,18 @@
-/** Build: actually making things. Learn: taking things in. Light reading lives on the Canvas. */
-export type ActivityCategory = 'build' | 'learn';
+import { z } from 'zod';
 
-export type ActivityPriority = 'urgent' | 'high' | 'medium' | 'low';
+/** Build: actually making things. Learn: taking things in. Light reading lives on the Canvas. */
+export const activityCategorySchema = z.enum(['build', 'learn']);
+
+export type ActivityCategory = z.infer<typeof activityCategorySchema>;
+
+export const activityPrioritySchema = z.enum(['urgent', 'high', 'medium', 'low']);
+
+export type ActivityPriority = z.infer<typeof activityPrioritySchema>;
 
 /** 'parked': set aside for later, kept off the calendar and daily stats. */
-export type ActivityStatus = 'backlog' | 'in_progress' | 'completed' | 'parked';
+export const activityStatusSchema = z.enum(['backlog', 'in_progress', 'completed', 'parked']);
+
+export type ActivityStatus = z.infer<typeof activityStatusSchema>;
 
 export interface Subtask {
   id: string;
@@ -88,31 +96,55 @@ export const PRIORITY_CONFIG: Record<ActivityPriority, { label: string; dotColor
   low: { label: 'Low', dotColor: '#64748b', textColor: 'text-slate-600' },
 };
 
+/** A task as an older version may have saved it. */
+export type StoredActivity = Omit<Activity, 'category' | 'status'> & {
+  category: string;
+  status: string;
+  parked?: boolean;
+};
+
+function isCurrent(activity: StoredActivity): activity is Activity {
+  return (
+    activityCategorySchema.safeParse(activity.category).success &&
+    activityStatusSchema.safeParse(activity.status).success &&
+    !('parked' in activity)
+  );
+}
+
 /**
  * Bring a task saved by an older version up to date: the six old categories become Build
  * or Learn, the old Review column becomes Doing, and the old `parked` flag becomes the
  * Parking status. Returns the same object if nothing changed.
  */
-export function normalizeActivity(activity: Activity): Activity {
-  const raw = activity as Omit<Activity, 'category' | 'status'> & {
-    category: string;
-    status: string;
-    parked?: boolean;
-  };
+export function normalizeActivity(activity: StoredActivity): Activity {
+  if (isCurrent(activity)) return activity;
+  const { parked, ...rest } = activity;
 
-  const category: ActivityCategory = raw.category === 'learn' || raw.category === 'learning' ? 'learn' : 'build';
+  const category: ActivityCategory = rest.category === 'learn' || rest.category === 'learning' ? 'learn' : 'build';
 
-  const status: ActivityStatus = raw.parked
+  const known = activityStatusSchema.safeParse(rest.status);
+
+  const status: ActivityStatus = parked
     ? 'parked'
-    : raw.status === 'review'
+    : rest.status === 'review'
       ? 'in_progress'
-      : (raw.status as ActivityStatus);
-
-  if (category === raw.category && status === raw.status && !('parked' in raw)) return activity;
-  const { parked: _parked, ...rest } = raw;
+      : known.success
+        ? known.data
+        : 'backlog';
 
   return { ...rest, category, status };
 }
+
+/**
+ * A task from storage, an import or another device. Only the fields every saved version has
+ * are checked; the rest is kept as saved and brought up to date by normalizeActivity.
+ */
+export const storedActivitySchema = z
+  .looseObject({ id: z.string(), title: z.string(), status: z.string() })
+  .transform(
+    // SAFETY: every saved version of a task has id, title and status; normalizeActivity repairs the fields that changed shape.
+    (record) => normalizeActivity(record as StoredActivity),
+  );
 
 /** Goals in use, most used first. */
 export function goalNames(activities: Activity[]): string[] {

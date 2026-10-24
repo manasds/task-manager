@@ -12,7 +12,9 @@ import {
   STATUS_COLUMNS, 
   CATEGORIES, 
   ActivityCategory, 
-  ActivityPriority 
+  ActivityPriority,
+  activityCategorySchema,
+  activityPrioritySchema
 } from '../types/activity';
 import { TaskCard } from './TaskCard';
 import { GoalSelect } from './GoalSelect';
@@ -172,7 +174,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
     const newAct: Activity = {
       id: `task-${crypto.randomUUID()}`,
       title: quickAddTitle.trim(),
-      ...(goal !== 'all' ? { goal } : {}),
+      goal: goal === 'all' ? undefined : goal,
       category: 'build',
       priority: 'medium',
       status,
@@ -248,7 +250,10 @@ export const BoardView: React.FC<BoardViewProps> = ({
         <div className={`${filtersOpen ? 'flex' : 'hidden'} sm:flex items-center gap-2 min-w-0`}>
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value as ActivityCategory | 'all')}
+            onChange={(e) => {
+              const picked = activityCategorySchema.safeParse(e.target.value);
+              setSelectedCategory(picked.success ? picked.data : 'all');
+            }}
             aria-label="Filter by category"
             className="flex-1 sm:flex-none min-w-0 min-h-10 sm:min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >
@@ -262,7 +267,10 @@ export const BoardView: React.FC<BoardViewProps> = ({
 
           <select
             value={selectedPriority}
-            onChange={(e) => setSelectedPriority(e.target.value as ActivityPriority | 'all')}
+            onChange={(e) => {
+              const picked = activityPrioritySchema.safeParse(e.target.value);
+              setSelectedPriority(picked.success ? picked.data : 'all');
+            }}
             aria-label="Filter by priority"
             className="flex-1 sm:flex-none min-w-0 min-h-10 sm:min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >

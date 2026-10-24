@@ -13,6 +13,8 @@ import {
   type DragEndEvent,
   type DragMoveEvent,
   type DragStartEvent,
+  type DataRef,
+  type Over,
 } from '@dnd-kit/core';
 import {
   addDays,
@@ -80,17 +82,25 @@ const collisionDetection: CollisionDetection = (args) => {
   return hits.length > 0 ? hits : rectIntersection(args);
 };
 
-type DragTarget = { id: string | number; data: { current?: unknown } } | null;
-
-function dragTitle(data: { current?: unknown }): string {
-  return (data.current as DragPayload | undefined)?.item.title ?? 'Activity';
+function dragPayload(data: DataRef): DragPayload | undefined {
+  // SAFETY: the calendar's only draggables, EventCard and TrayChip, set their data to a DragPayload.
+  return data.current as DragPayload | undefined;
 }
 
-function targetLabel(over: DragTarget): string {
+function dayDrop(data: DataRef): DayDropData | undefined {
+  // SAFETY: day columns in WeekGrid set their data to a DayDropData; the tray droppable sets none.
+  return data.current as DayDropData | undefined;
+}
+
+function dragTitle(data: DataRef): string {
+  return dragPayload(data)?.item.title ?? 'Activity';
+}
+
+function targetLabel(over: Over | null): string {
   if (!over) return 'nowhere';
 
   if (over.id === TRAY_DROP_ID) return 'Unscheduled';
-  const day = (over.data.current as DayDropData | undefined)?.day;
+  const day = dayDrop(over.data)?.day;
 
   return day ? format(day, 'EEEE, MMMM d') : 'the calendar';
 }
@@ -150,15 +160,14 @@ function rangeSubtitle(start: Date, end: Date): string {
 }
 
 function clientY(event: Event | null): number | null {
-  if (!event) return null;
-
-  if ('touches' in event) {
-    const touch = (event as TouchEvent).touches[0] ?? (event as TouchEvent).changedTouches[0];
+  // Desktop Safari and Firefox have no TouchEvent constructor.
+  if (typeof TouchEvent !== 'undefined' && event instanceof TouchEvent) {
+    const touch = event.touches[0] ?? event.changedTouches[0];
 
     return touch ? touch.clientY : null;
   }
 
-  return 'clientY' in event ? (event as MouseEvent).clientY : null;
+  return event instanceof MouseEvent ? event.clientY : null;
 }
 
 /**
@@ -172,7 +181,7 @@ function dropStart(
   durationMinutes: number,
 ): { day: Date; start: Date } | null {
   const { active, over } = event;
-  const data = over?.data.current as DayDropData | undefined;
+  const data = over ? dayDrop(over.data) : undefined;
   const startY = clientY(event.activatorEvent);
   const initial = active.rect.current.initial;
   const column = over ? document.querySelector(`[data-drop-id="${String(over.id)}"]`) : null;
@@ -351,7 +360,7 @@ export function CalendarView({
 
   const handleDragStart = (event: DragStartEvent) => {
     pointerYRef.current = clientY(event.activatorEvent);
-    setDragging((event.active.data.current as DragPayload | undefined) ?? null);
+    setDragging(dragPayload(event.active.data) ?? null);
     setSelected(null);
     soundManager.playDragStart();
   };

@@ -34,7 +34,7 @@ describe('postgres per-task sync', () => {
     try {
       await ensureMigrated();
     } catch (error) {
-      t.skip(`Postgres unavailable: ${(error as Error).message}`);
+      t.skip(`Postgres unavailable: ${error instanceof Error ? error.message : String(error)}`);
 
       return;
     }

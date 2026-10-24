@@ -6,7 +6,7 @@ import {
   TrendingUp, 
   Sliders
 } from 'lucide-react';
-import { Activity, CATEGORIES, ActivityCategory } from '../types/activity';
+import { Activity, CATEGORIES, ActivityCategory, activityCategorySchema } from '../types/activity';
 import { getDateOffset, getTodayDateString } from '../utils/dates';
 import { focusMinutesByHour, formatMinutes, isActivityOnDate, localDateString, loggedMinutesOnDate, taskStatsForDate } from '../utils/workSessions';
 
@@ -72,15 +72,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   const grandTotalMinutes = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
 
-  let accumulatedAngle = 0;
+  const degreesFor = (minutes: number) => (grandTotalMinutes > 0 ? (minutes / grandTotalMinutes) * 360 : 0);
 
-  const donutSlices = Object.entries(categoryTotals).map(([catKey, minutes]) => {
-    const category = catKey as ActivityCategory;
+  const donutSlices = activityCategorySchema.options.map((category, index, categories) => {
+    const minutes = categoryTotals[category];
     const meta = CATEGORIES[category];
     const percentage = grandTotalMinutes > 0 ? (minutes / grandTotalMinutes) * 100 : 0;
-    const angle = grandTotalMinutes > 0 ? (minutes / grandTotalMinutes) * 360 : 0;
-    const startAngle = accumulatedAngle;
-    accumulatedAngle += angle;
+    const angle = degreesFor(minutes);
+    const minutesBefore = categories.slice(0, index).reduce((sum, earlier) => sum + categoryTotals[earlier], 0);
+    const startAngle = degreesFor(minutesBefore);
 
     return {
       category,
@@ -114,7 +114,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const todayGoalPercent = Math.min(100, Math.round((todayLoggedMinutes / (dailyGoalMinutes || 360)) * 100));
 
   const primaryCategory = grandTotalMinutes > 0
-    ? (Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0][0] as ActivityCategory)
+    ? [...activityCategorySchema.options].sort((a, b) => categoryTotals[b] - categoryTotals[a])[0]
     : null;
 
   // Leave room for the goal line even when every day is below it.

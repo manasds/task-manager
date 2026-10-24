@@ -3,16 +3,23 @@
  * Zero external audio files required - works offline and sandboxed.
  */
 
+declare global {
+  interface Window {
+    /** Safari before 14.1. */
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
 class SoundEffectsManager {
   private ctx: AudioContext | null = null;
-  private ambientNoiseNode: AudioNode | null = null;
+  private ambientNoiseNode: AudioBufferSourceNode | null = null;
   private isMuted: boolean = false;
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
 
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
 
       if (AudioCtx) {
         this.ctx = new AudioCtx();
@@ -192,7 +199,7 @@ class SoundEffectsManager {
   public stopAmbient() {
     if (this.ambientNoiseNode) {
       try {
-        (this.ambientNoiseNode as AudioBufferSourceNode).stop();
+        this.ambientNoiseNode.stop();
         this.ambientNoiseNode.disconnect();
       } catch {
         // Safe disconnect

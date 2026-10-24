@@ -7,7 +7,7 @@ import { isActivityOnDate, localDateString, loggedMinutesOnDate } from '../utils
 /** Consecutive days with logged work or a completed task, ending today (or yesterday if today is still empty). */
 function currentStreak(activities: Activity[], today: string): number {
   const completedDates = new Set(
-    activities.filter((a) => a.completedAt).map((a) => localDateString(new Date(a.completedAt as string)))
+    activities.flatMap((a) => (a.completedAt ? [localDateString(new Date(a.completedAt))] : []))
   );
 
   const active = (date: string) => completedDates.has(date) || loggedMinutesOnDate(activities, date) > 0;

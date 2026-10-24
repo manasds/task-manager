@@ -1,9 +1,21 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { Activity, goalNames, normalizeActivity } from './activity';
+import { goalNames, normalizeActivity, StoredActivity } from './activity';
 
-const task = (overrides: Record<string, unknown>) =>
-  ({ id: 'a', title: 'A', category: 'build', status: 'backlog', ...overrides }) as unknown as Activity;
+const task = (overrides: Partial<StoredActivity> = {}): StoredActivity => ({
+  id: 'a',
+  title: 'A',
+  category: 'build',
+  priority: 'medium',
+  status: 'backlog',
+  estimatedMinutes: 30,
+  actualMinutes: 0,
+  date: '2026-10-15',
+  subtasks: [],
+  tags: [],
+  createdAt: '2026-10-15T10:00:00.000Z',
+  ...overrides,
+});
 
 describe('normalizeActivity', () => {
   it('maps the old categories to Build and Learn', () => {
@@ -25,6 +37,10 @@ describe('normalizeActivity', () => {
     assert.equal('parked' in normalizeActivity(task({ parked: false })), false);
   });
 
+  it('puts a task with an unknown status in To do', () => {
+    assert.equal(normalizeActivity(task({ status: 'someday' })).status, 'backlog');
+  });
+
   it('returns the same object when nothing changes', () => {
     const current = task({ category: 'learn', status: 'completed' });
     assert.equal(normalizeActivity(current), current);
@@ -33,7 +49,7 @@ describe('normalizeActivity', () => {
 
 describe('goalNames', () => {
   it('lists each goal once, most used first', () => {
-    const tasks = [task({ goal: 'b' }), task({ goal: 'a' }), task({ goal: 'a' }), task({})];
+    const tasks = [task({ goal: 'b' }), task({ goal: 'a' }), task({ goal: 'a' }), task()].map(normalizeActivity);
     assert.deepEqual(goalNames(tasks), ['a', 'b']);
   });
 });

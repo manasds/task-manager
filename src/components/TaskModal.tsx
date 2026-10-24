@@ -5,6 +5,9 @@ import {
   ActivityCategory,
   ActivityPriority,
   ActivityStatus,
+  activityCategorySchema,
+  activityPrioritySchema,
+  activityStatusSchema,
   CATEGORIES,
   STATUS_COLUMNS,
   Subtask,
@@ -350,9 +353,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   <select
                     id="task-category"
                     value={category}
-                    onChange={(e) =>
-                      setCategory(e.target.value as ActivityCategory)
-                    }
+                    onChange={(e) => {
+                      const picked = activityCategorySchema.safeParse(e.target.value);
+
+                      if (picked.success) setCategory(picked.data);
+                    }}
                     className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
                   >
                     {Object.values(CATEGORIES).map((c) => (
@@ -370,9 +375,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   <select
                     id="task-priority"
                     value={priority}
-                    onChange={(e) =>
-                      setPriority(e.target.value as ActivityPriority)
-                    }
+                    onChange={(e) => {
+                      const picked = activityPrioritySchema.safeParse(e.target.value);
+
+                      if (picked.success) setPriority(picked.data);
+                    }}
                     className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
                   >
                     <option value="urgent">Urgent</option>
@@ -392,7 +399,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   <select
                     id="task-status"
                     value={status}
-                    onChange={(e) => setStatus(e.target.value as ActivityStatus)}
+                    onChange={(e) => {
+                      const picked = activityStatusSchema.safeParse(e.target.value);
+
+                      if (picked.success) setStatus(picked.data);
+                    }}
                     className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 cursor-pointer text-xs"
                   >
                     {STATUS_COLUMNS.map((col) => (

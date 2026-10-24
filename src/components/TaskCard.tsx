@@ -62,9 +62,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
+      const target = e.target;
 
-      if (menuRef.current?.contains(target) || menuButtonRef.current?.contains(target)) return;
+      if (target instanceof Node && (menuRef.current?.contains(target) || menuButtonRef.current?.contains(target))) return;
       setShowMenu(false);
     };
 
@@ -74,7 +74,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
     // The menu is fixed to the viewport, so close it rather than let it drift on scroll.
     const handleScrollOrResize = (e: Event) => {
-      if (menuRef.current?.contains(e.target as Node)) return;
+      if (e.target instanceof Node && menuRef.current?.contains(e.target)) return;
       setShowMenu(false);
     };
 

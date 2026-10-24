@@ -5,13 +5,22 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+declare global {
+  interface WindowEventMap {
+    /** Chromium only. */
+    beforeinstallprompt: BeforeInstallPromptEvent;
+  }
+
+  interface Navigator {
+    /** iOS Safari only: true when opened from the home screen. */
+    standalone?: boolean;
+  }
+}
+
 const noSubscription = () => () => {};
 
 function isStandalone(): boolean {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as { standalone?: boolean }).standalone === true
-  );
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 
 function isIOSDevice(): boolean {
@@ -26,9 +35,9 @@ export function usePWAInstall() {
   const isIOS = useSyncExternalStore(noSubscription, isIOSDevice, () => false);
 
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
+    const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setDeferredPrompt(e);
     };
 
     const handleAppInstalled = () => {

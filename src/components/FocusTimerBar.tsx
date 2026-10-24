@@ -33,10 +33,10 @@ function formatClock(totalSeconds: number): string {
   return h > 0 ? `${h}:${mmss}` : mmss;
 }
 
-const buttonShape =
+const controlButton =
   'min-h-11 min-w-11 flex items-center justify-center rounded-xl transition-colors active:scale-95';
 
-const quietButton = `${buttonShape} text-slate-300 hover:text-white hover:bg-white/10`;
+const quietButton = `${controlButton} text-slate-300 hover:text-white hover:bg-white/10`;
 
 export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   activity,
@@ -192,7 +192,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
                 onClick={handleToggleAmbient}
                 className={
                   isAmbientOn
-                    ? `${buttonShape} text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25`
+                    ? `${controlButton} text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25`
                     : quietButton
                 }
                 title={isAmbientOn ? 'Stop ambient rain' : 'Play ambient focus rain'}
@@ -237,7 +237,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
 
               <button
                 onClick={onStop}
-                className={`${buttonShape} text-slate-400 hover:text-white hover:bg-white/10`}
+                className={`${controlButton} text-slate-400 hover:text-white hover:bg-white/10`}
                 title="Stop and save time"
                 aria-label="Stop and save time"
               >

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { deleteTile, parseTile, saveTile } from '@/lib/canvas';
+import { deleteTile, saveTile } from '@/lib/canvas';
 import { ensureMigrated } from '@/lib/db';
 import { getSessionUser } from '@/lib/session';
+import { canvasTileSchema } from '@/types/canvas';
 
 export const runtime = 'nodejs';
 
@@ -19,15 +20,15 @@ export async function PUT(request: Request, { params }: Context) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
-    const tile = parseTile(await request.json().catch(() => null), (await params).id);
+    const tile = canvasTileSchema.safeParse(await request.json().catch(() => null));
 
-    if (!tile) {
+    if (!tile.success || tile.data.id !== (await params).id) {
       return NextResponse.json({ error: 'Invalid tile' }, { status: 400 });
     }
 
-    await saveTile(user.id, tile);
+    await saveTile(user.id, tile.data);
 
-    return NextResponse.json({ tile });
+    return NextResponse.json({ tile: tile.data });
   } catch (error) {
     console.error(error);
 
