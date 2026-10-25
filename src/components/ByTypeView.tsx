@@ -119,11 +119,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
         key={a.id}
         role="button"
         tabIndex={0}
-        onClick={() => onEdit(a)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && e.target === e.currentTarget) onEdit(a);
-        }}
-        className={`${cardClass} cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-500 ${
+        className={`${cardClass} h-32 cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-500 ${
           done ? doneClass : ""
         }`}
       >
