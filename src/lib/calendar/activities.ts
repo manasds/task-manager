@@ -1,4 +1,4 @@
-import { addMinutes, format } from 'date-fns';
+import { addMinutes, differenceInMinutes, format } from 'date-fns';
 import type { Activity } from '@/types/activity';
 import { clipSessionToDate, isActivityOnDate, parseLocalDate } from '@/utils/workSessions';
 import type { CalendarItem, ChecklistProgress, UnscheduledItem } from './types';
@@ -89,6 +89,46 @@ export function calendarItems(activities: Activity[], days: string[], today: str
   }
 
   return items;
+}
+
+/** Largest break between two sessions that still reads as one sitting. */
+const MERGE_GAP_MINUTES = 15;
+
+/**
+ * Join back-to-back logged sessions of one task into a single block, as long as the break is
+ * short and nothing from another task sits in it. The block keeps the minutes actually worked.
+ */
+export function mergeLoggedRuns(items: CalendarItem[]): CalendarItem[] {
+  const logged = items
+    .filter((item) => item.kind === 'logged')
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  const merged: CalendarItem[] = [];
+
+  for (const item of logged) {
+    const run = merged.findLast((m) => m.activityId === item.activityId && m.day === item.day);
+    const gapEnd = item.start;
+
+    const blocked =
+      !run ||
+      differenceInMinutes(gapEnd, run.end) > MERGE_GAP_MINUTES ||
+      items.some(
+        (other) =>
+          other.day === item.day && other.activityId !== item.activityId && other.start < gapEnd && other.end > run.end,
+      );
+
+    if (!run || blocked) {
+      merged.push({ ...item });
+      continue;
+    }
+
+    run.sessions = (run.sessions ?? 1) + 1;
+    run.minutes = (run.minutes ?? differenceInMinutes(run.end, run.start)) + differenceInMinutes(item.end, item.start);
+
+    if (item.end > run.end) run.end = item.end;
+  }
+
+  return [...items.filter((item) => item.kind !== 'logged'), ...merged];
 }
 
 /** Tasks on `day` with no time yet: the unscheduled queue. */

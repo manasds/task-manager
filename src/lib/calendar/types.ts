@@ -31,6 +31,9 @@ export interface CalendarItem {
   completed: boolean;
   notes?: string;
   checklist?: ChecklistProgress;
+  /** Logged blocks merged from back-to-back sessions: how many, and the time actually worked. */
+  sessions?: number;
+  minutes?: number;
 }
 
 /** An activity on the selected day with no time yet. */

@@ -18,7 +18,6 @@ export function tabToOpen(saved: string | undefined): SavedTab {
 }
 
 export interface AppSettings {
-  muted: boolean;
   lastTab: SavedTab;
   selectedDate?: string;
 }

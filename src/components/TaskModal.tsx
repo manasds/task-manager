@@ -14,7 +14,6 @@ import {
   WorkSession,
 } from "../types/activity";
 import { getTodayDateString } from "../utils/dates";
-import { soundManager } from "../utils/audio";
 import {
   createManualSession,
   formatMinutes,
@@ -113,7 +112,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   const handleToggleSubtask = (id: string) => {
-    soundManager.playDrop();
     setSubtasks(
       subtasks.map((s) =>
         s.id === id ? { ...s, completed: !s.completed } : s,
@@ -166,7 +164,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       return;
     }
 
-    soundManager.playDrop();
     setWorkSessions([...workSessions, session]);
     setLogMinutes("");
     setError("");
@@ -193,7 +190,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         return;
       }
 
-      soundManager.playDrop();
       onSave({
         ...target,
         workSessions: [...targetSessions, ...added].sort((a, b) => Date.parse(a.start) - Date.parse(b.start)),
@@ -247,7 +243,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           : undefined,
     };
 
-    soundManager.playDrop();
     onSave(activityToSave);
     onClose();
   };

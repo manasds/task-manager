@@ -1,7 +1,6 @@
 import React from 'react';
 import { Kanban, Columns3, CalendarDays, BarChart3, Plus } from 'lucide-react';
 import { ActiveTab } from './Navbar';
-import { soundManager } from '../utils/audio';
 
 interface MobileBottomNavProps {
   activeTab: ActiveTab;
@@ -15,7 +14,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenNewTaskModal,
 }) => {
   const handleTabClick = (tab: ActiveTab) => {
-    soundManager.playDragStart();
     onTabChange(tab);
   };
 
@@ -36,7 +34,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
           aria-label="Board View"
         >
-          <Kanban className={`w-5 h-5 ${activeTab === 'board' ? 'stroke-[2.5]' : ''}`} />
+          <Columns3 className={`w-5 h-5 ${activeTab === 'board' ? 'stroke-[2.5]' : ''}`} />
           <span className="text-[10px] tracking-tight mt-0.5">Progress</span>
         </button>
 
@@ -48,10 +46,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               ? 'text-indigo-600 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
-          aria-label="By Type View"
+          aria-label="Kanban View"
         >
-          <Columns3 className={`w-5 h-5 ${activeTab === 'types' ? 'stroke-[2.5]' : ''}`} />
-          <span className="text-[10px] tracking-tight mt-0.5">Types</span>
+          <Kanban className={`w-5 h-5 ${activeTab === 'types' ? 'stroke-[2.5]' : ''}`} />
+          <span className="text-[10px] tracking-tight mt-0.5">Kanban</span>
         </button>
 
         {/* Tab 3: Calendar */}
@@ -84,10 +82,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
         {/* Action: Quick Add Activity in Natural Thumb Zone */}
         <button
-          onClick={() => {
-            soundManager.playDragStart();
-            onOpenNewTaskModal();
-          }}
+          onClick={() => onOpenNewTaskModal()}
           className="flex flex-col items-center justify-center min-h-11 min-w-11 text-indigo-600 hover:text-indigo-700 active:scale-95 transition-transform"
           aria-label="Add New Activity"
         >

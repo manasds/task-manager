@@ -13,7 +13,7 @@ export interface MiniMonthProps {
 }
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-const FOCUS = 'outline-none focus-visible:ring-2 focus-visible:ring-neutral-400';
+const FOCUS = 'outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
 
 export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDate }: MiniMonthProps) {
   const first = startOfMonth(month);
@@ -29,13 +29,13 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
   return (
     <div className="select-none">
       <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-medium text-neutral-900">{format(month, 'MMMM yyyy')}</h2>
+        <h2 className="text-[15px] font-medium text-slate-900">{format(month, 'MMMM yyyy')}</h2>
         <div className="flex items-center gap-1">
           <button
             type="button"
             aria-label="Previous month"
             onClick={() => onMonthChange(addMonths(first, -1))}
-            className={`flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-200/60 ${FOCUS}`}
+            className={`flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200/60 ${FOCUS}`}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -43,14 +43,14 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
             type="button"
             aria-label="Next month"
             onClick={() => onMonthChange(addMonths(first, 1))}
-            className={`flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-200/60 ${FOCUS}`}
+            className={`flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200/60 ${FOCUS}`}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-7 text-center text-xs text-neutral-400">
+      <div className="mt-3 grid grid-cols-7 text-center text-xs text-slate-400">
         {WEEKDAYS.map((d, i) => (
           <div key={i} className="flex h-8 items-center justify-center">
             {d}
@@ -65,7 +65,7 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
           return (
             <div
               key={week[0].toISOString()}
-              className={`grid grid-cols-7 rounded-lg ${isAnchorWeek ? 'bg-neutral-200/60' : ''}`}
+              className={`grid grid-cols-7 rounded-lg ${isAnchorWeek ? 'bg-slate-200/60' : ''}`}
             >
               {week.map((day) => {
                 const isToday = isSameDay(day, today);
@@ -80,8 +80,8 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
                     onClick={() => onSelectDate(day)}
                     className={`mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-sm tabular-nums ${FOCUS} ${
                       isToday
-                        ? 'bg-neutral-900 font-medium text-white'
-                        : `${inMonth ? 'text-neutral-900' : 'text-neutral-400'} hover:bg-neutral-200/70`
+                        ? 'bg-slate-900 font-medium text-white'
+                        : `${inMonth ? 'text-slate-900' : 'text-slate-400'} hover:bg-slate-200/70`
                     }`}
                   >
                     {format(day, 'd')}

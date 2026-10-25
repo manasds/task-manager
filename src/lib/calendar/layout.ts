@@ -1,75 +1,90 @@
 import { differenceInMinutes, format } from 'date-fns';
 import type { CalendarItem, CalendarFilters } from './types';
-import { GRID_HEIGHT, GRID_START_HOUR, HOUR_HEIGHT, MIN_CARD_HEIGHT } from './theme';
+import { GRID_START_HOUR, GRID_WIDTH, HOUR_WIDTH, MIN_CARD_WIDTH } from './theme';
 
 export interface PositionedItem {
   item: CalendarItem;
-  top: number;
-  height: number;
-  /** Side-by-side lane within an overlap cluster. */
-  column: number;
-  columns: number;
+  /** Horizontal box inside the day row, in px. */
+  left: number;
+  width: number;
+  /** Stacked lane within the row: cards that overlap in time go on separate lanes. */
+  lane: number;
+  /**
+   * Logged session drawn as a strip on its own activity's planned card, instead of taking a lane.
+   * Set on the session; the planned card gets `hasStrips`.
+   */
+  strip?: boolean;
+  hasStrips?: boolean;
 }
 
 function minutesIntoGrid(date: Date): number {
   return (date.getHours() - GRID_START_HOUR) * 60 + date.getMinutes();
 }
 
-export function topFor(date: Date): number {
-  return (minutesIntoGrid(date) / 60) * HOUR_HEIGHT;
+/** Distance from the 07:00 edge, in px. */
+export function offsetFor(date: Date): number {
+  return (minutesIntoGrid(date) / 60) * HOUR_WIDTH;
 }
 
-/** Where a card is drawn: pinned inside 07:00–23:00 and at least MIN_CARD_HEIGHT tall. */
+/** Where a card is drawn: pinned inside 07:00–23:00 and at least MIN_CARD_WIDTH wide. */
 function cardBox(item: CalendarItem) {
-  const rawTop = topFor(item.start);
-  const rawBottom = rawTop + (differenceInMinutes(item.end, item.start) / 60) * HOUR_HEIGHT;
-  const top = Math.min(Math.max(0, rawTop), GRID_HEIGHT - MIN_CARD_HEIGHT);
-  const bottom = Math.min(GRID_HEIGHT, Math.max(top + MIN_CARD_HEIGHT, rawBottom));
+  const rawLeft = offsetFor(item.start);
+  const rawRight = rawLeft + (differenceInMinutes(item.end, item.start) / 60) * HOUR_WIDTH;
+  const left = Math.min(Math.max(0, rawLeft), GRID_WIDTH - MIN_CARD_WIDTH);
+  const right = Math.min(GRID_WIDTH, Math.max(left + MIN_CARD_WIDTH, rawRight));
 
-  return { top, height: bottom - top };
+  return { left, width: right - left };
 }
 
 /**
- * Lay out one day's items: cards that overlap as drawn split the column width evenly.
+ * Lay out one day's row: each card takes the first lane that is free at its start.
  * Overlap uses the drawn boxes, so short or pinned blocks never cover each other.
  */
 export function layoutDay(items: CalendarItem[]): PositionedItem[] {
-  const boxes = items
+  const planned = items.filter((item) => item.kind === 'planned');
+
+  // A session that overlaps its own planned block is "how the plan went", not a separate event.
+  const hostOf = (item: CalendarItem) =>
+    item.kind === 'logged'
+      ? planned.find((p) => p.activityId === item.activityId && item.start < p.end && item.end > p.start)
+      : undefined;
+
+  const strips = items.filter((item) => hostOf(item));
+  const laneItems = items.filter((item) => !strips.includes(item));
+
+  const boxes = laneItems
     .map((item) => ({ item, ...cardBox(item) }))
-    .sort((a, b) => a.top - b.top || b.height - a.height);
+    .sort((a, b) => a.left - b.left || b.width - a.width);
 
   const result: PositionedItem[] = [];
-  let cluster: PositionedItem[] = [];
-  let laneEnds: number[] = [];
-  let clusterEnd = -Infinity;
-
-  const flush = () => {
-    for (const positioned of cluster) positioned.columns = laneEnds.length;
-    result.push(...cluster);
-    cluster = [];
-    laneEnds = [];
-  };
+  const laneEnds: number[] = [];
 
   for (const box of boxes) {
-    const bottom = box.top + box.height;
+    let lane = laneEnds.findIndex((end) => end <= box.left);
 
-    if (box.top >= clusterEnd) flush();
-    let lane = laneEnds.findIndex((end) => end <= box.top);
-
-    if (lane === -1) {
-      lane = laneEnds.length;
-      laneEnds.push(bottom);
-    } else {
-      laneEnds[lane] = bottom;
-    }
-
-    clusterEnd = Math.max(clusterEnd, bottom);
-    cluster.push({ item: box.item, top: box.top, height: box.height, column: lane, columns: 1 });
+    if (lane === -1) lane = laneEnds.length;
+    laneEnds[lane] = box.left + box.width;
+    result.push({ item: box.item, left: box.left, width: box.width, lane });
   }
 
-  flush();
+  for (const item of strips) {
+    const host = result.find((p) => p.item === hostOf(item));
+
+    if (!host) continue;
+    host.hasStrips = true;
+    // Only the part of the session inside the plan is drawn: the strip never pokes past its card.
+    const box = cardBox(item);
+    const left = Math.max(box.left, host.left);
+    const right = Math.min(box.left + box.width, host.left + host.width);
+    result.push({ item, left, width: Math.max(0, right - left), lane: host.lane, strip: true });
+  }
 
   return result;
+}
+
+/** Lanes a row needs; an empty day still gets one. */
+export function laneCount(positioned: PositionedItem[]): number {
+  return Math.max(1, ...positioned.map((p) => p.lane + 1));
 }
 
 export function formatRange(start: Date, end: Date): string {

@@ -10,10 +10,10 @@ import {
   Edit3, 
   ListChecks, 
   GripVertical,
-  ArrowRight
+  ArrowRight,
+  CalendarDays
 } from 'lucide-react';
 import { Activity, CATEGORIES, PRIORITY_CONFIG, ActivityStatus, STATUS_COLUMNS } from '../types/activity';
-import { soundManager } from '../utils/audio';
 import { getTodayDateString } from '../utils/dates';
 import { formatMinutes } from '../utils/workSessions';
 
@@ -59,6 +59,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   const completedSubtasks = activity.subtasks.filter((s) => s.completed).length;
   const totalSubtasks = activity.subtasks.length;
+
+  /** Shared look for the footer's date / checklist / time pills. */
+  const metaChip = 'inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-none';
+
+  const hasFooterMeta = Boolean(
+    activity.deadline || totalSubtasks > 0 || activity.actualMinutes > 0,
+  );
 
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -124,7 +131,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   const handleStartTimer = (e: React.MouseEvent) => {
     e.stopPropagation();
-    soundManager.playDragStart();
     onStartFocus(activity);
   };
 
@@ -138,10 +144,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   return (
     <div
       draggable
-      onDragStart={(e) => {
-        soundManager.playDragStart();
-        onDragStart(e, activity.id);
-      }}
+      onDragStart={(e) => onDragStart(e, activity.id)}
       onDragEnd={onDragEnd}
       onDragOver={(e) => {
         if (onDragOverCard) {
@@ -149,13 +152,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           onDragOverCard(e, index);
         }
       }}
-      className={`group relative box-border bg-white rounded-2xl border-2 transition-[color,background-color,border-color,opacity,filter] duration-200 select-none touch-manipulation min-h-28 ${
+      className={`group relative box-border bg-white rounded-2xl border-2 transition-[color,background-color,border-color,opacity,filter] duration-200 select-none touch-manipulation ${
+        hasFooterMeta ? 'min-h-28' : ''
+      } ${
         isDragging
           ? 'opacity-40 scale-[0.98] border-indigo-400'
           : isTimerActiveForTask
             ? 'border-indigo-500 bg-indigo-50/30'
             : isCompleted
-              ? 'border-slate-200/80 bg-slate-50/70 opacity-60 saturate-50 hover:opacity-100 hover:saturate-100 focus-within:opacity-100'
+              ? 'border-slate-200/80 bg-slate-50/70 opacity-80 saturate-50 hover:opacity-100 hover:saturate-100 focus-within:opacity-100'
               : 'border-slate-200 hover:border-slate-300'
       }`}
     >
@@ -293,15 +298,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <div className="flex-1 min-w-0">
             <h4
               onClick={() => onEdit(activity)}
-              className={`text-sm font-semibold cursor-pointer transition-colors leading-snug line-clamp-2 ${
-                isCompleted ? 'text-slate-400 line-through' : 'text-slate-900 hover:text-indigo-600'
+              className={`text-[15px] font-semibold cursor-pointer transition-colors leading-snug line-clamp-2 ${
+                isCompleted ? 'text-slate-500 line-through' : 'text-slate-900 hover:text-indigo-600'
               }`}
             >
               {activity.title}
             </h4>
 
             {activity.description && (
-              <p className={`text-xs line-clamp-2 mt-1 leading-relaxed ${isCompleted ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className="text-xs line-clamp-2 mt-1 leading-relaxed text-slate-500">
                 {activity.description}
               </p>
             )}
@@ -309,39 +314,44 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
 
         {/* Footer: quiet metadata on the left, actions on the right */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
-          <div className="flex items-center gap-2.5 min-w-0 tabular-nums">
+        <div
+          className={`flex items-center gap-2 text-xs text-slate-500 ${
+            hasFooterMeta ? 'justify-between pt-2 border-t border-slate-100' : 'justify-end'
+          }`}
+        >
+          {hasFooterMeta && (
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0 tabular-nums">
             {activity.deadline && (
               <span
-                className={`shrink-0 ${isOverdue ? 'font-medium text-rose-600' : 'text-slate-600'}`}
+                className={`${metaChip} ${isOverdue ? 'bg-rose-50 text-rose-600' : 'bg-slate-100/80 text-slate-600'}`}
                 title={isOverdue ? 'Past its deadline' : 'Deadline'}
               >
-                Due {new Date(`${activity.deadline}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-              </span>
-            )}
-            {activity.goal && (
-              <span className="min-w-0 truncate rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600" title="Goal">
-                {activity.goal}
-              </span>
-            )}
-            {activity.scheduledTime && (
-              <span className="shrink-0 font-medium text-slate-600" title="Scheduled time">
-                {activity.scheduledTime}
+                <CalendarDays className={`size-3 ${isOverdue ? 'text-rose-500' : 'text-slate-400'}`} aria-hidden />
+                {new Date(`${activity.deadline}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
               </span>
             )}
             {totalSubtasks > 0 && (
-              <span className="inline-flex items-center gap-1 shrink-0" title="Checklist progress">
-                <ListChecks className="w-3.5 h-3.5 text-slate-400" />
+              <span
+                className={`${metaChip} ${
+                  completedSubtasks === totalSubtasks ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100/80 text-slate-600'
+                }`}
+                title="Checklist progress"
+              >
+                <ListChecks
+                  className={`size-3 ${completedSubtasks === totalSubtasks ? 'text-emerald-500' : 'text-slate-400'}`}
+                  aria-hidden
+                />
                 {completedSubtasks}/{totalSubtasks}
               </span>
             )}
             {activity.actualMinutes > 0 && (
-              <span className="inline-flex items-center gap-1 shrink-0" title="Total time across all days">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                {formatMinutes(activity.actualMinutes)} total
+              <span className={`${metaChip} bg-slate-100/80 text-slate-600`} title="Total time across all days">
+                <Clock className="size-3 text-slate-400" aria-hidden />
+                {formatMinutes(activity.actualMinutes)}
               </span>
             )}
           </div>
+          )}
 
           <div className="flex items-center gap-0.5 shrink-0">
             {nextStatus && onMoveToStatus && (
@@ -349,7 +359,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  soundManager.playDrop();
                   onMoveToStatus(activity.id, nextStatus.id);
                 }}
                 title={`Move to ${nextStatus.shortTitle}`}

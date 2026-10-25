@@ -26,11 +26,11 @@ export interface DayAgendaProps {
   onNextDay: () => void;
 }
 
-const NOW_COLOR = '#e0624a';
+const NOW_COLOR = '#c2410c';
 const QUICK_TIMES = ['09:00', '13:00', '16:00'];
 
 const TIME_BUTTON_CLASS =
-  'inline-flex h-9 min-w-16 items-center justify-center rounded-lg bg-neutral-100 px-3 text-[13px] font-medium tabular-nums text-neutral-800 active:bg-neutral-200';
+  'inline-flex h-9 min-w-16 items-center justify-center rounded-lg bg-slate-100 px-3 text-[13px] font-medium tabular-nums text-slate-800 active:bg-slate-200';
 
 function AgendaRow({
   item,
@@ -55,13 +55,13 @@ function AgendaRow({
       type="button"
       onClick={(e) => onSelect(item, e.currentTarget)}
       aria-label={`${item.title}, ${range}, ${logged ? 'logged' : 'planned'}${item.completed ? ', done' : ''}`}
-      className={`flex min-h-14 w-full gap-3 rounded-xl px-2 py-2 text-left outline-none hover:bg-neutral-50 active:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-400 ${
+      className={`flex min-h-14 w-full gap-3 rounded-xl px-2 py-2 text-left outline-none hover:bg-slate-50 active:bg-slate-50 focus-visible:ring-2 focus-visible:ring-slate-400 ${
         item.completed ? 'opacity-60' : ''
       }`}
     >
       <span className="w-12 shrink-0">
-        <span className="block text-[13px] font-medium tabular-nums text-neutral-900">{format(item.start, 'HH:mm')}</span>
-        <span className="block text-[12px] tabular-nums text-neutral-400">{format(item.end, 'HH:mm')}</span>
+        <span className="block text-[13px] font-medium tabular-nums text-slate-900">{format(item.start, 'HH:mm')}</span>
+        <span className="block text-[12px] tabular-nums text-slate-400">{format(item.end, 'HH:mm')}</span>
       </span>
       <span className="block min-w-0 flex-1 rounded-lg px-3 py-2" style={cardStyle}>
         <span
@@ -125,29 +125,29 @@ function UnscheduledCard({
   const theme = CALENDAR_TYPES[item.type];
 
   return (
-    <li className="space-y-2.5 rounded-xl border border-neutral-200 p-3">
+    <li className="space-y-2.5 rounded-xl border border-slate-200 p-3">
       <button
         type="button"
         onClick={() => onOpenItem(item.id)}
-        className="block w-full rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
+        className="block w-full rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
       >
         <span className="flex items-center gap-2">
           <span className="size-2 shrink-0 rounded-sm" style={{ background: theme.dot }} aria-hidden />
           <span
-            className={`min-w-0 flex-1 truncate text-[14px] font-medium text-neutral-900 ${
+            className={`min-w-0 flex-1 truncate text-[14px] font-medium text-slate-900 ${
               item.completed ? 'line-through opacity-60' : ''
             }`}
           >
             {item.title}
           </span>
         </span>
-        <span className="mt-0.5 block pl-4 text-[12px] text-neutral-500">
+        <span className="mt-0.5 block pl-4 text-[12px] text-slate-500">
           {item.durationMinutes} min · {PRIORITY_LABELS[item.priority]}
         </span>
       </button>
       {!item.completed && (
         <div>
-          <p className="mb-1.5 text-[12px] text-neutral-500">Schedule at</p>
+          <p className="mb-1.5 text-[12px] text-slate-500">Schedule at</p>
           <div className="flex gap-2">
             {QUICK_TIMES.map((time) => (
               <button
@@ -160,7 +160,7 @@ function UnscheduledCard({
                 {time}
               </button>
             ))}
-            <label className={`relative overflow-hidden focus-within:ring-2 focus-within:ring-neutral-400 ${TIME_BUTTON_CLASS}`}>
+            <label className={`relative overflow-hidden focus-within:ring-2 focus-within:ring-slate-400 ${TIME_BUTTON_CLASS}`}>
               Other…
               <input
                 type="time"
@@ -250,14 +250,14 @@ export function DayAgenda({
         <section aria-label="Schedule" className="flex min-h-[40dvh] flex-col gap-1">
           {rows}
           {sorted.length === 0 && (
-            <p className="my-auto py-6 text-center text-[13px] text-neutral-500">Nothing scheduled. Pick a time for a task below.</p>
+            <p className="my-auto py-6 text-center text-[13px] text-slate-500">Nothing scheduled. Pick a time for a task below.</p>
           )}
         </section>
 
-        <section aria-label="Unscheduled" className="mt-5 border-t border-neutral-100 pt-4">
+        <section aria-label="Unscheduled" className="mt-5 border-t border-slate-100 pt-4">
           <div className="mb-3 flex items-center gap-2">
-            <h2 className="text-[14px] font-medium text-neutral-900">Unscheduled</h2>
-            <span className="rounded-full bg-neutral-100 px-2 text-xs text-neutral-600">{unscheduled.length}</span>
+            <h2 className="text-[14px] font-medium text-slate-900">Unscheduled</h2>
+            <span className="rounded-full bg-slate-100 px-2 text-xs text-slate-600">{unscheduled.length}</span>
             {addable.length > 0 && (
               <select
                 aria-label="Add a task to this day"
@@ -265,7 +265,7 @@ export function DayAgenda({
                 onChange={(e) => {
                   if (e.target.value) onAddToDay(e.target.value);
                 }}
-                className="ml-auto h-9 max-w-[160px] rounded-lg border border-neutral-200 bg-white px-2 text-[13px] text-neutral-700"
+                className="ml-auto h-9 max-w-[160px] rounded-lg border border-slate-200 bg-white px-2 text-[13px] text-slate-700"
               >
                 <option value="">+ Add task</option>
                 {addable.map((task) => (
@@ -277,7 +277,7 @@ export function DayAgenda({
             )}
           </div>
           {unscheduled.length === 0 ? (
-            <p className="text-[13px] text-neutral-500">Nothing unscheduled on this day.</p>
+            <p className="text-[13px] text-slate-500">Nothing unscheduled on this day.</p>
           ) : (
             <ul className="space-y-2">
               {unscheduled.map((item) => (

@@ -47,16 +47,16 @@ export function UpcomingRail({ items, today, now, onSelectItem }: UpcomingRailPr
   return (
     <section aria-label="Upcoming events" className="flex h-full min-h-0 flex-col">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-medium text-neutral-900">Upcoming</h2>
-        <span className="text-sm text-neutral-500">Next 7 days</span>
+        <h2 className="text-sm font-medium text-slate-900">Upcoming</h2>
+        <span className="text-sm text-slate-500">Next 7 days</span>
       </div>
 
       <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto">
         {groups.map((group) => (
           <div key={group.day.toISOString()}>
-            <h3 className="text-sm text-neutral-500">{dayLabel(group.day, today)}</h3>
+            <h3 className="text-sm text-slate-500">{dayLabel(group.day, today)}</h3>
             {group.items.length === 0 ? (
-              <p className="mt-2 text-sm text-neutral-400">No more events today</p>
+              <p className="mt-2 text-sm text-slate-400">No more events today</p>
             ) : (
               <ul className="mt-1.5 space-y-0.5">
                 {group.items.map((item) => (
@@ -64,7 +64,7 @@ export function UpcomingRail({ items, today, now, onSelectItem }: UpcomingRailPr
                     <button
                       type="button"
                       onClick={(e) => onSelectItem(item, e.currentTarget)}
-                      className="flex w-full items-start gap-3 rounded-lg px-2 py-1.5 text-left outline-none hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-neutral-400"
+                      className="flex w-full items-start gap-3 rounded-lg px-2 py-1.5 text-left outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-400"
                     >
                       <span
                         aria-hidden
@@ -73,12 +73,12 @@ export function UpcomingRail({ items, today, now, onSelectItem }: UpcomingRailPr
                       />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5">
-                          <span className="truncate text-sm font-medium text-neutral-900">{item.title}</span>
+                          <span className="truncate text-sm font-medium text-slate-900">{item.title}</span>
                           {item.kind === 'logged' && (
-                            <Clock aria-label="Logged" className="w-3 shrink-0 text-neutral-400" />
+                            <Clock aria-label="Logged" className="w-3 shrink-0 text-slate-400" />
                           )}
                         </span>
-                        <span className="block truncate text-[13px] text-neutral-500">
+                        <span className="block truncate text-[13px] text-slate-500">
                           {formatRange(item.start, item.end)} · {CALENDAR_TYPES[item.type].label}
                         </span>
                       </span>

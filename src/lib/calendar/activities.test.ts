@@ -168,7 +168,7 @@ describe('moveToSlot', () => {
 });
 
 describe('layoutDay', () => {
-  it('puts short back-to-back blocks in separate lanes so their drawn cards do not cover each other', async () => {
+  it('puts short back-to-back blocks on separate lanes so their drawn cards do not cover each other', async () => {
     const { layoutDay } = await import('./layout');
 
     const item = (id: string, h: number, m: number, minutes: number) => {
@@ -190,13 +190,79 @@ describe('layoutDay', () => {
 
     const laid = layoutDay([item('a', 10, 0, 10), item('b', 10, 10, 10), item('c', 12, 0, 60)]);
     const byId = Object.fromEntries(laid.map((p) => [p.item.id, p]));
-    assert.equal(byId.a.columns, 2);
-    assert.notEqual(byId.a.column, byId.b.column);
-    assert.equal(byId.c.columns, 1);
+    assert.notEqual(byId.a.lane, byId.b.lane);
+    assert.equal(byId.c.lane, 0);
     // Before 07:00 is pinned to the top without overlapping a 07:00 block's lane.
     const early = layoutDay([item('x', 5, 0, 60), item('y', 7, 0, 60)]);
     const ex = Object.fromEntries(early.map((p) => [p.item.id, p]));
-    assert.equal(ex.x.top, 0);
-    assert.notEqual(ex.x.column, ex.y.column);
+    assert.equal(ex.x.left, 0);
+    assert.notEqual(ex.x.lane, ex.y.lane);
+  });
+
+  it('draws sessions overlapping their own planned block as strips, so they take no lane of their own', async () => {
+    const { layoutDay } = await import('./layout');
+    const base = { day: TODAY, type: 'learn' as const, priority: 'medium' as const, completed: false };
+    const at = (h: number, m: number) => new Date(2026, 9, 23, h, m);
+    const plan = { ...base, id: 'p', activityId: 'go', title: 'go', kind: 'planned' as const, start: at(9, 51), end: at(10, 36) };
+    const own = { ...base, id: 's1', activityId: 'go', title: 'go', kind: 'logged' as const, start: at(10, 5), end: at(10, 25) };
+    const other = { ...base, id: 's2', activityId: 'rust', title: 'rust', kind: 'logged' as const, start: at(10, 0), end: at(10, 30) };
+
+    const byId = Object.fromEntries(layoutDay([plan, own]).map((p) => [p.item.id, p]));
+    assert.equal(byId.p.lane, 0);
+    assert.equal(byId.s1.lane, 0);
+    assert.equal(byId.p.hasStrips, true);
+    assert.equal(byId.s1.strip, true);
+
+    // A session that starts before the plan is clipped to the planned card.
+    const early = { ...own, id: 's0', start: at(9, 30), end: at(10, 0) };
+    const clipped = Object.fromEntries(layoutDay([plan, early]).map((p) => [p.item.id, p]));
+    assert.equal(clipped.s0.left, clipped.p.left);
+    assert.ok(clipped.s0.left + clipped.s0.width <= clipped.p.left + clipped.p.width);
+    // Another activity's session is still its own event.
+    const mixed = Object.fromEntries(layoutDay([plan, own, other]).map((p) => [p.item.id, p]));
+    assert.notEqual(mixed.p.lane, mixed.s2.lane);
+    assert.equal(mixed.s1.lane, mixed.p.lane);
+    assert.equal(mixed.s2.strip, undefined);
+  });
+});
+
+describe('mergeLoggedRuns', () => {
+  const at = (h: number, m: number) => new Date(2026, 9, 23, h, m);
+
+  const session = (id: string, activityId: string, from: [number, number], to: [number, number]) => ({
+    id,
+    activityId,
+    day: TODAY,
+    title: activityId,
+    type: 'learn' as const,
+    priority: 'medium' as const,
+    kind: 'logged' as const,
+    start: at(...from),
+    end: at(...to),
+    completed: false,
+  });
+
+  it('joins back-to-back sessions of one task and keeps the minutes actually worked', async () => {
+    const { mergeLoggedRuns } = await import('./activities');
+    const out = mergeLoggedRuns([session('a', 'go', [10, 5], [10, 25]), session('b', 'go', [10, 30], [10, 42])]);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].start.getTime(), at(10, 5).getTime());
+    assert.equal(out[0].end.getTime(), at(10, 42).getTime());
+    assert.equal(out[0].minutes, 32);
+    assert.equal(out[0].sessions, 2);
+  });
+
+  it('keeps sessions apart across a long break or another task in between', async () => {
+    const { mergeLoggedRuns } = await import('./activities');
+    const longBreak = mergeLoggedRuns([session('a', 'go', [9, 0], [9, 30]), session('b', 'go', [10, 0], [10, 30])]);
+    assert.equal(longBreak.length, 2);
+
+    const interrupted = mergeLoggedRuns([
+      session('a', 'go', [9, 0], [9, 30]),
+      session('x', 'rust', [9, 32], [9, 38]),
+      session('b', 'go', [9, 40], [10, 0]),
+    ]);
+
+    assert.equal(interrupted.filter((i) => i.activityId === 'go').length, 2);
   });
 });

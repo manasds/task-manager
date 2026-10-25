@@ -38,13 +38,14 @@ import type {
   CalendarViewMode,
   DragPayload,
 } from '@/lib/calendar/types';
-import { GRID_MINUTES, GRID_START_HOUR, HOUR_HEIGHT, SNAP_MINUTES, WEEK_OPTIONS } from '@/lib/calendar/theme';
-import { formatRange, passesFilters, topFor } from '@/lib/calendar/layout';
+import { GRID_MINUTES, GRID_START_HOUR, HOUR_WIDTH, MIN_CARD_WIDTH, SNAP_MINUTES, WEEK_OPTIONS } from '@/lib/calendar/theme';
+import { formatRange, offsetFor, passesFilters } from '@/lib/calendar/layout';
 import {
   addableTo,
   addToDay,
   calendarItems,
   canRemoveFromDay,
+  mergeLoggedRuns,
   moveToSlot,
   removeFromDay,
   toTimeString,
@@ -52,7 +53,6 @@ import {
   unscheduledOn,
 } from '@/lib/calendar/activities';
 import { formatMinutes, localDateString, parseLocalDate, taskStatsForDate } from '@/utils/workSessions';
-import { soundManager } from '@/utils/audio';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarSidebarFilters } from './CalendarSidebarFilters';
 import { DayAgenda } from './DayAgenda';
@@ -159,36 +159,36 @@ function rangeSubtitle(start: Date, end: Date): string {
   return `Week ${getISOWeek(start)} · ${format(start, 'MMM d')} – ${tail}`;
 }
 
-function clientY(event: Event | null): number | null {
+function clientX(event: Event | null): number | null {
   // Desktop Safari and Firefox have no TouchEvent constructor.
   if (typeof TouchEvent !== 'undefined' && event instanceof TouchEvent) {
     const touch = event.touches[0] ?? event.changedTouches[0];
 
-    return touch ? touch.clientY : null;
+    return touch ? touch.clientX : null;
   }
 
-  return event instanceof MouseEvent ? event.clientY : null;
+  return event instanceof MouseEvent ? event.clientX : null;
 }
 
 /**
- * Snapped start for a drag: where the dragged item's top edge sits in the hovered day column.
+ * Snapped start for a drag: where the dragged item's left edge sits in the hovered day row.
  * Uses the live pointer and the column's current position, so it stays right while the grid
  * auto-scrolls during the drag.
  */
 function dropStart(
   event: DragMoveEvent | DragEndEvent,
-  pointerY: number | null,
+  pointerX: number | null,
   durationMinutes: number,
 ): { day: Date; start: Date } | null {
   const { active, over } = event;
   const data = over ? dayDrop(over.data) : undefined;
-  const startY = clientY(event.activatorEvent);
+  const startX = clientX(event.activatorEvent);
   const initial = active.rect.current.initial;
-  const column = over ? document.querySelector(`[data-drop-id="${String(over.id)}"]`) : null;
+  const row = over ? document.querySelector(`[data-drop-id="${String(over.id)}"]`) : null;
 
-  if (!data?.day || pointerY === null || startY === null || !initial || !column) return null;
-  const itemTop = pointerY - (startY - initial.top);
-  const raw = ((itemTop - column.getBoundingClientRect().top) / HOUR_HEIGHT) * 60;
+  if (!data?.day || pointerX === null || startX === null || !initial || !row) return null;
+  const itemLeft = pointerX - (startX - initial.left);
+  const raw = ((itemLeft - row.getBoundingClientRect().left) / HOUR_WIDTH) * 60;
   const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
   const minutes = Math.min(Math.max(0, snapped), GRID_MINUTES - Math.min(durationMinutes, GRID_MINUTES));
   // setHours keeps wall-clock time, so a DST change day doesn't shift the slot by an hour.
@@ -250,13 +250,15 @@ export function CalendarView({
   // Browsers fire a click on the card right after a drag ends; that must not open the popover.
   const justDraggedRef = useRef(false);
   // Latest pointer position during a drag (dnd-kit's own rects lag behind auto-scroll).
-  const pointerYRef = useRef<number | null>(null);
+  const pointerXRef = useRef<number | null>(null);
+  // dnd-kit can deliver a last move after the drop; it must not bring the preview back.
+  const dragActiveRef = useRef(false);
 
   useEffect(() => {
     if (!dragging) return;
 
     const track = (event: MouseEvent | TouchEvent) => {
-      pointerYRef.current = clientY(event);
+      pointerXRef.current = clientX(event);
     };
 
     window.addEventListener('mousemove', track, { passive: true });
@@ -292,7 +294,7 @@ export function CalendarView({
   const dayKeys = useMemo(() => days.map(localDateString), [days]);
 
   const visibleItems = useMemo(
-    () => calendarItems(activities, dayKeys, today).filter((item) => passesFilters(item, filters)),
+    () => mergeLoggedRuns(calendarItems(activities, dayKeys, today).filter((item) => passesFilters(item, filters))),
     [activities, dayKeys, today, filters],
   );
 
@@ -359,21 +361,21 @@ export function CalendarView({
     setFilters((f) => ({ ...f, priorities: { ...f.priorities, [priority]: !f.priorities[priority] } }));
 
   const handleDragStart = (event: DragStartEvent) => {
-    pointerYRef.current = clientY(event.activatorEvent);
+    pointerXRef.current = clientX(event.activatorEvent);
+    dragActiveRef.current = true;
     setDragging(dragPayload(event.active.data) ?? null);
     setSelected(null);
-    soundManager.playDragStart();
   };
 
   const handleDragMove = (event: DragMoveEvent) => {
-    if (!dragging || !event.over) {
+    if (!dragActiveRef.current || !dragging || !event.over) {
       setDropPreview(null);
 
       return;
     }
 
     const minutes = payloadDuration(dragging);
-    const target = dropStart(event, pointerYRef.current, minutes);
+    const target = dropStart(event, pointerXRef.current, minutes);
 
     if (!target) {
       setDropPreview(null);
@@ -381,19 +383,20 @@ export function CalendarView({
       return;
     }
 
-    const top = topFor(target.start);
+    const left = offsetFor(target.start);
 
     const next: DropPreview = {
       dropId: String(event.over.id),
-      top,
-      height: Math.max(24, (minutes / 60) * HOUR_HEIGHT),
+      left,
+      width: Math.max(MIN_CARD_WIDTH, (minutes / 60) * HOUR_WIDTH),
       label: formatRange(target.start, addMinutes(target.start, minutes)),
     };
 
-    setDropPreview((current) => (current && current.dropId === next.dropId && current.top === next.top ? current : next));
+    setDropPreview((current) => (current && current.dropId === next.dropId && current.left === next.left ? current : next));
   };
 
   const finishDrag = () => {
+    dragActiveRef.current = false;
     setDragging(null);
     setDropPreview(null);
     justDraggedRef.current = true;
@@ -415,13 +418,12 @@ export function CalendarView({
     if (event.over?.id === TRAY_DROP_ID) {
       if (payload.source === 'grid') {
         onUpdateActivity(unschedule(activity));
-        soundManager.playDrop();
       }
 
       return;
     }
 
-    const target = dropStart(event, pointerYRef.current, payloadDuration(payload));
+    const target = dropStart(event, pointerXRef.current, payloadDuration(payload));
 
     if (!target) return;
     const sourceDay = payload.source === 'grid' ? payload.item.day : selectedDate;
@@ -435,7 +437,6 @@ export function CalendarView({
     );
 
     onUpdateActivity(result.activity);
-    soundManager.playDrop();
 
     if (result.note) onToast(result.note);
   };
@@ -474,7 +475,7 @@ export function CalendarView({
           setRailSheetOpen(false);
         }}
       />
-      <div className="my-5 border-t border-neutral-200" />
+      <div className="my-5 border-t border-slate-200" />
       <LoggedSummary
         dayLabel={selectedDayLabel}
         stats={loggedStats}
@@ -484,14 +485,14 @@ export function CalendarView({
           onEditActivity(activity);
         }}
       />
-      <div className="my-5 border-t border-neutral-200" />
+      <div className="my-5 border-t border-slate-200" />
       <UpcomingRail items={upcomingItems} today={now} now={now} onSelectItem={selectItem} />
     </>
   );
 
   return (
     <div className="mx-auto max-w-[1600px] md:px-6 md:pt-5">
-      <div className="relative flex h-[calc(100dvh-17.5rem)] min-h-[520px] flex-col overflow-hidden border-y border-neutral-200 bg-[#f7f7f6] md:h-[calc(100dvh-9.5rem)] md:min-h-[640px] md:rounded-2xl md:border md:shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="relative flex h-[calc(100dvh-17.5rem)] min-h-[520px] flex-col overflow-hidden border-y border-slate-200 bg-[#f8fafc] md:h-[calc(100dvh-9.5rem)] md:min-h-[640px] md:rounded-2xl md:border md:shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}
@@ -509,10 +510,10 @@ export function CalendarView({
                     type="button"
                     aria-label="Close filters"
                     onClick={() => setSidebarOpen(false)}
-                    className="absolute inset-0 z-30 bg-neutral-900/20"
+                    className="absolute inset-0 z-30 bg-slate-900/20"
                   />
                 )}
-                <aside className="absolute inset-y-0 left-0 z-40 w-[200px] shrink-0 overflow-y-auto border-r border-neutral-200 bg-[#f7f7f6] md:static md:z-auto">
+                <aside className="absolute inset-y-0 left-0 z-40 w-[200px] shrink-0 overflow-y-auto border-r border-slate-200 bg-[#f8fafc] md:static md:z-auto">
                   <CalendarSidebarFilters filters={filters} onToggleType={toggleType} onTogglePriority={togglePriority} />
                 </aside>
               </>
@@ -548,7 +549,6 @@ export function CalendarView({
 
                     if (!activity) return;
                     onUpdateActivity(moveToSlot(activity, selectedDate, selectedDate, time, today).activity);
-                    soundManager.playDrop();
                   }}
                   onAddToDay={addTaskToDay}
                   onOpenItem={openTask}
@@ -582,7 +582,7 @@ export function CalendarView({
               )}
             </section>
 
-            <aside className="hidden w-[284px] shrink-0 overflow-y-auto border-l border-neutral-200 bg-[#f7f7f6] px-5 py-4 lg:block">
+            <aside className="hidden w-[284px] shrink-0 overflow-y-auto border-l border-slate-200 bg-[#f8fafc] px-5 py-4 lg:block">
               {rail}
             </aside>
           </div>
@@ -598,16 +598,16 @@ export function CalendarView({
               type="button"
               aria-label="Close"
               onClick={() => setRailSheetOpen(false)}
-              className="absolute inset-0 bg-neutral-900/30"
+              className="absolute inset-0 bg-slate-900/30"
             />
-            <div className="animate-in absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto rounded-t-2xl bg-[#f7f7f6] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl md:inset-x-auto md:right-4 md:bottom-4 md:w-[320px] md:rounded-2xl">
+            <div className="animate-in absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto rounded-t-2xl bg-[#f8fafc] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl md:inset-x-auto md:right-4 md:bottom-4 md:w-[320px] md:rounded-2xl">
               <div className="mb-3 flex items-center justify-between">
-                <span className="mx-auto h-1 w-10 rounded-full bg-neutral-300 md:hidden" />
+                <span className="mx-auto h-1 w-10 rounded-full bg-slate-300 md:hidden" />
                 <button
                   type="button"
                   onClick={() => setRailSheetOpen(false)}
                   aria-label="Close"
-                  className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-200/60"
+                  className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/60"
                 >
                   <X className="size-4" />
                 </button>

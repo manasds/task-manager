@@ -8,12 +8,12 @@ export interface CalendarSidebarFiltersProps {
   onTogglePriority: (priority: CalendarPriority) => void;
 }
 
-const FOCUS = 'outline-none focus-visible:ring-2 focus-visible:ring-neutral-400';
+const FOCUS = 'outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
 
 export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority }: CalendarSidebarFiltersProps) {
   return (
-    <nav aria-label="Calendar sidebar" className="flex h-full flex-col bg-[#f7f7f6] px-3 py-4 text-neutral-900">
-      <h3 className="px-3 text-[13px] text-neutral-500">Types</h3>
+    <nav aria-label="Calendar sidebar" className="flex h-full flex-col bg-[#f8fafc] px-3 py-4 text-slate-900">
+      <h3 className="px-3 text-[13px] text-slate-500">Types</h3>
       <ul className="mt-2 space-y-0.5">
         {CALENDAR_TYPE_ORDER.map((type) => {
           const on = filters.types[type];
@@ -26,7 +26,7 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
                 role="checkbox"
                 aria-checked={on}
                 onClick={() => onToggleType(type)}
-                className={`flex h-9 w-full items-center gap-3 rounded-lg px-3 text-sm hover:bg-neutral-100 ${FOCUS}`}
+                className={`flex h-9 w-full items-center gap-3 rounded-lg px-3 text-sm hover:bg-slate-100 ${FOCUS}`}
               >
                 <span
                   aria-hidden
@@ -46,7 +46,7 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
         })}
       </ul>
 
-      <h3 className="mt-6 px-3 text-[13px] text-neutral-500">Priority</h3>
+      <h3 className="mt-6 px-3 text-[13px] text-slate-500">Priority</h3>
       <div className="mt-2 flex flex-wrap gap-1.5 px-3">
         {PRIORITY_ORDER.map((priority) => {
           const on = filters.priorities[priority];
@@ -59,8 +59,8 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
               onClick={() => onTogglePriority(priority)}
               className={`h-7 rounded-full border px-2.5 text-xs ${FOCUS} ${
                 on
-                  ? 'border-neutral-300 bg-white font-medium text-neutral-800'
-                  : 'border-transparent bg-transparent text-neutral-400 line-through hover:bg-neutral-100'
+                  ? 'border-slate-300 bg-white font-medium text-slate-800'
+                  : 'border-transparent bg-transparent text-slate-400 line-through hover:bg-slate-100'
               }`}
             >
               {PRIORITY_LABELS[priority]}

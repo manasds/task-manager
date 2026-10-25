@@ -3,13 +3,11 @@ import {
   Play,
   Pause,
   Plus,
-  Headphones,
   Square,
   Check
 } from 'lucide-react';
 import { Activity, CATEGORIES } from '../types/activity';
 import { FocusTimerSnapshot } from '../types/document';
-import { soundManager } from '../utils/audio';
 import { formatMinutes, timerElapsedSeconds } from '../utils/workSessions';
 
 /** Rendered only while a timer runs on an existing task. */
@@ -47,7 +45,6 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   onStop,
 }) => {
   const [, setTick] = useState(0);
-  const [isAmbientOn, setIsAmbientOn] = useState(false);
 
   const isRunning = timer.isRunning;
   useEffect(() => {
@@ -56,13 +53,6 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
 
     return () => clearInterval(interval);
   }, [isRunning]);
-
-  // Rain stops when toggled off or when the bar goes away (timer stopped, task gone).
-  useEffect(() => {
-    if (!isAmbientOn) return;
-
-    return () => soundManager.stopAmbient();
-  }, [isAmbientOn]);
 
   const secondsElapsed = timerElapsedSeconds(timer);
   const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.build;
@@ -77,8 +67,6 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   const isOver = overMinutes > 0;
 
   const handleToggleTimer = () => {
-    soundManager.playDragStart();
-
     if (timer.isRunning) {
       onTimerChange({ ...timer, secondsElapsed, isRunning: false, startedAt: undefined });
     } else {
@@ -87,22 +75,15 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   };
 
   const handleAddFiveMinutes = () => {
-    soundManager.playDragStart();
     onTimerChange({ ...timer, secondsElapsed: timer.secondsElapsed + 300 });
   };
 
   const handleCommitLoggedTime = () => {
-    soundManager.playDrop();
     onLogTime(pendingMinutes);
   };
 
   const handleCompleteAndLog = () => {
-    soundManager.playComplete();
     onCompleteActivity(activity.id);
-  };
-
-  const handleToggleAmbient = () => {
-    setIsAmbientOn(isAmbientOn ? false : soundManager.startAmbientFocus());
   };
 
   return (
@@ -186,20 +167,6 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
                 aria-label={isRunning ? 'Pause timer' : 'Resume timer'}
               >
                 {isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
-              </button>
-
-              <button
-                onClick={handleToggleAmbient}
-                className={
-                  isAmbientOn
-                    ? `${controlButton} text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25`
-                    : quietButton
-                }
-                title={isAmbientOn ? 'Stop ambient rain' : 'Play ambient focus rain'}
-                aria-label={isAmbientOn ? 'Stop ambient rain' : 'Play ambient focus rain'}
-                aria-pressed={isAmbientOn}
-              >
-                <Headphones className="w-4 h-4" />
               </button>
 
               <button

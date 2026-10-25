@@ -54,11 +54,14 @@ export const PRIORITY_LABELS: Record<CalendarPriority, string> = {
 /** Grid geometry, on the app's shared 07:00–23:00 timeline. */
 export const GRID_START_HOUR = TIMELINE_START_MINUTES / 60;
 export const GRID_END_HOUR = TIMELINE_END_MINUTES / 60;
-export const HOUR_HEIGHT = 64;
-export const MIN_CARD_HEIGHT = 24;
+
+/** Time runs left to right: one row per day, cards stacked in lanes inside a row. */
+export const HOUR_WIDTH = 136;
+export const MIN_CARD_WIDTH = 24;
+export const LANE_HEIGHT = 48;
 export const SNAP_MINUTES = 30;
 export const GRID_MINUTES = (GRID_END_HOUR - GRID_START_HOUR) * 60;
-export const GRID_HEIGHT = (GRID_MINUTES / 60) * HOUR_HEIGHT;
+export const GRID_WIDTH = (GRID_MINUTES / 60) * HOUR_WIDTH;
 
 /** Monday-start weeks for every date-fns week call in the calendar. */
 export const WEEK_OPTIONS = { weekStartsOn: 1 } as const;

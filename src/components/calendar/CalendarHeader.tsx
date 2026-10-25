@@ -8,7 +8,7 @@ const VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
 ];
 
 const ghostIconClass =
-  'flex size-8 items-center justify-center text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400';
+  'flex size-8 items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
 
 export interface CalendarHeaderProps {
   title: string;
@@ -37,7 +37,7 @@ export function CalendarHeader({
   onOpenRail,
 }: CalendarHeaderProps) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-3 border-b border-neutral-200 px-3 py-3 md:px-4">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-3 border-b border-slate-200 px-3 py-3 md:px-4">
       <button
         type="button"
         onClick={onToggleSidebar}
@@ -48,30 +48,30 @@ export function CalendarHeader({
         <PanelLeft className="size-4" />
       </button>
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-[17px] font-semibold leading-tight text-neutral-900">{title}</h2>
-        <p className="mt-0.5 truncate text-[13px] text-neutral-500">{subtitle}</p>
+        <h2 className="truncate text-[17px] font-semibold leading-tight text-slate-900">{title}</h2>
+        <p className="mt-0.5 truncate text-[13px] text-slate-500">{subtitle}</p>
       </div>
 
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onToday}
-          className="h-8 rounded-lg border border-neutral-200 bg-white px-3 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
+          className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-800 hover:bg-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
         >
           Today
         </button>
 
-        <div className="flex h-8 items-center overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="flex h-8 items-center overflow-hidden rounded-lg border border-slate-200 bg-white">
           <button type="button" onClick={onPrev} aria-label="Previous" className={ghostIconClass}>
             <ChevronLeft className="size-4" />
           </button>
-          <span className="h-4 w-px bg-neutral-200" />
+          <span className="h-4 w-px bg-slate-200" />
           <button type="button" onClick={onNext} aria-label="Next" className={ghostIconClass}>
             <ChevronRight className="size-4" />
           </button>
         </div>
 
-        <div role="tablist" aria-label="Calendar view" className="hidden h-8 items-center rounded-lg bg-neutral-100 p-0.5 md:flex">
+        <div role="tablist" aria-label="Calendar view" className="hidden h-8 items-center rounded-lg bg-slate-100 p-0.5 md:flex">
           {VIEW_MODES.map(({ id, label }) => (
             <button
               key={id}
@@ -79,10 +79,10 @@ export function CalendarHeader({
               role="tab"
               aria-selected={view === id}
               onClick={() => onViewChange(id)}
-              className={`h-7 rounded-md px-3.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-neutral-400 ${
+              className={`h-7 rounded-md px-3.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-slate-400 ${
                 view === id
-                  ? 'bg-white font-medium text-neutral-900 shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
-                  : 'text-neutral-500 hover:text-neutral-800'
+                  ? 'bg-white font-medium text-slate-900 shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               {label}

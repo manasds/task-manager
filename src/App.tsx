@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { Activity, ActivityStatus, goalNames, normalizeActivity, storedActivitySchema } from './types/activity';
 import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument, tabToOpen } from './types/document';
 import { getTodayDateString } from './utils/dates';
-import { soundManager } from './utils/audio';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { StatSummaryStrip } from './components/StatSummaryStrip';
 import { BoardView } from './components/BoardView';
@@ -40,9 +39,8 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   const [dailyGoalMinutes, setDailyGoalMinutes] = useState<number>(360);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-  /** Goal filter shared by the Progress and By type views: 'all' or a goal name. */
+  /** Goal filter shared by the Progress and Kanban views: 'all' or a goal name. */
   const [goal, setGoal] = useState('all');
-  const [isMuted, setIsMuted] = useState<boolean>(false);
   const [timer, setTimer] = useState<FocusTimerSnapshot | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
@@ -94,7 +92,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     setDailyGoalMinutes(doc.dailyGoalMinutes);
     setActiveTab(tabToOpen(doc.settings.lastTab));
     setSelectedDate(doc.settings.selectedDate || getTodayDateString());
-    setIsMuted(doc.settings.muted);
     setTimer(timerFor(doc.timer, doc.activities));
     setHydrated(true);
 
@@ -103,7 +100,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       showToast('Signed out');
     }
 
-    soundManager.setMuted(doc.settings.muted);
   }, [authReady, userId, currentDocument]);
 
   useEffect(() => {
@@ -113,7 +109,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       schemaVersion: DOCUMENT_SCHEMA_VERSION,
       dailyGoalMinutes,
       settings: {
-        muted: isMuted,
         lastTab: activeTab,
         selectedDate,
       },
@@ -125,7 +120,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     const markDirty = !skipDirtyRef.current;
     skipDirtyRef.current = false;
     persistLocal(doc, markDirty);
-  }, [hydrated, activities, dailyGoalMinutes, isMuted, activeTab, selectedDate, timer, persistLocal]);
+  }, [hydrated, activities, dailyGoalMinutes, activeTab, selectedDate, timer, persistLocal]);
 
   // The board's date filter can hold non-date values like "all"; day views need a real date.
   const dayViewDate = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : getTodayDateString();
@@ -143,7 +138,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
 
   const handleDeleteActivity = (activityId: string) => {
     const removed = activities.find((a) => a.id === activityId);
-    soundManager.playDrop();
     setActivities((prev) => prev.filter((a) => a.id !== activityId));
     setTimer((current) => (current?.activityId === activityId ? null : current));
     showToast(
@@ -308,18 +302,9 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
 
         setActivities(imported);
         setTimer((current) => timerFor(current, imported));
-        soundManager.playDrop();
         showToast(`Imported ${imported.length} activities`);
       })
       .catch(() => showToast('Failed to parse JSON file'));
-  };
-
-  const handleToggleMute = () => {
-    const next = !isMuted;
-    setIsMuted(next);
-    soundManager.setMuted(next);
-
-    if (!next) soundManager.playDragStart();
   };
 
   const handleSignOut = async () => {
@@ -344,8 +329,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
         onOpenNewTaskModal={() => handleOpenNewTaskModal('backlog')}
         onExportData={handleExportData}
         onImportData={handleImportData}
-        isMuted={isMuted}
-        onToggleMute={handleToggleMute}
         user={persistence.user}
         syncPhase={persistence.phase}
         lastError={persistence.lastError}
@@ -388,7 +371,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
             signedIn={!!userId}
             onEdit={handleEditActivity}
             onDelete={handleDeleteActivity}
-            onAddTask={() => handleOpenNewTaskModal('backlog')}
           />
         )}
 

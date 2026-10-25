@@ -79,7 +79,7 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
               <CheckCircle2 className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Completion
               </div>
               <div className="flex items-baseline gap-1">
@@ -99,7 +99,7 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
               <Clock className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Focus Logged
               </div>
               <div className="flex items-baseline gap-1">
@@ -117,7 +117,7 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   Target
                 </span>
                 <span className="text-[11px] font-bold text-slate-700 tabular-nums">
@@ -139,7 +139,7 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
               <Flame className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Streak
               </div>
               <div className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">

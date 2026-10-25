@@ -1,7 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Volume2, VolumeX, Plus, Download, Upload, MoreHorizontal, LayoutGrid, Smartphone } from 'lucide-react';
-import { soundManager } from '../utils/audio';
+import { Plus, Download, Upload, MoreHorizontal, LayoutGrid, Smartphone } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { CloudUser } from '../types/document';
 import { SyncPhase } from '../hooks/useSessionPersistence';
@@ -10,7 +9,7 @@ export type ActiveTab = 'board' | 'types' | 'calendar' | 'analytics';
 
 const TABS: { id: ActiveTab; label: string }[] = [
   { id: 'board', label: 'Progress' },
-  { id: 'types', label: 'By type' },
+  { id: 'types', label: 'Kanban' },
   { id: 'calendar', label: 'Calendar' },
   { id: 'analytics', label: 'Analytics' },
 ];
@@ -29,8 +28,6 @@ const menuItemClass =
   'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-100';
 
 function UtilityMenu({
-  isMuted,
-  onToggleMute,
   onExportData,
   onImportData,
   fileInputRef,
@@ -39,8 +36,6 @@ function UtilityMenu({
   onFlush,
   onSignOut,
 }: {
-  isMuted: boolean;
-  onToggleMute: () => void;
   onExportData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
@@ -126,15 +121,6 @@ function UtilityMenu({
             <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />
             Canvas
           </Link>
-          <button
-            type="button"
-            role="menuitem"
-            className={menuItemClass}
-            onClick={() => closeAnd(onToggleMute)}
-          >
-            {isMuted ? <VolumeX className="w-3.5 h-3.5 text-slate-400" /> : <Volume2 className="w-3.5 h-3.5 text-slate-400" />}
-            {isMuted ? 'Unmute sounds' : 'Mute sounds'}
-          </button>
           <button type="button" role="menuitem" className={menuItemClass} onClick={() => closeAnd(onExportData)}>
             <Download className="w-3.5 h-3.5 text-slate-400" />
             Export
@@ -173,8 +159,6 @@ interface NavbarProps {
   onOpenNewTaskModal: () => void;
   onExportData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  isMuted: boolean;
-  onToggleMute: () => void;
   user: CloudUser | null;
   syncPhase: SyncPhase;
   lastError: string | null;
@@ -189,8 +173,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNewTaskModal,
   onExportData,
   onImportData,
-  isMuted,
-  onToggleMute,
   user,
   syncPhase,
   lastError,
@@ -201,7 +183,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleTabClick = (tab: ActiveTab) => {
-    soundManager.playDragStart();
     onTabChange(tab);
   };
 
@@ -260,8 +241,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           <UtilityMenu
-            isMuted={isMuted}
-            onToggleMute={onToggleMute}
             onExportData={onExportData}
             onImportData={onImportData}
             fileInputRef={fileInputRef}
@@ -273,10 +252,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              soundManager.playDragStart();
-              onOpenNewTaskModal();
-            }}
+            onClick={() => onOpenNewTaskModal()}
             className="hidden sm:flex items-center gap-1 h-9 pl-2.5 pr-3 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />

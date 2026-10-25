@@ -70,7 +70,7 @@ describe('local edit tracking', () => {
 
   it('does not sync UI-only settings', () => {
     const prev = doc({});
-    const next = doc({ settings: { muted: true, lastTab: 'analytics', selectedDate: '2026-10-01' } });
+    const next = doc({ settings: { lastTab: 'analytics', selectedDate: '2026-10-01' } });
     const m = meta({});
     assert.equal(recordLocalEdits(m, prev, next), m);
   });

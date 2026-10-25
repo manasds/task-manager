@@ -32,7 +32,7 @@ const MARGIN = 8;
 function Row({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
       <div className="min-w-0 flex-1">{children}</div>
     </li>
   );
@@ -130,10 +130,10 @@ export function EventPopover({
   const pct = checklist && checklist.total > 0 ? Math.round((checklist.done / checklist.total) * 100) : 0;
 
   const iconButton =
-    'flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 outline-none hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:ring-neutral-400';
+    'flex h-7 w-7 items-center justify-center rounded-md text-slate-500 outline-none hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-slate-400';
 
-  const footerButton = 'h-8 rounded-lg px-3 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-neutral-400';
-  const secondary = `${footerButton} border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50`;
+  const footerButton = 'h-8 rounded-lg px-3 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
+  const secondary = `${footerButton} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`;
 
   return createPortal(
     <div
@@ -141,11 +141,11 @@ export function EventPopover({
       role="dialog"
       aria-label={item.title}
       tabIndex={-1}
-      className="fixed z-50 rounded-xl border border-neutral-200 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.08)] outline-none"
+      className="fixed z-50 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.08)] outline-none"
       style={{ width: `min(${WIDTH}px, calc(100vw - ${MARGIN * 2}px))`, left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? 'visible' : 'hidden' }}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-neutral-500">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
           <span className="h-2 w-2 rounded-sm" style={{ background: theme.dot }} />
           {theme.label}
         </div>
@@ -163,18 +163,18 @@ export function EventPopover({
           </button>
         </div>
       </div>
-      <h3 className="mt-3 text-[15px] font-medium text-neutral-900">{item.title}</h3>
-      <ul className="mt-3 space-y-2.5 text-sm text-neutral-800">
+      <h3 className="mt-3 text-[15px] font-medium text-slate-900">{item.title}</h3>
+      <ul className="mt-3 space-y-2.5 text-sm text-slate-800">
         <Row icon={Clock}>
           {format(item.start, 'EEE, MMM d')} · {formatRange(item.start, item.end)}
-          {logged && ` · ${differenceInMinutes(item.end, item.start)} min`}
+          {logged && ` · ${item.minutes ?? differenceInMinutes(item.end, item.start)} min`}
         </Row>
         <Row icon={Flag}>
-          {`${PRIORITY_LABELS[item.priority]} · ${logged ? 'Logged session' : item.completed ? 'Done' : 'Planned'}`}
+          {`${PRIORITY_LABELS[item.priority]} · ${logged ? ((item.sessions ?? 1) > 1 ? `${item.sessions} logged sessions` : 'Logged session') : item.completed ? 'Done' : 'Planned'}`}
         </Row>
         {item.notes && (
           <Row icon={AlignLeft}>
-            <p className="leading-relaxed text-neutral-500">{item.notes}</p>
+            <p className="leading-relaxed text-slate-500">{item.notes}</p>
           </Row>
         )}
         {checklist && (
@@ -182,14 +182,14 @@ export function EventPopover({
             <div>
               {checklist.done} of {checklist.total} done
             </div>
-            <div className="mt-1.5 h-1.5 rounded-full bg-neutral-100">
+            <div className="mt-1.5 h-1.5 rounded-full bg-slate-100">
               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: theme.dot }} />
             </div>
           </Row>
         )}
       </ul>
       {!logged && (
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-neutral-100 pt-3">
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           {!item.completed &&
             (isFocusing ? (
               <button type="button" onClick={onStartFocus} className={`${footerButton} bg-indigo-50 text-indigo-700`}>
@@ -199,7 +199,7 @@ export function EventPopover({
               <button
                 type="button"
                 onClick={onStartFocus}
-                className={`${footerButton} flex items-center gap-1.5 bg-neutral-900 text-white hover:bg-neutral-800`}
+                className={`${footerButton} flex items-center gap-1.5 bg-slate-900 text-white hover:bg-slate-800`}
               >
                 <Play className="h-3.5 w-3.5" aria-hidden />
                 Start focus

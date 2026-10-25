@@ -16,11 +16,11 @@ export function LoggedSummary({ dayLabel, stats, totalMinutes, onOpen }: LoggedS
   return (
     <section aria-label="Logged work" className="flex min-h-0 flex-col">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[14px] font-medium text-neutral-900">Logged · {dayLabel}</h2>
-        <span className="text-[13px] tabular-nums text-neutral-500">{formatMinutes(totalMinutes)}</span>
+        <h2 className="text-[14px] font-medium text-slate-900">Logged · {dayLabel}</h2>
+        <span className="text-[13px] tabular-nums text-slate-500">{formatMinutes(totalMinutes)}</span>
       </div>
       {stats.length === 0 ? (
-        <p className="mt-3 text-[13px] text-neutral-400">No work logged this day</p>
+        <p className="mt-3 text-[13px] text-slate-400">No work logged this day</p>
       ) : (
         <ul className="mt-3 space-y-0.5">
           {stats.map((stat) => {
@@ -32,22 +32,22 @@ export function LoggedSummary({ dayLabel, stats, totalMinutes, onOpen }: LoggedS
                 <button
                   type="button"
                   onClick={() => onOpen(stat.activity)}
-                  className="-mx-2 block w-[calc(100%+1rem)] rounded-lg px-2 py-1.5 text-left outline-none hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-neutral-400"
+                  className="-mx-2 block w-[calc(100%+1rem)] rounded-lg px-2 py-1.5 text-left outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-400"
                 >
                   <span className="flex items-start gap-3">
                     <span aria-hidden className="mt-[6px] h-2 w-2 shrink-0 rounded-sm" style={{ backgroundColor: dot }} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium text-neutral-900">{stat.activity.title}</span>
+                      <span className="block truncate text-[13px] font-medium text-slate-900">{stat.activity.title}</span>
                       {stat.untimedMinutes > 0 && (
-                        <span className="block text-[12px] text-amber-600">{formatMinutes(stat.untimedMinutes)} untimed</span>
+                        <span className="block text-[12px] text-amber-700">{formatMinutes(stat.untimedMinutes)} untimed</span>
                       )}
                     </span>
-                    <span className="shrink-0 text-[13px] tabular-nums text-neutral-900">
+                    <span className="shrink-0 text-[13px] tabular-nums text-slate-900">
                       {formatMinutes(stat.totalMinutes)}
-                      <span className="ml-1.5 text-neutral-400">{pct}%</span>
+                      <span className="ml-1.5 text-slate-400">{pct}%</span>
                     </span>
                   </span>
-                  <span className="mt-1.5 block h-1 rounded-full bg-neutral-100">
+                  <span className="mt-1.5 block h-1 rounded-full bg-slate-100">
                     <span className="block h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: dot }} />
                   </span>
                 </button>

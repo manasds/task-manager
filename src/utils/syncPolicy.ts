@@ -60,7 +60,7 @@ export function emptyDocument(nowIso = new Date().toISOString()): PersistedDocum
   return {
     schemaVersion: DOCUMENT_SCHEMA_VERSION,
     dailyGoalMinutes: 360,
-    settings: { muted: false, lastTab: 'board' },
+    settings: { lastTab: 'board' },
     activities: [],
     timer: null,
     updatedAt: nowIso,
@@ -100,7 +100,7 @@ export function diffActivities(prev: Activity[], next: Activity[]): string[] {
   return changed;
 }
 
-/** Record local edits. UI-only settings (tab, date, mute) never sync. */
+/** Record local edits. UI-only settings (tab, date) never sync. */
 export function recordLocalEdits(
   meta: SyncMeta,
   prev: PersistedDocument,

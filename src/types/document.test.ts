@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { tabToOpen } from './document';
+import { isValidDocument } from '../utils/syncPolicy';
+
+describe('persisted document compatibility', () => {
+  it('accepts saved documents that still carry the removed muted setting', () => {
+    const legacy = {
+      schemaVersion: 2,
+      dailyGoalMinutes: 360,
+      settings: { muted: true, lastTab: 'board' },
+      activities: [],
+      updatedAt: '2026-10-15T12:00:00.000Z',
+    };
+
+    assert.equal(isValidDocument(legacy), true);
+  });
+});
 
 describe('tabToOpen', () => {
   it('opens the Calendar for the removed Planner and Activity tabs', () => {
