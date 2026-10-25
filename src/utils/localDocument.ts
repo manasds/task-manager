@@ -25,7 +25,6 @@ function starterActivity(): Activity {
     actualMinutes: 0,
     date: getTodayDateString(),
     subtasks: [],
-    tags: [],
     createdAt: new Date().toISOString(),
   };
 }

@@ -44,10 +44,7 @@ export interface Activity {
   plannedDates?: string[];
   /** 'YYYY-MM-DD'. */
   deadline?: string;
-  goal?: string;
   subtasks: Subtask[];
-  tags: string[];
-  notes?: string;
   completedAt?: string;
   createdAt: string;
   updatedAt?: string;
@@ -146,11 +143,3 @@ export const storedActivitySchema = z
     (record) => normalizeActivity(record as StoredActivity),
   );
 
-/** Goals in use, most used first. */
-export function goalNames(activities: Activity[]): string[] {
-  const counts = new Map<string, number>();
-
-  for (const a of activities) if (a.goal) counts.set(a.goal, (counts.get(a.goal) ?? 0) + 1);
-
-  return [...counts.keys()].sort((a, b) => counts.get(b)! - counts.get(a)! || a.localeCompare(b));
-}

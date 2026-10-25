@@ -213,6 +213,7 @@ export interface CalendarViewProps {
   onUpdateActivity: (activity: Activity) => void;
   onDeleteActivity: (activityId: string) => void;
   onEditActivity: (activity: Activity) => void;
+  onViewActivity: (activity: Activity) => void;
   onStartFocus: (activity: Activity) => void;
   /** New activity on `date` ('YYYY-MM-DD') at `time` ('HH:MM'). */
   onCreateActivity: (date: string, time: string) => void;
@@ -228,6 +229,7 @@ export function CalendarView({
   onUpdateActivity,
   onDeleteActivity,
   onEditActivity,
+  onViewActivity,
   onStartFocus,
   onCreateActivity,
   onToast,
@@ -460,7 +462,7 @@ export function CalendarView({
     if (justDraggedRef.current) return;
     const activity = findActivity(id);
 
-    if (activity) onEditActivity(activity);
+    if (activity) onViewActivity(activity);
   };
 
   const rail = (
@@ -482,7 +484,7 @@ export function CalendarView({
         totalMinutes={loggedTotal}
         onOpen={(activity) => {
           setRailSheetOpen(false);
-          onEditActivity(activity);
+          onViewActivity(activity);
         }}
       />
       <div className="my-5 border-t border-slate-200" />

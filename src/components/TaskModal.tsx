@@ -38,10 +38,6 @@ interface TaskModalProps {
   defaultTime?: string;
   /** Start date for a new task ('YYYY-MM-DD'); defaults to today. */
   defaultDate?: string;
-  /** Goals already in use, offered as suggestions. */
-  goals: string[];
-  /** Goal for a new task, e.g. the one the board is filtered to. */
-  defaultGoal?: string;
   /** Tasks in Doing, offered as targets when logging time from a new activity. */
   doingTasks: Activity[];
 }
@@ -53,8 +49,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   defaultStatus = "backlog",
   defaultTime,
   defaultDate,
-  goals,
-  defaultGoal,
   doingTasks,
 }) => {
   const today = getTodayDateString();
@@ -64,8 +58,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [priority, setPriority] = useState<ActivityPriority>(initialActivity?.priority ?? "medium");
   const [status, setStatus] = useState<ActivityStatus>(initialActivity?.status ?? defaultStatus);
 
+  /** Kept as typed so the field can be cleared before entering a new number. */
   const [estimatedMinutes, setEstimatedMinutes] = useState(
-    initialActivity ? initialActivity.estimatedMinutes || 30 : 45
+    String(initialActivity ? initialActivity.estimatedMinutes || 30 : 45)
   );
 
   const [workSessions, setWorkSessions] = useState<WorkSession[]>(initialActivity?.workSessions ?? []);
@@ -78,12 +73,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   );
 
   const [date, setDate] = useState(initialActivity?.date || defaultDate || today);
-  const [goal, setGoal] = useState(initialActivity ? initialActivity.goal ?? "" : defaultGoal ?? "");
   const [deadline, setDeadline] = useState(initialActivity?.deadline ?? "");
   const [subtasks, setSubtasks] = useState<Subtask[]>(initialActivity?.subtasks ?? []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
-  const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState<string[]>(initialActivity?.tags ?? []);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"schedule" | "log">("schedule");
   const [logTargetId, setLogTargetId] = useState("");
@@ -121,22 +113,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   const handleRemoveSubtask = (id: string) => {
     setSubtasks(subtasks.filter((s) => s.id !== id));
-  };
-
-  const handleAddTag = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      const val = tagInput.trim().replace(/^#/, "");
-
-      if (val && !tags.includes(val)) {
-        setTags([...tags, val]);
-        setTagInput("");
-      }
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
   };
 
   const pendingLogMinutes = parseInt(logMinutes, 10) || 0;
@@ -229,10 +205,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       date,
       plannedDates: initialActivity?.plannedDates,
       deadline: deadline || undefined,
-      goal: goal.trim() || undefined,
       subtasks,
-      tags,
-      notes: initialActivity?.notes,
       workSessions: sessions,
       createdAt: initialActivity
         ? initialActivity.createdAt
@@ -339,8 +312,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           <div role="tabpanel" className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
             {tab === "schedule" ? (
               <>
-              {/* Category & Priority Row */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Type, Priority & Status Row */}
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <label htmlFor="task-category" className="font-semibold text-slate-700 text-xs">
                     Type
@@ -383,10 +356,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     <option value="low">Low</option>
                   </select>
                 </div>
-              </div>
 
-              {/* Status & Estimated Minutes */}
-              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label htmlFor="task-status" className="font-semibold text-slate-700 text-xs">
                     Status
@@ -408,52 +378,45 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     ))}
                   </select>
                 </div>
+              </div>
 
-                <div className="space-y-1.5">
-                  <label htmlFor="task-estimate" className="font-semibold text-slate-700 text-xs">
-                    Estimated Duration
-                  </label>
-                  <div className="flex items-center gap-1.5">
+              {/* Estimated duration with quick presets */}
+              <div className="space-y-1.5">
+                <label htmlFor="task-estimate" className="font-semibold text-slate-700 text-xs">
+                  Estimated Duration
+                </label>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1.5 w-28">
                     <input
                       id="task-estimate"
                       type="number"
-                      min="5"
+                      min="0"
                       max="600"
-                      step="5"
+                      inputMode="numeric"
+                      placeholder="0"
                       value={estimatedMinutes}
-                      onChange={(e) =>
-                        setEstimatedMinutes(
-                          Math.max(5, parseInt(e.target.value, 10) || 5),
-                        )
-                      }
+                      onChange={(e) => setEstimatedMinutes(e.target.value.replace(/^0+(?=\d)/, ""))}
                       className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 font-mono tabular-nums text-xs"
                     />
                     <span className="text-slate-500 shrink-0 font-medium">
                       min
                     </span>
                   </div>
+                  {[30, 45, 60, 90].map((mins) => (
+                    <button
+                      type="button"
+                      key={mins}
+                      onClick={() => setEstimatedMinutes(String(mins))}
+                      className={`min-h-9 px-3 py-1.5 rounded-xl text-xs font-semibold tabular-nums transition-colors active:scale-95 ${
+                        Number(estimatedMinutes) === mins
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      {mins}m
+                    </button>
+                  ))}
                 </div>
-              </div>
-
-              {/* Quick estimate preset chips with touch targets */}
-              <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
-                <span className="text-[11px] text-slate-400 font-medium">
-                  Presets:
-                </span>
-                {[15, 25, 45, 60, 90].map((mins) => (
-                  <button
-                    type="button"
-                    key={mins}
-                    onClick={() => setEstimatedMinutes(mins)}
-                    className={`min-h-9 px-3 py-1.5 rounded-xl text-xs font-semibold tabular-nums transition-colors active:scale-95 ${
-                      estimatedMinutes === mins
-                        ? "bg-indigo-600 text-white shadow-xs"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    }`}
-                  >
-                    {mins}m
-                  </button>
-                ))}
               </div>
 
               {/* Date & Scheduled Time Row */}
@@ -472,9 +435,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="task-time" className="font-semibold text-slate-700 text-xs">
-                    Scheduled Time
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="task-time" className="font-semibold text-slate-700 text-xs">
+                      Scheduled Time
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setScheduledTime(currentTimeString())}
+                      className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
+                    >
+                      Now
+                    </button>
+                  </div>
                   <input
                     id="task-time"
                     type="time"
@@ -485,28 +457,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </div>
               </div>
 
-              {/* Goal & Deadline Row */}
+              {/* Deadline Row */}
               <div className="grid grid-cols-2 gap-3 pt-1">
-                <div className="space-y-1.5">
-                  <label htmlFor="task-goal" className="font-semibold text-slate-700 text-xs">
-                    Goal
-                  </label>
-                  <input
-                    id="task-goal"
-                    type="text"
-                    list="task-goal-options"
-                    placeholder="Optional"
-                    value={goal}
-                    onChange={(e) => setGoal(e.target.value)}
-                    className="w-full px-3 min-h-11 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 text-xs"
-                  />
-                  <datalist id="task-goal-options">
-                    {goals.map((g) => (
-                      <option key={g} value={g} />
-                    ))}
-                  </datalist>
-                </div>
-
                 <div className="space-y-1.5">
                   <label htmlFor="task-deadline" className="font-semibold text-slate-700 text-xs">
                     Deadline
@@ -524,7 +476,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               {/* Description */}
               <div className="space-y-1.5 pt-1">
                 <label htmlFor="task-notes" className="font-semibold text-slate-700 text-xs">
-                  Notes / Objectives
+                  Notes
                 </label>
                 <textarea
                   id="task-notes"
@@ -610,38 +562,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </div>
               </div>
 
-              {/* Tags */}
-              <div className="space-y-1.5 pt-1 border-t border-slate-100">
-                <label className="font-semibold text-slate-700 text-xs">
-                  Tags
-                </label>
-                <div className="flex flex-wrap gap-1.5 items-center">
-                  {tags.map((t) => (
-                    <span
-                      key={t}
-                      className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5"
-                    >
-                      #{t}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTag(t)}
-                        aria-label={`Remove tag ${t}`}
-                        className="hover:text-rose-600 text-slate-400 font-bold"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  <input
-                    type="text"
-                    placeholder="Tag + enter"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={handleAddTag}
-                    className="px-3 min-h-9 border border-slate-200 rounded-xl text-xs w-32 focus:outline-hidden focus:border-indigo-500"
-                  />
-                </div>
-              </div>
               </>
             ) : (
               <div className="space-y-4">

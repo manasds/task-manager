@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { goalNames, normalizeActivity, StoredActivity } from './activity';
+import { normalizeActivity, StoredActivity } from './activity';
 
 const task = (overrides: Partial<StoredActivity> = {}): StoredActivity => ({
   id: 'a',
@@ -12,7 +12,6 @@ const task = (overrides: Partial<StoredActivity> = {}): StoredActivity => ({
   actualMinutes: 0,
   date: '2026-10-15',
   subtasks: [],
-  tags: [],
   createdAt: '2026-10-15T10:00:00.000Z',
   ...overrides,
 });
@@ -44,12 +43,5 @@ describe('normalizeActivity', () => {
   it('returns the same object when nothing changes', () => {
     const current = task({ category: 'learn', status: 'completed' });
     assert.equal(normalizeActivity(current), current);
-  });
-});
-
-describe('goalNames', () => {
-  it('lists each goal once, most used first', () => {
-    const tasks = [task({ goal: 'b' }), task({ goal: 'a' }), task({ goal: 'a' }), task()].map(normalizeActivity);
-    assert.deepEqual(goalNames(tasks), ['a', 'b']);
   });
 });

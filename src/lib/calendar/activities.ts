@@ -61,7 +61,7 @@ export function calendarItems(activities: Activity[], days: string[], today: str
       type: activity.category,
       priority: activity.priority,
       completed: activity.status === 'completed',
-      notes: activity.notes || activity.description || undefined,
+      notes: activity.description || undefined,
       checklist: checklistOf(activity),
     };
 
@@ -143,7 +143,7 @@ export function unscheduledOn(activities: Activity[], day: string): UnscheduledI
             priority: a.priority,
             durationMinutes: blockMinutes(a),
             completed: a.status === 'completed',
-            notes: a.notes || a.description || undefined,
+            notes: a.description || undefined,
             checklist: checklistOf(a),
           },
         ]

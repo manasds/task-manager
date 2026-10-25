@@ -28,7 +28,6 @@ function activity(partial: Partial<Activity> & Pick<Activity, 'id'>): Activity {
     actualMinutes: 0,
     date: '2026-10-15',
     subtasks: [],
-    tags: [],
     createdAt: '2026-10-15T10:00:00.000Z',
     ...partial,
   };

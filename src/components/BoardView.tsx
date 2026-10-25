@@ -16,7 +16,6 @@ import {
   activityPrioritySchema
 } from '../types/activity';
 import { TaskCard } from './TaskCard';
-import { GoalSelect } from './GoalSelect';
 import { getTodayDateString } from '../utils/dates';
 import { isActivityOnDate } from '../utils/workSessions';
 
@@ -27,11 +26,9 @@ interface BoardViewProps {
   onMoveActivityStatus: (activityId: string, newStatus: ActivityStatus, targetIndex?: number) => void;
   onStartFocus: (activity: Activity) => void;
   onEditActivity: (activity: Activity) => void;
+  onViewActivity: (activity: Activity) => void;
   activeTimerTaskId?: string;
   selectedDate: string;
-  /** 'all' or a goal name. */
-  goal: string;
-  onGoalChange: (goal: string) => void;
   onSelectDate: (date: string) => void;
 }
 
@@ -42,10 +39,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
   onMoveActivityStatus,
   onStartFocus,
   onEditActivity,
+  onViewActivity,
   activeTimerTaskId,
   selectedDate,
-  goal,
-  onGoalChange,
   onSelectDate,
 }) => {
   const [draggedActivityId, setDraggedActivityId] = useState<string | null>(null);
@@ -59,7 +55,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const activeFilterCount =
-    Number(selectedCategory !== 'all') + Number(selectedPriority !== 'all') + Number(goal !== 'all');
+    Number(selectedCategory !== 'all') + Number(selectedPriority !== 'all');
 
   const dateOptions = (
     <>
@@ -79,8 +75,6 @@ export const BoardView: React.FC<BoardViewProps> = ({
 
   // Filter activities
   const filteredActivities = activities.filter((act) => {
-    if (goal !== 'all' && act.goal !== goal) return false;
-
     if (act.status !== 'parked' && selectedDate !== 'all' && !isActivityOnDate(act, selectedDate)) {
       return false;
     }
@@ -89,9 +83,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
       const q = searchQuery.toLowerCase();
       const matchTitle = act.title.toLowerCase().includes(q);
       const matchDesc = act.description?.toLowerCase().includes(q);
-      const matchTag = act.tags.some((t) => t.toLowerCase().includes(q));
 
-      if (!matchTitle && !matchDesc && !matchTag) return false;
+      if (!matchTitle && !matchDesc) return false;
     }
 
     if (selectedCategory !== 'all' && act.category !== selectedCategory) {
@@ -168,7 +161,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
             <Search className="w-4 h-4 text-slate-400 absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search activities or tags..."
+              placeholder="Search activities..."
               aria-label="Search activities"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -256,12 +249,6 @@ export const BoardView: React.FC<BoardViewProps> = ({
             {dateOptions}
           </select>
 
-          <GoalSelect
-            activities={activities}
-            value={goal}
-            onChange={onGoalChange}
-            className="flex-1 sm:flex-none min-w-0 min-h-10 sm:min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
-          />
         </div>
       </div>
 
@@ -350,6 +337,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                       onToggleComplete={handleToggleComplete}
                       onStartFocus={onStartFocus}
                       onEdit={onEditActivity}
+                      onView={onViewActivity}
                       onDelete={onDeleteActivity}
                       onMoveToStatus={onMoveActivityStatus}
                       isTimerActiveForTask={activeTimerTaskId === act.id}

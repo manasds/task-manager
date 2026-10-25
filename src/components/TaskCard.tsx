@@ -33,6 +33,8 @@ interface TaskCardProps {
   onToggleComplete: (activityId: string) => void;
   onStartFocus: (activity: Activity) => void;
   onEdit: (activity: Activity) => void;
+  /** Open the read-only task view. */
+  onView: (activity: Activity) => void;
   onDelete: (activityId: string) => void;
   onMoveToStatus?: (activityId: string, targetStatus: ActivityStatus) => void;
   isTimerActiveForTask?: boolean;
@@ -48,6 +50,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onToggleComplete,
   onStartFocus,
   onEdit,
+  onView,
   onDelete,
   onMoveToStatus,
   isTimerActiveForTask,
@@ -335,7 +338,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
           <div className="flex-1 min-w-0">
             <h4
-              onClick={() => onEdit(activity)}
+              onClick={() => onView(activity)}
               className={`text-[15px] font-semibold cursor-pointer transition-colors leading-snug line-clamp-2 ${
                 isCompleted
                   ? "text-slate-500 line-through"

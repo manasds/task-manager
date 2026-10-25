@@ -6,15 +6,11 @@ import type { CanvasTile } from "../types/canvas";
 import { fetchCanvas } from "../api/client";
 import { getDomain, getYouTubeId, youtubeThumbnail } from "../utils/canvas";
 import { getTodayDateString } from "../utils/dates";
-import { GoalSelect } from "./GoalSelect";
 
 interface ByTypeViewProps {
   activities: Activity[];
-  /** 'all' or a goal name; filters tasks only, not links. */
-  goal: string;
-  onGoalChange: (goal: string) => void;
   signedIn: boolean;
-  onEdit: (activity: Activity) => void;
+  onView: (activity: Activity) => void;
   onDelete: (activityId: string) => void;
 }
 
@@ -66,10 +62,8 @@ const Column: React.FC<{
 
 export const ByTypeView: React.FC<ByTypeViewProps> = ({
   activities,
-  goal,
-  onGoalChange,
   signedIn,
-  onEdit,
+  onView,
   onDelete,
 }) => {
   const [links, setLinks] = useState<LinksState>({ phase: "loading" });
@@ -87,10 +81,8 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
     };
   }, [signedIn]);
 
-  const visible = activities.filter((a) => goal === "all" || a.goal === goal);
-
   const ofType = (category: Activity["category"]) => {
-    const mine = visible.filter(
+    const mine = activities.filter(
       (a) => a.category === category && a.status !== "parked",
     );
 
@@ -100,7 +92,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
     ];
   };
 
-  const parked = visible.filter((a) => a.status === "parked");
+  const parked = activities.filter((a) => a.status === "parked");
 
   const tiles =
     links.phase === "ready"
@@ -119,6 +111,10 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
         key={a.id}
         role="button"
         tabIndex={0}
+        onClick={() => onView(a)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && e.target === e.currentTarget) onView(a);
+        }}
         className={`${cardClass} h-32 cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-500 ${
           done ? doneClass : ""
         }`}

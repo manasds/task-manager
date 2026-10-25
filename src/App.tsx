@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
-import { Activity, ActivityStatus, goalNames, normalizeActivity, storedActivitySchema } from './types/activity';
+import { Activity, ActivityStatus, normalizeActivity, storedActivitySchema } from './types/activity';
 import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument, tabToOpen } from './types/document';
 import { getTodayDateString } from './utils/dates';
 import { Navbar, ActiveTab } from './components/Navbar';
@@ -12,6 +12,7 @@ import { ByTypeView } from './components/ByTypeView';
 import { CalendarView } from './components/calendar/CalendarView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { TaskModal } from './components/TaskModal';
+import { TaskDetailModal } from './components/TaskDetailModal';
 import { FocusTimerBar } from './components/FocusTimerBar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -39,11 +40,10 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   const [dailyGoalMinutes, setDailyGoalMinutes] = useState<number>(360);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-  /** Goal filter shared by the Progress and Kanban views: 'all' or a goal name. */
-  const [goal, setGoal] = useState('all');
   const [timer, setTimer] = useState<FocusTimerSnapshot | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [viewingActivityId, setViewingActivityId] = useState<string | null>(null);
   const [modalDefaultStatus, setModalDefaultStatus] = useState<ActivityStatus>('backlog');
   const [modalDefaultTime, setModalDefaultTime] = useState<string | undefined>(undefined);
   const [modalDefaultDate, setModalDefaultDate] = useState<string | undefined>(undefined);
@@ -181,6 +181,10 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     setModalDefaultTime(act.scheduledTime);
     setIsModalOpen(true);
   };
+
+  const handleViewActivity = (act: Activity) => setViewingActivityId(act.id);
+
+  const viewingActivity = viewingActivityId ? activities.find((a) => a.id === viewingActivityId) : undefined;
 
   /** Add a work session ending now to an activity. */
   const logMinutes = (activityId: string, minutes: number) => {
@@ -355,21 +359,18 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
             onMoveActivityStatus={handleMoveActivityStatus}
             onStartFocus={handleStartFocus}
             onEditActivity={handleEditActivity}
+            onViewActivity={handleViewActivity}
             activeTimerTaskId={activeTimerTask?.id}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
-            goal={goal}
-            onGoalChange={setGoal}
           />
         )}
 
         {activeTab === 'types' && (
           <ByTypeView
             activities={activities}
-            goal={goal}
-            onGoalChange={setGoal}
             signedIn={!!userId}
-            onEdit={handleEditActivity}
+            onView={handleViewActivity}
             onDelete={handleDeleteActivity}
           />
         )}
@@ -383,6 +384,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
             onUpdateActivity={handleUpdateActivity}
             onDeleteActivity={handleDeleteActivity}
             onEditActivity={handleEditActivity}
+            onViewActivity={handleViewActivity}
             onStartFocus={handleStartFocus}
             onCreateActivity={(date, time) =>
               handleOpenNewTaskModal(date === getTodayDateString() ? 'in_progress' : 'backlog', time, date)
@@ -408,9 +410,19 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
           defaultStatus={modalDefaultStatus}
           defaultTime={modalDefaultTime}
           defaultDate={modalDefaultDate}
-          goals={goalNames(activities)}
-          defaultGoal={goal === 'all' ? undefined : goal}
           doingTasks={activities.filter((a) => a.status === 'in_progress')}
+        />
+      )}
+
+      {viewingActivity && (
+        <TaskDetailModal
+          activity={viewingActivity}
+          onClose={() => setViewingActivityId(null)}
+          onSave={handleUpdateActivity}
+          onEdit={() => {
+            setViewingActivityId(null);
+            handleEditActivity(viewingActivity);
+          }}
         />
       )}
 
