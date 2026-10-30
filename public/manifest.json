@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "OrbitTask - Daily Activity Tracker",
-  "short_name": "OrbitTask",
+  "name": "Tasky - Daily Activity Tracker",
+  "short_name": "Tasky",
   "description": "Drag and drop activity & daily task tracker with custom progress visualization charts.",
   "start_url": "/",
   "scope": "/",
