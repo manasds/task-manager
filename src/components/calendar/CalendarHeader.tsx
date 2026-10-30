@@ -7,7 +7,7 @@ const VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
   { id: 'week', label: 'Week' },
 ];
 
-const ghostIconClass =
+export const ghostIconClass =
   'flex size-8 items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
 
 export interface CalendarHeaderProps {
@@ -38,15 +38,18 @@ export function CalendarHeader({
 }: CalendarHeaderProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-3 border-b border-slate-200 px-3 py-3 md:px-4">
-      <button
-        type="button"
-        onClick={onToggleSidebar}
-        aria-label={sidebarOpen ? 'Hide filters' : 'Show filters'}
-        aria-expanded={sidebarOpen}
-        className={`${ghostIconClass} rounded-lg`}
-      >
-        <PanelLeft className="size-4" />
-      </button>
+      {/* While open, the sidebar carries its own toggle. */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label="Show filters"
+          aria-expanded={false}
+          className={`${ghostIconClass} rounded-lg`}
+        >
+          <PanelLeft className="size-4" />
+        </button>
+      )}
       <div className="min-w-0 flex-1">
         <h2 className="truncate text-[17px] font-semibold leading-tight text-slate-900">{title}</h2>
         <p className="mt-0.5 truncate text-[13px] text-slate-500">{subtitle}</p>

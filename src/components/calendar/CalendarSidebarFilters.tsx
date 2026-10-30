@@ -1,4 +1,5 @@
-import { Check } from 'lucide-react';
+import { Check, PanelLeft } from 'lucide-react';
+import { ghostIconClass } from './CalendarHeader';
 import { CALENDAR_TYPES, CALENDAR_TYPE_ORDER, PRIORITY_LABELS, PRIORITY_ORDER } from '@/lib/calendar/theme';
 import type { CalendarFilters, CalendarPriority, CalendarType } from '@/lib/calendar/types';
 
@@ -6,14 +7,26 @@ export interface CalendarSidebarFiltersProps {
   filters: CalendarFilters;
   onToggleType: (type: CalendarType) => void;
   onTogglePriority: (priority: CalendarPriority) => void;
+  onClose: () => void;
 }
 
 const FOCUS = 'outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
 
-export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority }: CalendarSidebarFiltersProps) {
+export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority, onClose }: CalendarSidebarFiltersProps) {
   return (
     <nav aria-label="Calendar sidebar" className="flex h-full flex-col bg-[#f8fafc] px-3 py-4 text-slate-900">
-      <h3 className="px-3 text-[13px] text-slate-500">Types</h3>
+      <div className="flex items-center justify-between pl-3">
+        <h3 className="text-[13px] text-slate-500">Types</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Hide filters"
+          aria-expanded={true}
+          className={`${ghostIconClass} rounded-lg`}
+        >
+          <PanelLeft className="size-4" />
+        </button>
+      </div>
       <ul className="mt-2 space-y-0.5">
         {CALENDAR_TYPE_ORDER.map((type) => {
           const on = filters.types[type];
