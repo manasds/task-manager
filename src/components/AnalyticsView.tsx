@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   PieChart as PieIcon, 
   Clock, 
@@ -34,41 +34,44 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   const daysCount = timeframe === '7days' ? 7 : 14;
 
-  const daySeries = Array.from({ length: daysCount }).map((_, i) => {
-    const offset = -(daysCount - 1 - i);
-    const dateStr = getDateOffset(offset);
-    const dayActs = activities.filter((a) => isActivityOnDate(a, dateStr));
-    
-    const totalMinutes = loggedMinutesOnDate(activities, dateStr);
+  const { daySeries, categoryTotals } = useMemo(() => {
+    const totals: Record<ActivityCategory, number> = { build: 0, learn: 0 };
 
-    const completedTasks = dayActs.filter(
-      (a) => a.completedAt && localDateString(new Date(a.completedAt)) === dateStr
-    ).length;
+    const series = Array.from({ length: daysCount }).map((_, i) => {
+      const offset = -(daysCount - 1 - i);
+      const dateStr = getDateOffset(offset);
+      const dayActs = activities.filter((a) => isActivityOnDate(a, dateStr));
 
-    const totalTasks = dayActs.length;
+      const stats = taskStatsForDate(activities, dateStr);
+      const totalMinutes = stats.reduce((sum, t) => sum + t.totalMinutes, 0);
 
-    const dateObj = new Date(dateStr + 'T00:00:00');
-    const label = dateObj.toLocaleDateString('en-US', { weekday: 'narrow' });
-    const fullDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      for (const stat of stats) {
+        totals[stat.activity.category] += stat.totalMinutes;
+      }
 
-    return {
-      dateStr,
-      label,
-      fullDate,
-      totalMinutes,
-      hours: Math.round((totalMinutes / 60) * 10) / 10,
-      completedTasks,
-      totalTasks,
-    };
-  });
+      const completedTasks = dayActs.filter(
+        (a) => a.completedAt && localDateString(new Date(a.completedAt)) === dateStr
+      ).length;
 
-  const categoryTotals: Record<ActivityCategory, number> = { build: 0, learn: 0 };
+      const totalTasks = dayActs.length;
 
-  for (const day of daySeries) {
-    for (const stat of taskStatsForDate(activities, day.dateStr)) {
-      categoryTotals[stat.activity.category] += stat.totalMinutes;
-    }
-  }
+      const dateObj = new Date(dateStr + 'T00:00:00');
+      const label = dateObj.toLocaleDateString('en-US', { weekday: 'narrow' });
+      const fullDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      return {
+        dateStr,
+        label,
+        fullDate,
+        totalMinutes,
+        hours: Math.round((totalMinutes / 60) * 10) / 10,
+        completedTasks,
+        totalTasks,
+      };
+    });
+
+    return { daySeries: series, categoryTotals: totals };
+  }, [activities, daysCount]);
 
   const grandTotalMinutes = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
 
@@ -94,7 +97,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     };
   });
 
-  const minutesByHour = focusMinutesByHour(activities, daySeries.map((d) => d.dateStr));
+  const minutesByHour = useMemo(
+    () => focusMinutesByHour(activities, daySeries.map((d) => d.dateStr)),
+    [activities, daySeries]
+  );
+
   const firstHour = minutesByHour.findIndex((m) => m > 0);
   const lastHour = 23 - [...minutesByHour].reverse().findIndex((m) => m > 0);
   const hourRangeStart = firstHour === -1 ? 7 : Math.min(7, firstHour);
@@ -110,7 +117,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const peakHour = firstHour === -1 ? null : minutesByHour.indexOf(Math.max(...minutesByHour));
 
   const today = getTodayDateString();
-  const todayLoggedMinutes = loggedMinutesOnDate(activities, today);
+  const todayLoggedMinutes = useMemo(() => loggedMinutesOnDate(activities, today), [activities, today]);
   const todayGoalPercent = Math.min(100, Math.round((todayLoggedMinutes / (dailyGoalMinutes || 360)) * 100));
 
   const primaryCategory = grandTotalMinutes > 0

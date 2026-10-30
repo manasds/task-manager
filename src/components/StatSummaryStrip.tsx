@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { CheckCircle2, Clock, Target, Flame } from 'lucide-react';
 import { Activity } from '../types/activity';
 import { getTodayDateString, shiftIsoDate } from '../utils/dates';
-import { isActivityOnDate, localDateString, loggedMinutesOnDate } from '../utils/workSessions';
+import { datesWithLoggedMinutes, isActivityOnDate, localDateString, loggedMinutesOnDate } from '../utils/workSessions';
 
 /** Consecutive days with logged work or a completed task, ending today (or yesterday if today is still empty). */
 function currentStreak(activities: Activity[], today: string): number {
@@ -10,7 +10,9 @@ function currentStreak(activities: Activity[], today: string): number {
     activities.flatMap((a) => (a.completedAt ? [localDateString(new Date(a.completedAt))] : []))
   );
 
-  const active = (date: string) => completedDates.has(date) || loggedMinutesOnDate(activities, date) > 0;
+  const loggedDates = datesWithLoggedMinutes(activities);
+
+  const active = (date: string) => completedDates.has(date) || loggedDates.has(date);
 
   let date = active(today) ? today : shiftIsoDate(today, -1);
   let streak = 0;
@@ -28,22 +30,27 @@ interface StatSummaryStripProps {
   dailyGoalMinutes: number;
 }
 
-export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
+const StatSummaryStripComponent: React.FC<StatSummaryStripProps> = ({
   activities,
   dailyGoalMinutes,
 }) => {
   const today = getTodayDateString();
-  const todayActivities = activities.filter((a) => isActivityOnDate(a, today));
-  const totalTasks = todayActivities.length;
-  const completedTasks = todayActivities.filter((a) => a.status === 'completed').length;
-  
-  const totalMinutesLogged = loggedMinutesOnDate(activities, today);
+
+  const { totalTasks, completedTasks, totalMinutesLogged, streak } = useMemo(() => {
+    const todayActivities = activities.filter((a) => isActivityOnDate(a, today));
+
+    return {
+      totalTasks: todayActivities.length,
+      completedTasks: todayActivities.filter((a) => a.status === 'completed').length,
+      totalMinutesLogged: loggedMinutesOnDate(activities, today),
+      streak: currentStreak(activities, today),
+    };
+  }, [activities, today]);
+
   const loggedHours = Math.floor(totalMinutesLogged / 60);
   const loggedRemMinutes = totalMinutesLogged % 60;
 
   const goalPercent = Math.min(100, Math.round((totalMinutesLogged / (dailyGoalMinutes || 360)) * 100));
-
-  const streak = currentStreak(activities, today);
 
   return (
     <div className="bg-white border-b border-slate-200">
@@ -153,3 +160,5 @@ export const StatSummaryStrip: React.FC<StatSummaryStripProps> = ({
     </div>
   );
 };
+
+export const StatSummaryStrip = React.memo(StatSummaryStripComponent);

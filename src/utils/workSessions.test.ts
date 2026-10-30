@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { Activity } from '../types/activity';
 import {
   createManualSession,
+  datesWithLoggedMinutes,
   timerElapsedSeconds,
   focusMinutesByHour,
   isActivityOnDate,
@@ -197,5 +198,31 @@ describe('minutesByDay', () => {
       { date: '2026-10-13', minutes: 60 },
     ]);
     assert.deepEqual(minutesByDay(activity({ id: 'a2' })), []);
+  });
+});
+
+describe('datesWithLoggedMinutes', () => {
+  it('matches loggedMinutesOnDate > 0 for every date, including midnight spans', () => {
+    const activities = [
+      activity({
+        id: 'a1',
+        date: '2026-10-15',
+        actualMinutes: 90,
+        workSessions: [
+          session('s1', new Date(2026, 9, 15, 23, 30), new Date(2026, 9, 16, 0, 30), 60),
+          session('s2', new Date(2026, 9, 18, 9, 0), new Date(2026, 9, 18, 9, 0), 0),
+        ],
+      }),
+      activity({ id: 'a2', date: '2026-10-20', actualMinutes: 15 }),
+      activity({ id: 'a3', date: '2026-10-22', actualMinutes: 0 }),
+    ];
+
+    const dates = datesWithLoggedMinutes(activities);
+
+    for (let day = 10; day <= 25; day++) {
+      const date = `2026-10-${day}`;
+
+      assert.equal(dates.has(date), loggedMinutesOnDate(activities, date) > 0, date);
+    }
   });
 });

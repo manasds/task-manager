@@ -133,6 +133,12 @@ export async function pushChanges(userId: string, request: PushRequest): Promise
 
     const currentById = new Map(existing.rows.map((row) => [row.id, row]));
 
+    // Winning rows, written together below. Ids are unique per push, so one upsert is safe.
+    const winnerIds: string[] = [];
+    const winnerData: (string | null)[] = [];
+    const winnerUpdatedAt: string[] = [];
+    const winnerSeqs: number[] = [];
+
     for (const change of request.changes) {
       const current = currentById.get(change.id);
 
@@ -149,19 +155,25 @@ export async function pushChanges(userId: string, request: PushRequest): Promise
 
       seq += 1;
 
-      const written = await client.query<DbActivityRow>(
+      winnerIds.push(change.id);
+      winnerData.push(change.data === null ? null : JSON.stringify(change.data));
+      winnerUpdatedAt.push(change.updatedAt);
+      winnerSeqs.push(seq);
+      response.applied.push({ id: change.id, seq });
+    }
+
+    if (winnerIds.length > 0) {
+      await client.query(
         `INSERT INTO activities (user_id, id, data, client_updated_at, server_seq)
-         VALUES ($1, $2, $3, $4, $5)
+         SELECT $1, w.id, w.data, w.client_updated_at, w.server_seq
+         FROM unnest($2::text[], $3::jsonb[], $4::timestamptz[], $5::bigint[])
+           AS w(id, data, client_updated_at, server_seq)
          ON CONFLICT (user_id, id) DO UPDATE
            SET data = EXCLUDED.data,
                client_updated_at = EXCLUDED.client_updated_at,
-               server_seq = EXCLUDED.server_seq
-         RETURNING id, data, client_updated_at, server_seq`,
-        [userId, change.id, change.data, change.updatedAt, seq]
+               server_seq = EXCLUDED.server_seq`,
+        [userId, winnerIds, winnerData, winnerUpdatedAt, winnerSeqs]
       );
-
-      currentById.set(change.id, written.rows[0]);
-      response.applied.push({ id: change.id, seq });
     }
 
     let goalMinutes = state.daily_goal_minutes;

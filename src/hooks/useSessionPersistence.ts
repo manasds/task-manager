@@ -105,9 +105,13 @@ export function useSessionPersistence(
   /** Store a sync result and hand any server changes to the UI in the same tick. */
   const commit = useCallback(
     (user: CloudUser, step: { doc: PersistedDocument; meta: SyncMeta; update: RemoteUpdate }) => {
-      documentRef.current = step.doc;
-      saveLocalDocument(user.id, step.doc);
-      saveMeta(step.meta);
+      // applyPull/applyPushResult hand back the same doc when nothing changed; only the meta moved.
+      if (step.doc !== documentRef.current) {
+        documentRef.current = step.doc;
+        saveLocalDocument(user.id, step.doc);
+      }
+
+      if (step.meta !== metaRef.current) saveMeta(step.meta);
 
       if (!isEmptyRemoteUpdate(step.update)) onRemoteRef.current(step.update);
     },
@@ -215,6 +219,9 @@ export function useSessionPersistence(
       }
 
       if (!markDirty || !user) return;
+
+      // Tab/date changes rewrite the doc but leave tasks and goal untouched; nothing to diff.
+      if (previous.activities === document.activities && previous.dailyGoalMinutes === document.dailyGoalMinutes) return;
 
       const meta = recordLocalEdits(metaRef.current, previous, document);
 

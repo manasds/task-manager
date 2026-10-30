@@ -40,7 +40,7 @@ interface TaskCardProps {
   isTimerActiveForTask?: boolean;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({
+const TaskCardBase: React.FC<TaskCardProps> = ({
   activity,
   index,
   isDragging,
@@ -452,3 +452,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     </div>
   );
 };
+
+/** Memoized so App-level re-renders (toasts, modals) skip unchanged cards. */
+export const TaskCard = React.memo(TaskCardBase);

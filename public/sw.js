@@ -1,4 +1,13 @@
-const CACHE_NAME = 'orbittask-cache-v2';
+const CACHE_NAME = 'orbittask-cache-v3';
+const STATIC_CACHE_NAME = 'orbittask-static-v1';
+const MAX_STATIC_ENTRIES = 150;
+
+async function trimCache(cacheName, maxEntries) {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  // keys() returns entries in insertion order, so the oldest come first.
+  await Promise.all(keys.slice(0, Math.max(0, keys.length - maxEntries)).map((key) => cache.delete(key)));
+}
 
 const PRECACHE_ASSETS = [
   '/',
@@ -24,7 +33,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (key !== CACHE_NAME && key !== STATIC_CACHE_NAME) {
             return caches.delete(key);
           }
         })
@@ -53,6 +62,23 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         });
+      })
+    );
+    return;
+  }
+
+  // Cache-first for content-hashed Next.js assets (immutable)
+  if (url.origin === self.location.origin && url.pathname.startsWith('/_next/static/')) {
+    event.respondWith(
+      caches.open(STATIC_CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+        const networkResponse = await fetch(event.request);
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          await cache.put(event.request, networkResponse.clone());
+          await trimCache(STATIC_CACHE_NAME, MAX_STATIC_ENTRIES);
+        }
+        return networkResponse;
       })
     );
     return;
