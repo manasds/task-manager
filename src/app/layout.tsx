@@ -16,13 +16,13 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'OrbitTask - Drag & Drop Activity & Progress Tracker',
+  title: 'Tasky - Drag & Drop Activity & Progress Tracker',
   description:
     'Intuitive drag-and-drop activity and daily task tracker with custom progress visualization charts, time blocking, and focus metrics.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    title: 'OrbitTask',
+    title: 'Tasky',
     statusBarStyle: 'black-translucent',
   },
   icons: {

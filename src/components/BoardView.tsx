@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { 
   Search, 
   X, 
@@ -32,7 +32,7 @@ interface BoardViewProps {
   onSelectDate: (date: string) => void;
 }
 
-export const BoardView: React.FC<BoardViewProps> = ({
+const BoardViewBase: React.FC<BoardViewProps> = ({
   activities,
   onUpdateActivity,
   onDeleteActivity,
@@ -99,16 +99,16 @@ export const BoardView: React.FC<BoardViewProps> = ({
   });
 
   // Drag handlers
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, activityId: string) => {
+  const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, activityId: string) => {
     e.dataTransfer.setData('text/plain', activityId);
     e.dataTransfer.effectAllowed = 'move';
     setDraggedActivityId(activityId);
-  };
+  }, []);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setDraggedActivityId(null);
     setActiveDropColumn(null);
-  };
+  }, []);
 
   const handleDragOverColumn = (e: React.DragEvent<HTMLDivElement>, colStatus: ActivityStatus) => {
     e.preventDefault();
@@ -131,8 +131,14 @@ export const BoardView: React.FC<BoardViewProps> = ({
     setActiveDropColumn(null);
   };
 
-  const handleToggleComplete = (activityId: string) => {
-    const act = activities.find((a) => a.id === activityId);
+  // Read through a ref so the handler stays stable and memoized cards skip re-rendering.
+  const activitiesRef = useRef(activities);
+  useLayoutEffect(() => {
+    activitiesRef.current = activities;
+  });
+
+  const handleToggleComplete = useCallback((activityId: string) => {
+    const act = activitiesRef.current.find((a) => a.id === activityId);
 
     if (!act) return;
 
@@ -149,7 +155,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
         completedAt: new Date().toISOString(),
       });
     }
-  };
+  }, [onUpdateActivity]);
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -290,7 +296,11 @@ export const BoardView: React.FC<BoardViewProps> = ({
             <div
               key={col.id}
               onDragOver={(e) => handleDragOverColumn(e, col.id)}
-              onDragLeave={() => {
+              onDragLeave={(e) => {
+                const next = e.relatedTarget;
+
+                if (next instanceof Node && e.currentTarget.contains(next)) return;
+
                 if (activeDropColumn === col.id) {
                   setActiveDropColumn(null);
                 }
@@ -353,3 +363,5 @@ export const BoardView: React.FC<BoardViewProps> = ({
     </div>
   );
 };
+
+export const BoardView = React.memo(BoardViewBase);

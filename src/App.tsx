@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { z } from 'zod';
 import { Activity, ActivityStatus, normalizeActivity, storedActivitySchema } from './types/activity';
 import { CloudUser, DOCUMENT_SCHEMA_VERSION, FocusTimerSnapshot, PersistedDocument, tabToOpen } from './types/document';
@@ -9,16 +10,33 @@ import { Navbar, ActiveTab } from './components/Navbar';
 import { StatSummaryStrip } from './components/StatSummaryStrip';
 import { BoardView } from './components/BoardView';
 import { ByTypeView } from './components/ByTypeView';
-import { CalendarView } from './components/calendar/CalendarView';
-import { AnalyticsView } from './components/AnalyticsView';
-import { TaskModal } from './components/TaskModal';
-import { TaskDetailModal } from './components/TaskDetailModal';
 import { FocusTimerBar } from './components/FocusTimerBar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { useSessionPersistence } from './hooks/useSessionPersistence';
 import { applyRemoteActivities } from './utils/syncPolicy';
 import { createWorkSession, formatMinutes, timerElapsedSeconds } from './utils/workSessions';
+
+// Only one view and usually no modal is on screen, so these load on first use.
+const CalendarView = dynamic(() => import('./components/calendar/CalendarView').then((m) => m.CalendarView), {
+  ssr: false,
+  loading: () => null,
+});
+
+const AnalyticsView = dynamic(() => import('./components/AnalyticsView').then((m) => m.AnalyticsView), {
+  ssr: false,
+  loading: () => null,
+});
+
+const TaskModal = dynamic(() => import('./components/TaskModal').then((m) => m.TaskModal), {
+  ssr: false,
+  loading: () => null,
+});
+
+const TaskDetailModal = dynamic(() => import('./components/TaskDetailModal').then((m) => m.TaskDetailModal), {
+  ssr: false,
+  loading: () => null,
+});
 
 function withUpdatedAt(activity: Activity): Activity {
   return { ...activity, updatedAt: new Date().toISOString() };
@@ -40,6 +58,8 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   const [dailyGoalMinutes, setDailyGoalMinutes] = useState<number>(360);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
+  /** The calendar's own day. Not saved, so the calendar always opens on today. */
+  const [calendarDate, setCalendarDate] = useState<string>(getTodayDateString());
   const [timer, setTimer] = useState<FocusTimerSnapshot | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
@@ -68,17 +88,26 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   const userId = persistence.user?.id;
 
   const activeTimerTask = timer ? activities.find((a) => a.id === timer.activityId) ?? null : null;
+  const doingTasks = useMemo(() => activities.filter((a) => a.status === 'in_progress'), [activities]);
 
-  const showToast = (message: string, undo?: () => void) => {
+  // Latest committed state for handlers, so they stay stable across renders.
+  const activitiesRef = useRef(activities);
+  const timerRef = useRef(timer);
+  useLayoutEffect(() => {
+    activitiesRef.current = activities;
+    timerRef.current = timer;
+  });
+
+  const showToast = useCallback((message: string, undo?: () => void) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ message, undo });
     toastTimerRef.current = setTimeout(() => setToast(null), undo ? 6000 : 3200);
-  };
+  }, []);
 
-  const dismissToast = () => {
+  const dismissToast = useCallback(() => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(null);
-  };
+  }, []);
 
   // Load the stored board once auth settles. localStorage is an external store that
   // the server render cannot read, so this is a one-time sync into React state.
@@ -100,7 +129,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       showToast('Signed out');
     }
 
-  }, [authReady, userId, currentDocument]);
+  }, [authReady, userId, currentDocument, showToast]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -122,10 +151,12 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     persistLocal(doc, markDirty);
   }, [hydrated, activities, dailyGoalMinutes, activeTab, selectedDate, timer, persistLocal]);
 
-  // The board's date filter can hold non-date values like "all"; day views need a real date.
-  const dayViewDate = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : getTodayDateString();
+  const handleTabChange = useCallback((tab: ActiveTab) => {
+    if (tab === 'calendar') setCalendarDate(getTodayDateString());
+    setActiveTab(tab);
+  }, []);
 
-  const handleUpdateActivity = (updated: Activity) => {
+  const handleUpdateActivity = useCallback((updated: Activity) => {
     const next = withUpdatedAt(updated);
     setActivities((prev) => {
       const exists = prev.some((a) => a.id === next.id);
@@ -134,10 +165,10 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
 
       return [next, ...prev];
     });
-  };
+  }, []);
 
-  const handleDeleteActivity = (activityId: string) => {
-    const removed = activities.find((a) => a.id === activityId);
+  const handleDeleteActivity = useCallback((activityId: string) => {
+    const removed = activitiesRef.current.find((a) => a.id === activityId);
     setActivities((prev) => prev.filter((a) => a.id !== activityId));
     setTimer((current) => (current?.activityId === activityId ? null : current));
     showToast(
@@ -149,9 +180,9 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
           }
         : undefined
     );
-  };
+  }, [showToast, dismissToast, handleUpdateActivity]);
 
-  const handleMoveActivityStatus = (activityId: string, newStatus: ActivityStatus) => {
+  const handleMoveActivityStatus = useCallback((activityId: string, newStatus: ActivityStatus) => {
     const now = new Date().toISOString();
     setActivities((prev) =>
       prev.map((a) => {
@@ -165,29 +196,38 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
         };
       })
     );
-  };
+  }, []);
 
-  const handleOpenNewTaskModal = (initialStatus: ActivityStatus = 'backlog', initialTime?: string, initialDate?: string) => {
-    setEditingActivity(null);
-    setModalDefaultStatus(initialStatus);
-    setModalDefaultTime(initialTime);
-    setModalDefaultDate(initialDate);
-    setIsModalOpen(true);
-  };
+  const handleOpenNewTaskModal = useCallback(
+    (initialStatus: ActivityStatus = 'backlog', initialTime?: string, initialDate?: string) => {
+      setEditingActivity(null);
+      setModalDefaultStatus(initialStatus);
+      setModalDefaultTime(initialTime);
+      setModalDefaultDate(initialDate);
+      setIsModalOpen(true);
+    },
+    []
+  );
 
-  const handleEditActivity = (act: Activity) => {
+  const handleEditActivity = useCallback((act: Activity) => {
     setEditingActivity(act);
     setModalDefaultStatus(act.status);
     setModalDefaultTime(act.scheduledTime);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleViewActivity = (act: Activity) => setViewingActivityId(act.id);
+  const handleViewActivity = useCallback((act: Activity) => setViewingActivityId(act.id), []);
+
+  const handleCreateActivity = useCallback(
+    (date: string, time?: string) =>
+      handleOpenNewTaskModal(date === getTodayDateString() ? 'in_progress' : 'backlog', time, date),
+    [handleOpenNewTaskModal]
+  );
 
   const viewingActivity = viewingActivityId ? activities.find((a) => a.id === viewingActivityId) : undefined;
 
   /** Add a work session ending now to an activity. */
-  const logMinutes = (activityId: string, minutes: number) => {
+  const logMinutes = useCallback((activityId: string, minutes: number) => {
     const now = new Date().toISOString();
     const session = createWorkSession(activityId, minutes);
     setActivities((prev) =>
@@ -202,18 +242,24 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
         };
       })
     );
-  };
+  }, []);
 
   /** Save a timer's elapsed time (rounded to minutes) and return what was saved. */
-  const saveTimer = (current: FocusTimerSnapshot): number => {
-    const minutes = Math.round(timerElapsedSeconds(current) / 60);
+  const saveTimer = useCallback(
+    (current: FocusTimerSnapshot): number => {
+      const minutes = Math.round(timerElapsedSeconds(current) / 60);
 
-    if (minutes > 0) logMinutes(current.activityId, minutes);
+      if (minutes > 0) logMinutes(current.activityId, minutes);
 
-    return minutes;
-  };
+      return minutes;
+    },
+    [logMinutes]
+  );
 
-  const handleStartFocus = (act: Activity) => {
+  const handleStartFocus = useCallback((act: Activity) => {
+    const timer = timerRef.current;
+    const activeTimerTask = timer ? activitiesRef.current.find((a) => a.id === timer.activityId) ?? null : null;
+
     if (timer?.activityId === act.id) {
       if (!timer.isRunning) setTimer({ ...timer, isRunning: true, startedAt: new Date().toISOString() });
       showToast(`Already focusing on ${act.title}`);
@@ -228,9 +274,11 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
         ? `Saved ${formatMinutes(saved)} to ${activeTimerTask.title} · Focus: ${act.title}`
         : `Focus session: ${act.title}`
     );
-  };
+  }, [saveTimer, showToast]);
 
-  const handleLogTime = (minutes: number) => {
+  const handleLogTime = useCallback((minutes: number) => {
+    const timer = timerRef.current;
+
     if (!timer) return;
     logMinutes(timer.activityId, minutes);
     setTimer({
@@ -239,16 +287,19 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       startedAt: timer.isRunning ? new Date().toISOString() : undefined,
     });
     showToast(`Logged ${formatMinutes(minutes)} to activity`);
-  };
+  }, [logMinutes, showToast]);
 
-  const handleStopTimer = () => {
+  const handleStopTimer = useCallback(() => {
+    const timer = timerRef.current;
+
     if (!timer) return;
     const saved = saveTimer(timer);
     setTimer(null);
     showToast(saved > 0 ? `Focus stopped · saved ${formatMinutes(saved)}` : 'Focus stopped · under a minute, nothing logged');
-  };
+  }, [saveTimer, showToast]);
 
-  const handleCompleteActivity = (activityId: string) => {
+  const handleCompleteActivity = useCallback((activityId: string) => {
+    const timer = timerRef.current;
     const saved = timer?.activityId === activityId ? saveTimer(timer) : 0;
     const now = new Date().toISOString();
     setActivities((prev) =>
@@ -265,7 +316,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     );
     setTimer(null);
     showToast(saved > 0 ? `Activity completed · saved ${formatMinutes(saved)}` : 'Activity completed');
-  };
+  }, [saveTimer, showToast]);
 
   const handleExportData = () => {
     const dataStr =
@@ -329,7 +380,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <Navbar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         onOpenNewTaskModal={() => handleOpenNewTaskModal('backlog')}
         onExportData={handleExportData}
         onImportData={handleImportData}
@@ -378,17 +429,15 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
         {activeTab === 'calendar' && (
           <CalendarView
             activities={activities}
-            selectedDate={dayViewDate}
-            onSelectDate={setSelectedDate}
+            selectedDate={calendarDate}
+            onSelectDate={setCalendarDate}
             activeTimerTaskId={activeTimerTask?.id}
             onUpdateActivity={handleUpdateActivity}
             onDeleteActivity={handleDeleteActivity}
             onEditActivity={handleEditActivity}
             onViewActivity={handleViewActivity}
             onStartFocus={handleStartFocus}
-            onCreateActivity={(date, time) =>
-              handleOpenNewTaskModal(date === getTodayDateString() ? 'in_progress' : 'backlog', time, date)
-            }
+            onCreateActivity={handleCreateActivity}
             onToast={showToast}
           />
         )}
@@ -410,7 +459,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
           defaultStatus={modalDefaultStatus}
           defaultTime={modalDefaultTime}
           defaultDate={modalDefaultDate}
-          doingTasks={activities.filter((a) => a.status === 'in_progress')}
+          doingTasks={doingTasks}
         />
       )}
 
@@ -440,7 +489,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
 
       <MobileBottomNav
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         onOpenNewTaskModal={() => handleOpenNewTaskModal('backlog')}
       />
 

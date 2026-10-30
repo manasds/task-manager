@@ -19,6 +19,8 @@ export const auth = betterAuth({
   baseURL,
   database: pool,
   onAPIError: { errorURL: '/auth/error' },
+  // Signed session cookie lets getSession skip Postgres for up to 5 minutes.
+  session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',

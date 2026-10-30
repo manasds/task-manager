@@ -198,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <path d="M12 7v5l3 3" />
             </svg>
           </div>
-          <span className="text-[15px] font-semibold tracking-tight text-slate-900">OrbitTask</span>
+          <span className="text-[15px] font-semibold tracking-tight text-slate-900">Tasky</span>
         </div>
 
         {/* Phones use the bottom bar instead. */}

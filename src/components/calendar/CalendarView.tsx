@@ -516,7 +516,12 @@ export function CalendarView({
                   />
                 )}
                 <aside className="absolute inset-y-0 left-0 z-40 w-[200px] shrink-0 overflow-y-auto border-r border-slate-200 bg-[#f8fafc] md:static md:z-auto">
-                  <CalendarSidebarFilters filters={filters} onToggleType={toggleType} onTogglePriority={togglePriority} />
+                  <CalendarSidebarFilters
+                    filters={filters}
+                    onToggleType={toggleType}
+                    onTogglePriority={togglePriority}
+                    onClose={() => setSidebarOpen(false)}
+                  />
                 </aside>
               </>
             )}

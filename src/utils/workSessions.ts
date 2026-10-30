@@ -194,6 +194,23 @@ export function loggedMinutesOnDate(activities: Activity[], date: string): numbe
   return taskStatsForDate(activities, date).reduce((sum, t) => sum + t.totalMinutes, 0);
 }
 
+/** Local dates with any logged minutes; same definition as `loggedMinutesOnDate(activities, date) > 0`. */
+export function datesWithLoggedMinutes(activities: Activity[]): Set<string> {
+  const dates = new Set<string>();
+
+  for (const activity of activities) {
+    if (untimedMinutes(activity) > 0) dates.add(activity.date);
+
+    for (const session of activity.workSessions ?? []) {
+      for (const date of [sessionDate(session), sessionEndDate(session)]) {
+        if (sessionMinutesOnDate(session, date) > 0) dates.add(date);
+      }
+    }
+  }
+
+  return dates;
+}
+
 /** Timed minutes per local hour of day (index 0-23), summed across the given dates. */
 export function focusMinutesByHour(activities: Activity[], dates: string[]): number[] {
   const buckets = Array.from({ length: 24 }, () => 0);
