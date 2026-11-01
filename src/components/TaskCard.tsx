@@ -183,7 +183,16 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
           onDragOverCard(e, index);
         }
       }}
-      className={`group relative box-border bg-white rounded-2xl border-2 transition-[color,background-color,border-color,opacity,filter] duration-200 select-none touch-manipulation ${
+      // The whole card opens the detail view; its buttons and menu keep their own actions.
+      onClick={(e) => {
+        if (e.target instanceof Element && e.target.closest("button, a, input, [role='menu']")) return;
+        onView(activity);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target === e.currentTarget) onView(activity);
+      }}
+      tabIndex={0}
+      className={`group relative box-border bg-white rounded-2xl border-2 cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500/40 transition-[color,background-color,border-color,opacity,filter] duration-200 select-none touch-manipulation ${
         hasFooterMeta ? "min-h-28" : ""
       } ${
         isDragging
@@ -338,11 +347,10 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
 
           <div className="flex-1 min-w-0">
             <h4
-              onClick={() => onView(activity)}
-              className={`text-[15px] font-semibold cursor-pointer transition-colors leading-snug line-clamp-2 ${
+              className={`text-[15px] font-semibold transition-colors leading-snug line-clamp-2 ${
                 isCompleted
                   ? "text-slate-500 line-through"
-                  : "text-slate-900 hover:text-indigo-600"
+                  : "text-slate-900 group-hover:text-indigo-600"
               }`}
             >
               {activity.title}

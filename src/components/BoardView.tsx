@@ -59,7 +59,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
 
   const dateOptions = (
     <>
-      <option defaultValue={getTodayDateString()}>Today</option>
+      <option value={getTodayDateString()}>Today</option>
       {selectedDate !== 'all' && selectedDate !== getTodayDateString() && (
         <option value={selectedDate}>
           {new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', {

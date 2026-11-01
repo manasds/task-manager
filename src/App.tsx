@@ -57,7 +57,8 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   const [activities, setActivities] = useState<Activity[]>([]);
   const [dailyGoalMinutes, setDailyGoalMinutes] = useState<number>(360);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
+  /** The board's date filter. Always opens on all dates. */
+  const [selectedDate, setSelectedDate] = useState<string>('all');
   /** The calendar's own day. Not saved, so the calendar always opens on today. */
   const [calendarDate, setCalendarDate] = useState<string>(getTodayDateString());
   const [timer, setTimer] = useState<FocusTimerSnapshot | null>(null);
@@ -120,7 +121,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     setActivities(doc.activities.map(normalizeActivity));
     setDailyGoalMinutes(doc.dailyGoalMinutes);
     setActiveTab(tabToOpen(doc.settings.lastTab));
-    setSelectedDate(doc.settings.selectedDate || getTodayDateString());
     setTimer(timerFor(doc.timer, doc.activities));
     setHydrated(true);
 
