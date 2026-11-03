@@ -26,7 +26,7 @@ export const KIND_META: Record<CanvasKind, { label: string; icon: LucideIcon; co
 };
 
 /** The page's own preview, then a YouTube thumbnail, else nothing (the card shows its kind instead). */
-function coverImage(tile: CanvasTile): string | null {
+export function coverImage(tile: CanvasTile): string | null {
   if (tile.image) return tile.image;
   const ytId = tile.kind === 'youtube' ? getYouTubeId(tile.url) : null;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ChevronRight, Plus, SquareDashed } from 'lucide-react';
 import {
@@ -18,7 +18,27 @@ import { detectKind, getDomain, getYouTubeId, positionBetween } from '@/utils/ca
 import { boundsOf, boxRect, CARD_H, CARD_W, freeSpot, type Point, type Rect } from '@/utils/canvasBoard';
 import CanvasBoard, { type BoardHandle, type TileDrop } from './CanvasBoard';
 import { KIND_META } from './LinkCard';
+import PhoneCanvas, { UNSORTED } from './PhoneCanvas';
 import SectionPage from './SectionPage';
+
+/** Below this width the page shows the list of sections instead of the board. */
+const PHONE_QUERY = '(max-width: 639px)';
+
+const subscribePhone = (onChange: () => void) => {
+  const query = window.matchMedia(PHONE_QUERY);
+  query.addEventListener('change', onChange);
+
+  return () => query.removeEventListener('change', onChange);
+};
+
+/** True on a phone-width screen; false while rendering on the server. */
+function useIsPhone(): boolean {
+  return useSyncExternalStore(
+    subscribePhone,
+    () => window.matchMedia(PHONE_QUERY).matches,
+    () => false
+  );
+}
 
 type Filter = 'all' | 'watching' | 'reading' | 'done';
 
@@ -166,6 +186,9 @@ export default function CanvasView() {
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<CanvasKind>('other');
   const [addTo, setAddTo] = useState('');
+  const isPhone = useIsPhone();
+  /** The section open in the phone view: a section id, UNSORTED, or null for the list. */
+  const [phoneOpen, setPhoneOpen] = useState<string | null>(null);
 
   const boardRef = useRef<BoardHandle>(null);
   const tilesRef = useRef<CanvasTile[]>([]);
@@ -303,17 +326,6 @@ export default function CanvasView() {
     })();
   }, [load, tiles, commit]);
 
-  // A whole board is unreadable on a phone, so narrow screens open on the first section's page.
-  const openedOnPhone = useRef(false);
-  useEffect(() => {
-    if (load !== 'ready' || openedOnPhone.current || sections.length === 0) return;
-    openedOnPhone.current = true;
-
-    // The screen width is only known in the browser, after the first render.
-    // eslint-disable-next-line react/set-state-in-effect
-    if (window.innerWidth < 640) setPage({ id: sections[0].id, from: null, closingTo: null });
-  }, [load, sections]);
-
   const visible = useMemo(() => tiles.filter(t => matches(t, filter)), [tiles, filter]);
   const tilesBySection = useMemo(() => groupBySection(visible), [visible]);
   const looseTiles = useMemo(() => visible.filter(t => !t.sectionId && t.x !== null && t.y !== null), [visible]);
@@ -439,8 +451,11 @@ export default function CanvasView() {
       for (const t of settled.moved) await saveCanvasTile(t);
     });
     setRenamingId(section.id);
+
+    // On a phone, open the new section so its name can be typed straight away.
+    if (isPhone) setPhoneOpen(section.id);
     // Pull back once the new box is drawn so you can see where it landed.
-    requestAnimationFrame(() => boardRef.current?.fit(true));
+    else requestAnimationFrame(() => boardRef.current?.fit(true));
   };
 
   const deleteSection = (id: string) => {
@@ -450,6 +465,8 @@ export default function CanvasView() {
     const inside = tiles.filter(t => t.sectionId === id);
 
     if (page?.id === id) setPage(null);
+
+    if (phoneOpen === id) setPhoneOpen(null);
     commit(
       tiles.filter(t => t.sectionId !== id),
       sections.filter(s => s.id !== id),
@@ -469,8 +486,14 @@ export default function CanvasView() {
     if (page) moveTile(id, { kind: 'section', sectionId: page.id, index });
   };
 
+  const moveToSection = (tile: CanvasTile, sectionId: string) => {
+    const shown = (tilesBySection.get(sectionId) ?? []).filter(t => t.id !== tile.id);
+    moveTile(tile.id, { kind: 'section', sectionId, index: shown.length });
+  };
+
   const openAdd = () => {
-    setAddTo(focusId ?? sections[0]?.id ?? '');
+    const phoneSection = phoneOpen && phoneOpen !== UNSORTED ? phoneOpen : null;
+    setAddTo((isPhone ? phoneSection : focusId) ?? sections[0]?.id ?? '');
     setAdding(true);
   };
 
@@ -570,7 +593,26 @@ export default function CanvasView() {
   };
 
   const pageTiles = pageSection ? (tilesBySection.get(pageSection.id) ?? []) : [];
-  const count = focusId ? pageTiles.length : tiles.length;
+  const phoneTiles = phoneOpen === UNSORTED ? looseTiles : phoneOpen ? (tilesBySection.get(phoneOpen) ?? []) : null;
+  const count = isPhone ? (phoneTiles?.length ?? tiles.length) : focusId ? pageTiles.length : tiles.length;
+
+  const filterPills = (
+    <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filter links">
+      {FILTERS.map(f => (
+        <button
+          key={f.id}
+          type="button"
+          onClick={() => setFilter(f.id)}
+          aria-pressed={filter === f.id}
+          className={`shrink-0 rounded-full px-3 py-1 text-xs ${
+            filter === f.id ? 'bg-slate-900 font-semibold text-white' : 'bg-slate-100 font-medium text-slate-600'
+          }`}
+        >
+          {f.label}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-white text-slate-800">
@@ -585,7 +627,7 @@ export default function CanvasView() {
         <div className="flex min-w-0 items-center gap-1.5 text-sm">
           <button
             type="button"
-            onClick={() => (page ? closePage() : boardRef.current?.fit(true))}
+            onClick={() => (isPhone ? setPhoneOpen(null) : page ? closePage() : boardRef.current?.fit(true))}
             className="font-bold text-slate-900 hover:text-indigo-600"
           >
             Canvas
@@ -731,7 +773,28 @@ export default function CanvasView() {
           </div>
         )}
 
-        {load === 'ready' && (
+        {load === 'ready' && isPhone && (
+          <PhoneCanvas
+            sections={sections}
+            tilesBySection={tilesBySection}
+            looseTiles={looseTiles}
+            openId={phoneOpen}
+            renamingId={renamingId}
+            filterBar={filterPills}
+            onOpenChange={setPhoneOpen}
+            onOpen={openTile}
+            onMoveTo={moveToSection}
+            onStartRename={setRenamingId}
+            onRename={rename}
+            onDeleteSection={deleteSection}
+            onAddSection={addSection}
+            onToggleDone={toggleDone}
+            onEdit={setEditing}
+            onDelete={deleteTile}
+          />
+        )}
+
+        {load === 'ready' && !isPhone && (
           <>
             <CanvasBoard
               ref={boardRef}
