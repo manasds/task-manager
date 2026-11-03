@@ -321,8 +321,10 @@ export default function SectionPage(props: Props) {
         <article
           ref={draggedEl}
           aria-hidden
-          className={`${cardClass} pointer-events-none fixed z-50`}
+          className={`${cardClass} pointer-events-none z-50`}
           style={{
+            // Inline, because the shared card classes include `relative`, which would beat a `fixed` class.
+            position: 'fixed',
             left: drag.x,
             top: drag.y,
             width: drag.w,
