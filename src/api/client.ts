@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CanvasTile } from '../types/canvas';
+import { CanvasSection, CanvasTile, LinkPreview } from '../types/canvas';
 import { PullResponse, PushRequest, PushResponse } from '../types/sync';
 
 /** The server answered with an error status. A fetch that never reached it throws a plain TypeError. */
@@ -47,7 +47,7 @@ export function pushChanges(payload: PushRequest): Promise<PushResponse> {
   });
 }
 
-export function fetchCanvas(): Promise<{ tiles: CanvasTile[] }> {
+export function fetchCanvas(): Promise<{ tiles: CanvasTile[]; sections: CanvasSection[] }> {
   return request('/api/canvas');
 }
 
@@ -57,6 +57,19 @@ export function saveCanvasTile(tile: CanvasTile): Promise<{ tile: CanvasTile }> 
 
 export function deleteCanvasTile(id: string): Promise<{ ok: true }> {
   return request(`/api/canvas/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export function saveCanvasSection(section: CanvasSection): Promise<{ section: CanvasSection }> {
+  return request(`/api/canvas/sections/${encodeURIComponent(section.id)}`, { method: 'PUT', body: JSON.stringify(section) });
+}
+
+/** Deletes the section and every tile in it. */
+export function deleteCanvasSection(id: string): Promise<{ ok: true }> {
+  return request(`/api/canvas/sections/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export function fetchLinkPreview(url: string): Promise<LinkPreview> {
+  return request(`/api/canvas/preview?url=${encodeURIComponent(url)}`);
 }
 
 /** Browsers cap keepalive/beacon bodies at 64 KiB in flight. */
