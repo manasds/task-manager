@@ -3,8 +3,11 @@ import { nextCookies } from 'better-auth/next-js';
 import { pool } from './db';
 
 // Better Auth reads BETTER_AUTH_SECRET from the environment. Without one it falls back
-// to a public default, so refuse to run that way in production.
-if (process.env.NODE_ENV === 'production' && !process.env.BETTER_AUTH_SECRET) {
+// to a public default, so refuse to run that way in production. `next build` imports this
+// module to collect page data and needs no secret, so the check waits for the server.
+const isBuild = process.env.NEXT_PHASE === 'phase-production-build';
+
+if (process.env.NODE_ENV === 'production' && !isBuild && !process.env.BETTER_AUTH_SECRET) {
   throw new Error('BETTER_AUTH_SECRET must be set in production.');
 }
 

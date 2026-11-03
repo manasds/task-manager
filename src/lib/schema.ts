@@ -91,4 +91,22 @@ CREATE TABLE IF NOT EXISTS canvas_tiles (
 );
 
 CREATE INDEX IF NOT EXISTS canvas_tiles_user_position_idx ON canvas_tiles (user_id, position);
+
+-- The canvas board: tiles sit in a section box (ordered by position) or loose at x, y.
+ALTER TABLE canvas_tiles ADD COLUMN IF NOT EXISTS section_id TEXT;
+ALTER TABLE canvas_tiles ADD COLUMN IF NOT EXISTS x DOUBLE PRECISION;
+ALTER TABLE canvas_tiles ADD COLUMN IF NOT EXISTS y DOUBLE PRECISION;
+ALTER TABLE canvas_tiles ADD COLUMN IF NOT EXISTS image TEXT;
+
+CREATE TABLE IF NOT EXISTS canvas_sections (
+  user_id TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  x DOUBLE PRECISION NOT NULL,
+  y DOUBLE PRECISION NOT NULL,
+  cols INTEGER NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, id)
+);
 `;

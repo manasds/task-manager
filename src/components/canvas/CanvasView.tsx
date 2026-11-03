@@ -1,35 +1,24 @@
 'use client';
 
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { ArrowLeft, ChevronRight, Plus, SquareDashed } from 'lucide-react';
 import {
-  ArrowLeft,
-  BookOpen,
-  Check,
-  FileText,
-  Headphones,
-  Link as LinkIcon,
-  Pencil,
-  Plus,
-  RotateCcw,
-  StickyNote,
-  Trash2,
-  X,
-  Youtube,
-  type LucideIcon,
-} from 'lucide-react';
-import { ApiError, deleteCanvasTile, fetchCanvas, saveCanvasTile } from '@/api/client';
+  ApiError,
+  deleteCanvasSection,
+  deleteCanvasTile,
+  fetchCanvas,
+  fetchLinkPreview,
+  saveCanvasSection,
+  saveCanvasTile,
+} from '@/api/client';
 import { signInWithGoogle } from '@/auth/client';
-import { canvasKindSchema, type CanvasKind, type CanvasTile } from '@/types/canvas';
-import { detectKind, getDomain, getYouTubeId, positionBetween, youtubeThumbnail } from '@/utils/canvas';
-
-const KIND_META: Record<CanvasKind, { label: string; icon: LucideIcon; cover: string; iconColor: string }> = {
-  youtube: { label: 'YouTube', icon: Youtube, cover: 'from-red-100 to-red-300', iconColor: 'text-red-500/70' },
-  blog: { label: 'Blog', icon: BookOpen, cover: 'from-amber-100 to-amber-300', iconColor: 'text-amber-600/70' },
-  article: { label: 'Article', icon: FileText, cover: 'from-sky-100 to-sky-300', iconColor: 'text-sky-600/70' },
-  podcast: { label: 'Podcast', icon: Headphones, cover: 'from-violet-100 to-violet-300', iconColor: 'text-violet-600/70' },
-  other: { label: 'Other', icon: LinkIcon, cover: 'from-slate-100 to-slate-300', iconColor: 'text-slate-500/70' },
-};
+import { canvasKindSchema, type CanvasKind, type CanvasSection, type CanvasTile } from '@/types/canvas';
+import { detectKind, getDomain, getYouTubeId, positionBetween } from '@/utils/canvas';
+import { boundsOf, boxRect, CARD_H, CARD_W, freeSpot, type Point, type Rect } from '@/utils/canvasBoard';
+import CanvasBoard, { type BoardHandle, type TileDrop } from './CanvasBoard';
+import { KIND_META } from './LinkCard';
+import SectionPage from './SectionPage';
 
 type Filter = 'all' | 'watching' | 'reading' | 'done';
 
@@ -43,8 +32,12 @@ const FILTERS: { id: Filter; label: string }[] = [
 const inputClass =
   'w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100';
 
-const actionBtn =
-  'inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-sm backdrop-blur hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400';
+/** Previews looked up for older links per visit; Microlink's free tier allows about 50 a day. */
+const BACKFILL_PER_VISIT = 5;
+const UNDO_MS = 6000;
+
+/** A row of boxes wraps to a new row past this width, so the whole board stays readable. */
+const ROW_WIDTH = 1500;
 
 function matches(tile: CanvasTile, filter: Filter): boolean {
   switch (filter) {
@@ -73,56 +66,161 @@ function newId(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function stop(e: React.SyntheticEvent) {
-  e.preventDefault();
-  e.stopPropagation();
+const byPosition = (a: CanvasTile, b: CanvasTile) => a.position - b.position || b.createdAt.localeCompare(a.createdAt);
+
+/** Each section's tiles in order. */
+function groupBySection(tiles: CanvasTile[]): Map<string, CanvasTile[]> {
+  const groups = new Map<string, CanvasTile[]>();
+
+  for (const t of [...tiles].sort(byPosition)) {
+    if (!t.sectionId) continue;
+    const list = groups.get(t.sectionId);
+
+    if (list) list.push(t);
+    else groups.set(t.sectionId, [t]);
+  }
+
+  return groups;
+}
+
+/** Everything a loose card must keep clear of: every box at its full size, and the other loose cards. */
+function blockers(tiles: CanvasTile[], sections: CanvasSection[], except: string): Rect[] {
+  const groups = groupBySection(tiles);
+  const rects = sections.map(s => boxRect(s, groups.get(s.id)?.length ?? 0));
+
+  for (const t of tiles) {
+    if (t.id !== except && !t.sectionId && t.x !== null && t.y !== null) rects.push({ x: t.x, y: t.y, w: CARD_W, h: CARD_H });
+  }
+
+  return rects;
+}
+
+/** Push loose cards that a box now covers to the nearest free spot. Returns the new list and the cards that moved. */
+interface Settled {
+  tiles: CanvasTile[];
+  moved: CanvasTile[];
+}
+
+function settleLoose(tiles: CanvasTile[], sections: CanvasSection[]): Settled {
+  let next = tiles;
+  const moved: CanvasTile[] = [];
+
+  for (const t of tiles) {
+    if (t.sectionId || t.x === null || t.y === null) continue;
+    const spot = freeSpot({ x: t.x, y: t.y }, blockers(next, sections, t.id));
+
+    if (spot.x === t.x && spot.y === t.y) continue;
+    const updated = { ...t, x: spot.x, y: spot.y };
+    moved.push(updated);
+    next = next.map(o => (o.id === t.id ? updated : o));
+  }
+
+  return { tiles: next, moved };
+}
+
+/** Put a section back where it was in the list, so its tab returns to the same spot. */
+function restoreAt(sections: CanvasSection[], section: CanvasSection, index: number): CanvasSection[] {
+  const next = [...sections];
+  next.splice(Math.min(index, next.length), 0, section);
+
+  return next;
+}
+
+/** Where a new box goes: right of the last row, or under the board once that row is wide. */
+function nextBoxSpot(tiles: CanvasTile[], sections: CanvasSection[]): Point {
+  const last = sections.at(-1);
+  const groups = groupBySection(tiles);
+  const all = boundsOf(sections.map(s => boxRect(s, groups.get(s.id)?.length ?? 0)));
+
+  if (!last || !all) return { x: 0, y: 0 };
+  const row = boundsOf(sections.flatMap(s => (Math.abs(s.y - last.y) < 1 ? [boxRect(s, groups.get(s.id)?.length ?? 0)] : [])));
+  const rowRight = row ? row.x + row.w : all.x + all.w;
+
+  return rowRight - all.x > ROW_WIDTH ? { x: all.x, y: all.y + all.h + 60 } : { x: rowRight + 60, y: last.y };
+}
+
+interface PageState {
+  id: string;
+  from: Rect | null;
+  closingTo: Rect | 'fade' | null;
+}
+
+interface Toast {
+  text: string;
+  undo: () => void;
 }
 
 export default function CanvasView() {
   const [tiles, setTiles] = useState<CanvasTile[]>([]);
+  const [sections, setSections] = useState<CanvasSection[]>([]);
   const [load, setLoad] = useState<'loading' | 'ready' | 'signed-out' | 'failed'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [page, setPage] = useState<PageState | null>(null);
+  const [editing, setEditing] = useState<CanvasTile | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
 
   const [adding, setAdding] = useState(false);
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<CanvasKind>('other');
+  const [addTo, setAddTo] = useState('');
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editNote, setEditNote] = useState('');
-
-  const [dragId, setDragId] = useState<string | null>(null);
+  const boardRef = useRef<BoardHandle>(null);
   const tilesRef = useRef<CanvasTile[]>([]);
-  const draggingRef = useRef(false);
-  const suppressClickRef = useRef(false);
-  const applyDragRef = useRef<(() => void) | null>(null);
-  const cleanupRef = useRef<(() => void) | null>(null);
+  const sectionsRef = useRef<CanvasSection[]>([]);
   /** Writes run one after another so the server sees edits in the order they were made. */
   const writesRef = useRef<Promise<void>>(Promise.resolve());
-
-  const show = (next: CanvasTile[]) => {
-    tilesRef.current = next;
-    setTiles(next);
-  };
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const placedRef = useRef(false);
+  const backfilledRef = useRef(false);
 
   /** Replace what is on screen with the server's copy. False when that is not possible. */
   const reload = useCallback(async (): Promise<boolean> => {
     try {
-      const { tiles: saved } = await fetchCanvas();
-      tilesRef.current = saved;
-      setTiles(saved);
+      const saved = await fetchCanvas();
+      tilesRef.current = saved.tiles;
+      sectionsRef.current = saved.sections;
+      setTiles(saved.tiles);
+      setSections(saved.sections);
       setLoad('ready');
 
       return true;
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) setLoad('signed-out');
-      else setLoad((current) => (current === 'ready' ? current : 'failed'));
+      else setLoad(current => (current === 'ready' ? current : 'failed'));
 
       return false;
     }
   }, []);
+
+  /** Show an edit at once and save it in the background. If the save fails, show the server's copy. */
+  const commit = useCallback(
+    <T,>(nextTiles: CanvasTile[], nextSections: CanvasSection[], save?: () => Promise<T>) => {
+      tilesRef.current = nextTiles;
+      sectionsRef.current = nextSections;
+      setTiles(nextTiles);
+      setSections(nextSections);
+
+      if (!save) return;
+      setError(null);
+      writesRef.current = writesRef.current.then(save).then(
+        () => undefined,
+        async err => {
+          if (err instanceof ApiError && err.status === 401) {
+            setLoad('signed-out');
+
+            return;
+          }
+
+          setError('Could not save that change. Showing what is saved.');
+          await reload();
+        }
+      );
+    },
+    [reload]
+  );
 
   useEffect(() => {
     void (async () => {
@@ -152,192 +250,228 @@ export default function CanvasView() {
       localStorage.removeItem('orbittask_canvas_v1');
       await reload();
     })();
-
-    return () => cleanupRef.current?.();
   }, [reload]);
 
-  /** Show an edit at once and save it in the background. If the save fails, show the server's copy. */
-  const update = <T,>(next: CanvasTile[], save?: () => Promise<T>) => {
-    show(next);
+  // Links saved before the board existed have no place on it yet: put them in a section.
+  useEffect(() => {
+    if (load !== 'ready' || placedRef.current) return;
+    placedRef.current = true;
+    const ids = new Set(sections.map(s => s.id));
+    const unplaced = tiles.filter(t => (t.sectionId ? !ids.has(t.sectionId) : t.x === null || t.y === null));
 
-    if (!save) return;
-    setError(null);
-    writesRef.current = writesRef.current.then(save).then(
-      () => undefined,
-      async (err) => {
-        if (err instanceof ApiError && err.status === 401) {
-          setLoad('signed-out');
+    if (unplaced.length === 0) return;
+    const home: CanvasSection = sections[0] ?? { id: newId(), name: 'Links', x: 0, y: 0, cols: 3, createdAt: new Date().toISOString() };
+    const moving = new Map(unplaced.map(t => [t.id, { ...t, sectionId: home.id, x: null, y: null }]));
+    const nextSections = sections[0] ? sections : [home];
+    // A one-off repair of what the server sent, made once after the first load.
+    // eslint-disable-next-line react/set-state-in-effect
+    commit(
+      tiles.map(t => moving.get(t.id) ?? t),
+      nextSections,
+      async () => {
+        if (!sections[0]) await saveCanvasSection(home);
 
-          return;
-        }
-
-        setError('Could not save that change. Showing what is saved.');
-        await reload();
+        for (const t of moving.values()) await saveCanvasTile(t);
       }
+    );
+  }, [load, tiles, sections, commit]);
+
+  // Look up previews for a few older links that never had one.
+  useEffect(() => {
+    if (load !== 'ready' || backfilledRef.current) return;
+    backfilledRef.current = true;
+    const missing = tiles.filter(t => t.image === null).slice(0, BACKFILL_PER_VISIT);
+
+    void (async () => {
+      for (const t of missing) {
+        try {
+          const preview = await fetchLinkPreview(t.url);
+          const current = tilesRef.current.find(o => o.id === t.id);
+
+          if (!current) continue;
+          const next = { ...current, image: preview.image ?? '' };
+          commit(
+            tilesRef.current.map(o => (o.id === t.id ? next : o)),
+            sectionsRef.current,
+            () => saveCanvasTile(next)
+          );
+        } catch (err) {
+          // Out of free previews for today, or offline: try again on a later visit.
+          if (err instanceof ApiError && err.status === 429) return;
+        }
+      }
+    })();
+  }, [load, tiles, commit]);
+
+  // A whole board is unreadable on a phone, so narrow screens open on the first section's page.
+  const openedOnPhone = useRef(false);
+  useEffect(() => {
+    if (load !== 'ready' || openedOnPhone.current || sections.length === 0) return;
+    openedOnPhone.current = true;
+
+    // The screen width is only known in the browser, after the first render.
+    // eslint-disable-next-line react/set-state-in-effect
+    if (window.innerWidth < 640) setPage({ id: sections[0].id, from: null, closingTo: null });
+  }, [load, sections]);
+
+  const visible = useMemo(() => tiles.filter(t => matches(t, filter)), [tiles, filter]);
+  const tilesBySection = useMemo(() => groupBySection(visible), [visible]);
+  const looseTiles = useMemo(() => visible.filter(t => !t.sectionId && t.x !== null && t.y !== null), [visible]);
+
+  const focusId = page && !page.closingTo ? page.id : null;
+  const pageSection = page ? sections.find(s => s.id === page.id) : undefined;
+
+  const showToast = (text: string, undo: () => void) => {
+    clearTimeout(toastTimer.current);
+    setToast({ text, undo });
+    toastTimer.current = setTimeout(() => setToast(null), UNDO_MS);
+  };
+
+  const openPage = (id: string) => {
+    if (page && !page.closingTo) {
+      setPage({ id, from: null, closingTo: null });
+
+      return;
+    }
+
+    setPage({ id, from: boardRef.current?.screenRectOf(id) ?? null, closingTo: null });
+  };
+
+  const closePage = () => {
+    if (!page || page.closingTo) return;
+    setPage({ ...page, closingTo: boardRef.current?.screenRectOf(page.id) ?? 'fade' });
+  };
+
+  const onPageClosed = useCallback(() => setPage(null), []);
+
+  const onFocus = (id: string | null) => (id ? openPage(id) : closePage());
+
+  const openTile = useCallback((tile: CanvasTile) => {
+    window.open(tile.url, '_blank', 'noopener,noreferrer');
+  }, []);
+
+  const toggleDone = useCallback(
+    (tile: CanvasTile) => {
+      const next: CanvasTile = { ...tile, status: tile.status === 'done' ? 'active' : 'done' };
+      commit(
+        tilesRef.current.map(t => (t.id === tile.id ? next : t)),
+        sectionsRef.current,
+        () => saveCanvasTile(next)
+      );
+    },
+    [commit]
+  );
+
+  const deleteTile = useCallback(
+    (tile: CanvasTile) => {
+      commit(
+        tilesRef.current.filter(t => t.id !== tile.id),
+        sectionsRef.current,
+        () => deleteCanvasTile(tile.id)
+      );
+      showToast(`Deleted “${tile.title}”`, () =>
+        commit([...tilesRef.current, tile], sectionsRef.current, () => saveCanvasTile(tile))
+      );
+    },
+    [commit]
+  );
+
+  const moveTile = (id: string, drop: TileDrop) => {
+    const tile = tiles.find(t => t.id === id);
+
+    if (!tile) return;
+    let next: CanvasTile;
+
+    if (drop.kind === 'section') {
+      const shown = (tilesBySection.get(drop.sectionId) ?? []).filter(t => t.id !== id);
+      const position = positionBetween(shown[drop.index - 1]?.position, shown[drop.index]?.position);
+      next = { ...tile, sectionId: drop.sectionId, x: null, y: null, position };
+    } else {
+      const spot = freeSpot(drop.point, blockers(tiles, sections, id));
+      next = { ...tile, sectionId: null, x: spot.x, y: spot.y };
+    }
+
+    const settled = settleLoose(
+      tiles.map(t => (t.id === id ? next : t)),
+      sections
+    );
+
+    commit(settled.tiles, sections, async () => {
+      await saveCanvasTile(next);
+
+      for (const t of settled.moved) await saveCanvasTile(t);
+    });
+  };
+
+  const changeSection = (id: string, change: Partial<Pick<CanvasSection, 'x' | 'y' | 'cols' | 'name'>>) => {
+    const section = sections.find(s => s.id === id);
+
+    if (!section) return;
+    const next = { ...section, ...change };
+    const nextSections = sections.map(s => (s.id === id ? next : s));
+    const settled = settleLoose(tiles, nextSections);
+    commit(settled.tiles, nextSections, async () => {
+      await saveCanvasSection(next);
+
+      for (const t of settled.moved) await saveCanvasTile(t);
+    });
+  };
+
+  const rename = (id: string, name: string | null) => {
+    setRenamingId(null);
+    const trimmed = name?.trim().slice(0, 100);
+    const section = sections.find(s => s.id === id);
+
+    if (!trimmed || !section || trimmed === section.name) return;
+    changeSection(id, { name: trimmed });
+  };
+
+  const addSection = () => {
+    const spot = nextBoxSpot(tiles, sections);
+    const section: CanvasSection = { id: newId(), name: 'Untitled', x: spot.x, y: spot.y, cols: 2, createdAt: new Date().toISOString() };
+    const nextSections = [...sections, section];
+    const settled = settleLoose(tiles, nextSections);
+
+    if (page) setPage(null);
+    commit(settled.tiles, nextSections, async () => {
+      await saveCanvasSection(section);
+
+      for (const t of settled.moved) await saveCanvasTile(t);
+    });
+    setRenamingId(section.id);
+    // Pull back once the new box is drawn so you can see where it landed.
+    requestAnimationFrame(() => boardRef.current?.fit(true));
+  };
+
+  const deleteSection = (id: string) => {
+    const section = sections.find(s => s.id === id);
+
+    if (!section) return;
+    const inside = tiles.filter(t => t.sectionId === id);
+
+    if (page?.id === id) setPage(null);
+    commit(
+      tiles.filter(t => t.sectionId !== id),
+      sections.filter(s => s.id !== id),
+      () => deleteCanvasSection(id)
+    );
+    const n = inside.length;
+    showToast(`Deleted “${section.name}”${n ? ` and ${n} link${n === 1 ? '' : 's'}` : ''}`, () =>
+      commit([...tilesRef.current, ...inside], restoreAt(sectionsRef.current, section, sections.indexOf(section)), async () => {
+        await saveCanvasSection(section);
+
+        for (const t of inside) await saveCanvasTile(t);
+      })
     );
   };
 
-  const signIn = () => {
-    signInWithGoogle().catch((err) => setError(err instanceof Error ? err.message : 'Could not start sign-in.'));
+  const reorderInPage = (id: string, index: number) => {
+    if (page) moveTile(id, { kind: 'section', sectionId: page.id, index });
   };
 
-  // Keep the dragged tile glued to the pointer after live reorders change its natural slot.
-  useLayoutEffect(() => {
-    applyDragRef.current?.();
-  }, [tiles]);
-
-  const startGesture = (e: React.PointerEvent<HTMLElement>, id: string) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-
-    if (e.target instanceof Element && e.target.closest('button')) return;
-    cleanupRef.current?.();
-    const el = e.currentTarget;
-    const pid = e.pointerId;
-    const touch = e.pointerType === 'touch';
-    const sx = e.clientX;
-    const sy = e.clientY;
-    let px = sx;
-    let py = sy;
-    let grabX = 0;
-    let grabY = 0;
-    let dragging = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const start = tilesRef.current.findIndex(t => t.id === id);
-    const before = { prev: tilesRef.current[start - 1]?.id, next: tilesRef.current[start + 1]?.id };
-
-    const apply = () => {
-      if (!dragging) return;
-      el.style.transform = 'none';
-      const r = el.getBoundingClientRect();
-      el.style.transform = `translate(${px - grabX - r.left}px, ${py - grabY - r.top}px) scale(1.03)`;
-    };
-
-    const begin = () => {
-      if (dragging) return;
-      dragging = true;
-      draggingRef.current = true;
-      const r = el.getBoundingClientRect();
-      grabX = sx - r.left;
-      grabY = sy - r.top;
-      el.style.pointerEvents = 'none';
-
-      try {
-        el.setPointerCapture(pid);
-      } catch {
-        /* window listeners still track the pointer */
-      }
-
-      applyDragRef.current = apply;
-      setDragId(id);
-      apply();
-    };
-
-    const blockTouchScroll = (ev: TouchEvent) => {
-      if (dragging && ev.cancelable) ev.preventDefault();
-    };
-
-    const onMove = (ev: PointerEvent) => {
-      if (ev.pointerId !== pid) return;
-      px = ev.clientX;
-      py = ev.clientY;
-
-      if (!dragging) {
-        const dist = Math.hypot(px - sx, py - sy);
-
-        if (touch) {
-          if (dist > 8) cleanup();
-        } else if (dist > 6) {
-          begin();
-        }
-
-        return;
-      }
-
-      if (ev.cancelable) ev.preventDefault();
-      apply();
-      const over = document.elementFromPoint(px, py)?.closest<HTMLElement>('[data-tile-id]');
-      const overId = over?.dataset.tileId;
-
-      if (overId && overId !== id) {
-        const list = tilesRef.current;
-        const from = list.findIndex(t => t.id === id);
-        const to = list.findIndex(t => t.id === overId);
-
-        if (from !== -1 && to !== -1 && from !== to) {
-          const next = list.slice();
-          const [moved] = next.splice(from, 1);
-          next.splice(to, 0, moved);
-          tilesRef.current = next;
-          setTiles(next);
-        }
-      }
-    };
-
-    const onEnd = (ev: PointerEvent) => {
-      if (ev.pointerId !== pid) return;
-      const wasDragging = dragging;
-      cleanup();
-
-      if (wasDragging) {
-        suppressClickRef.current = true;
-        setTimeout(() => {
-          suppressClickRef.current = false;
-        }, 60);
-        const list = tilesRef.current;
-        const index = list.findIndex(t => t.id === id);
-
-        if (index === -1) return;
-        const prev = list[index - 1];
-        const next = list[index + 1];
-
-        if (prev?.id === before?.prev && next?.id === before?.next) return;
-        const tile = { ...list[index], position: positionBetween(prev?.position, next?.position) };
-        update(
-          list.map(t => (t.id === id ? tile : t)),
-          () => saveCanvasTile(tile)
-        );
-      }
-    };
-
-    function cleanup() {
-      if (timer) clearTimeout(timer);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onEnd);
-      window.removeEventListener('pointercancel', onEnd);
-      window.removeEventListener('touchmove', blockTouchScroll);
-
-      if (dragging) {
-        el.style.transform = '';
-        el.style.pointerEvents = '';
-
-        try {
-          el.releasePointerCapture(pid);
-        } catch {
-          /* already released */
-        }
-
-        setDragId(null);
-      }
-
-      dragging = false;
-      draggingRef.current = false;
-      applyDragRef.current = null;
-
-      if (cleanupRef.current === cleanup) cleanupRef.current = null;
-    }
-
-    cleanupRef.current = cleanup;
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onEnd);
-    window.addEventListener('pointercancel', onEnd);
-    window.addEventListener('touchmove', blockTouchScroll, { passive: false });
-
-    if (touch) timer = setTimeout(begin, 250);
-  };
-
-  const onUrlChange = (value: string) => {
-    setUrl(value);
-    setKind(detectKind(normalizeUrl(value)));
+  const openAdd = () => {
+    setAddTo(focusId ?? sections[0]?.id ?? '');
+    setAdding(true);
   };
 
   const resetAdd = () => {
@@ -359,117 +493,224 @@ export default function CanvasView() {
       return;
     }
 
-    const k = kind;
-    const fallback = getDomain(finalUrl) || (k === 'youtube' ? 'YouTube video' : finalUrl);
+    let nextSections = sections;
+    let section = sections.find(s => s.id === addTo) ?? sections[0];
+    const newSection = !section;
+
+    if (!section) {
+      section = { id: newId(), name: 'Links', x: 0, y: 0, cols: 3, createdAt: new Date().toISOString() };
+      nextSections = [section];
+    }
+
+    const typed = title.trim();
+    const fallback = kind === 'youtube' && getYouTubeId(finalUrl) ? 'YouTube video' : getDomain(finalUrl) || finalUrl;
+    const last = groupBySection(tiles).get(section.id)?.at(-1);
 
     const tile: CanvasTile = {
       id: newId(),
       url: finalUrl,
-      title: title.trim() || (k === 'youtube' && getYouTubeId(finalUrl) ? 'YouTube video' : fallback),
-      kind: k,
+      title: typed || fallback,
+      kind,
       status: 'active',
       note: '',
-      position: positionBetween(undefined, tiles[0]?.position),
+      position: positionBetween(last?.position, undefined),
       createdAt: new Date().toISOString(),
+      sectionId: section.id,
+      x: null,
+      y: null,
+      image: null,
     };
 
-    update([tile, ...tiles], () => saveCanvasTile(tile));
+    const settled = settleLoose([...tiles, tile], nextSections);
+    const target = section;
+    commit(settled.tiles, nextSections, async () => {
+      if (newSection) await saveCanvasSection(target);
+      await saveCanvasTile(tile);
+
+      for (const t of settled.moved) await saveCanvasTile(t);
+    });
     resetAdd();
+
+    // Fill in the page's title and preview image once the server has looked them up.
+    void fetchLinkPreview(finalUrl)
+      .then(preview => {
+        const current = tilesRef.current.find(t => t.id === tile.id);
+
+        if (!current) return;
+        const next = { ...current, title: typed ? current.title : (preview.title ?? current.title), image: preview.image ?? '' };
+        commit(
+          tilesRef.current.map(t => (t.id === tile.id ? next : t)),
+          sectionsRef.current,
+          () => saveCanvasTile(next)
+        );
+      })
+      .catch(() => undefined);
   };
 
-  const toggleStatus = (tile: CanvasTile) => {
-    const next: CanvasTile = { ...tile, status: tile.status === 'done' ? 'active' : 'done' };
-    update(
-      tiles.map(t => (t.id === tile.id ? next : t)),
+  const saveEdit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!editing) return;
+    const form = new FormData(e.currentTarget);
+    const nextTitle = String(form.get('title') ?? '').trim() || editing.title;
+    const nextNote = String(form.get('note') ?? '').trim();
+    setEditing(null);
+
+    if (nextTitle === editing.title && nextNote === editing.note) return;
+    const next = { ...editing, title: nextTitle.slice(0, 300), note: nextNote.slice(0, 5000) };
+    commit(
+      tiles.map(t => (t.id === next.id ? next : t)),
+      sections,
       () => saveCanvasTile(next)
     );
   };
 
-  const startEdit = (t: CanvasTile) => {
-    setEditingId(t.id);
-    setEditTitle(t.title);
-    setEditNote(t.note);
+  const signIn = () => {
+    signInWithGoogle().catch(err => setError(err instanceof Error ? err.message : 'Could not start sign-in.'));
   };
 
-  const saveEdit = (tile: CanvasTile) => {
-    const changes = { title: editTitle.trim() || tile.title, note: editNote.trim() };
-    setEditingId(null);
-
-    if (changes.title === tile.title && changes.note === tile.note) return;
-    const next = { ...tile, ...changes };
-    update(
-      tiles.map(t => (t.id === tile.id ? next : t)),
-      () => saveCanvasTile(next)
-    );
-  };
-
-  const remove = (t: CanvasTile) => {
-    if (!window.confirm(`Delete "${t.title}"?`)) return;
-    update(
-      tiles.filter(x => x.id !== t.id),
-      () => deleteCanvasTile(t.id)
-    );
-  };
-
-  const visible = useMemo(() => tiles.filter(t => matches(t, filter)), [tiles, filter]);
-
-  const onFormKey = (e: React.KeyboardEvent, cancel: () => void) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      cancel();
-    }
-  };
+  const pageTiles = pageSection ? (tilesBySection.get(pageSection.id) ?? []) : [];
+  const count = focusId ? pageTiles.length : tiles.length;
 
   return (
-    <div
-      className="min-h-screen bg-slate-50 text-slate-800"
-      style={{ backgroundImage: 'radial-gradient(#a3b1c2 1px, transparent 1px)', backgroundSize: '20px 20px' }}
-    >
-      <div className="mx-auto w-full max-w-7xl px-4 py-3 sm:px-6">
-        <header className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <h1 className="flex items-baseline gap-2 text-lg font-bold text-slate-900">
-            Canvas
-            <span className="text-xs font-medium text-slate-400">
-              {tiles.length} {tiles.length === 1 ? 'tile' : 'tiles'}
-            </span>
-          </h1>
-          <div className="order-last flex w-full flex-wrap gap-1.5 sm:order-none sm:w-auto" role="group" aria-label="Filter tiles">
-            {FILTERS.map(f => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setFilter(f.id)}
-                aria-pressed={filter === f.id}
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                  filter === f.id
-                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          {tiles.length >= 2 && <span className="text-xs text-slate-400">Drag to reorder</span>}
-          <Link
-            href="/"
-            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+    <div className="flex h-dvh flex-col overflow-hidden bg-white text-slate-800">
+      <nav className="relative z-40 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-3 sm:px-4">
+        <Link
+          href="/"
+          aria-label="Back to tasks"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+        <div className="flex min-w-0 items-center gap-1.5 text-sm">
+          <button
+            type="button"
+            onClick={() => (page ? closePage() : boardRef.current?.fit(true))}
+            className="font-bold text-slate-900 hover:text-indigo-600"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back
-          </Link>
-        </header>
+            Canvas
+          </button>
+          {focusId && pageSection && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+              <span className="truncate font-semibold text-slate-900">{pageSection.name}</span>
+            </>
+          )}
+          {load === 'ready' && (
+            <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">{count}</span>
+          )}
+        </div>
 
+        <div className="mx-auto hidden items-center rounded-lg bg-slate-100 p-0.5 sm:flex" role="group" aria-label="Filter links">
+          {FILTERS.map(f => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFilter(f.id)}
+              aria-pressed={filter === f.id}
+              className={`rounded-md px-3 py-1 text-xs ${
+                filter === f.id ? 'bg-white font-semibold text-slate-900 shadow-sm' : 'font-medium text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {load === 'ready' && (
+          <div className="relative ml-auto flex items-center gap-2 sm:ml-0">
+            <button
+              type="button"
+              onClick={addSection}
+              aria-label="Add section"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+            >
+              <SquareDashed className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Section</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => (adding ? resetAdd() : openAdd())}
+              aria-expanded={adding}
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add<span className="hidden sm:inline"> link</span>
+            </button>
+
+            {adding && (
+              <form
+                onSubmit={onAdd}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') resetAdd();
+                }}
+                className="absolute right-0 top-10 z-50 flex w-80 max-w-[calc(100vw-1.5rem)] flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-lg"
+              >
+                <input
+                  type="text"
+                  inputMode="url"
+                  autoFocus
+                  required
+                  value={url}
+                  onChange={e => {
+                    setUrl(e.target.value);
+                    setKind(detectKind(normalizeUrl(e.target.value)));
+                  }}
+                  placeholder="Paste a link"
+                  aria-label="URL"
+                  className={inputClass}
+                />
+                <input
+                  type="text"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="Title (optional)"
+                  aria-label="Title"
+                  className={inputClass}
+                />
+                <div className="flex gap-2">
+                  <select
+                    value={kind}
+                    onChange={e => setKind(canvasKindSchema.catch('other').parse(e.target.value))}
+                    aria-label="Type"
+                    className={inputClass}
+                  >
+                    {canvasKindSchema.options.map(k => (
+                      <option key={k} value={k}>
+                        {KIND_META[k].label}
+                      </option>
+                    ))}
+                  </select>
+                  {sections.length > 0 && (
+                    <select value={addTo} onChange={e => setAddTo(e.target.value)} aria-label="Section" className={inputClass}>
+                      {sections.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <button type="submit" className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
+                  Add
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+      </nav>
+
+      <main className="relative min-h-0 flex-1">
         {error && (
-          <p role="alert" className="mb-3 text-xs text-red-600">
+          <p role="alert" className="absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded-lg bg-red-50 px-3 py-1.5 text-xs text-red-700 shadow-sm">
             {error}
           </p>
         )}
 
-        {load === 'loading' && <p className="text-sm text-slate-500">Loading your canvas…</p>}
+        {load === 'loading' && <p className="p-6 text-sm text-slate-500">Loading your canvas…</p>}
 
         {load === 'failed' && (
-          <p className="text-sm text-slate-500">
+          <p className="p-6 text-sm text-slate-500">
             Could not load your canvas.{' '}
             <button type="button" onClick={() => void reload()} className="font-medium text-indigo-600 hover:text-indigo-800">
               Try again
@@ -478,7 +719,7 @@ export default function CanvasView() {
         )}
 
         {load === 'signed-out' && (
-          <div className="flex flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="m-6 flex max-w-sm flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-slate-600">Sign in to save links to your canvas.</p>
             <button
               type="button"
@@ -490,264 +731,109 @@ export default function CanvasView() {
           </div>
         )}
 
-        <div
-          className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${load === 'ready' ? '' : 'hidden'}`}
-        >
-          {adding ? (
-            <form
-              onSubmit={onAdd}
-              onKeyDown={e => onFormKey(e, resetAdd)}
-              className="flex aspect-square min-w-0 flex-col justify-between gap-1.5 overflow-hidden rounded-2xl border border-indigo-300 bg-white p-2.5 shadow-sm"
-            >
-              <input
-                type="text"
-                inputMode="url"
-                autoFocus
-                required
-                value={url}
-                onChange={e => onUrlChange(e.target.value)}
-                placeholder="Paste a link"
-                aria-label="URL"
-                className={inputClass}
-              />
-              <input
-                type="text"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Title (optional)"
-                aria-label="Title"
-                className={inputClass}
-              />
-              <select
-                value={kind}
-                onChange={e => {
-                  const picked = canvasKindSchema.safeParse(e.target.value);
+        {load === 'ready' && (
+          <>
+            <CanvasBoard
+              ref={boardRef}
+              sections={sections}
+              tilesBySection={tilesBySection}
+              looseTiles={looseTiles}
+              focusId={focusId}
+              renamingId={renamingId}
+              onFocus={onFocus}
+              onOpen={openTile}
+              onMoveTile={moveTile}
+              onMoveSection={(id, to) => changeSection(id, { x: to.x, y: to.y })}
+              onResizeSection={(id, cols) => changeSection(id, { cols })}
+              onStartRename={setRenamingId}
+              onRename={rename}
+              onDeleteSection={deleteSection}
+              onToggleDone={toggleDone}
+              onEdit={setEditing}
+              onDelete={deleteTile}
+            />
 
-                  if (picked.success) setKind(picked.data);
+            {sections.length === 0 && looseTiles.length === 0 && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <p className="text-sm text-slate-500">Add a link, or a section to group links in.</p>
+              </div>
+            )}
+
+            {page && pageSection && (
+              <SectionPage
+                section={pageSection}
+                tiles={pageTiles}
+                from={page.from}
+                closingTo={page.closingTo}
+                onClosed={onPageClosed}
+                onClose={closePage}
+                onDeleteSection={() => deleteSection(pageSection.id)}
+                onOpen={openTile}
+                onReorder={reorderInPage}
+                onToggleDone={toggleDone}
+                onEdit={setEditing}
+                onDelete={deleteTile}
+              />
+            )}
+          </>
+        )}
+
+        {toast && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-20 z-50 flex justify-center px-4">
+            <div role="status" className="pointer-events-auto flex items-center gap-3 rounded-xl bg-slate-900 py-2 pl-4 pr-2 text-xs text-white shadow-lg">
+              <span>{toast.text}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  clearTimeout(toastTimer.current);
+                  toast.undo();
+                  setToast(null);
                 }}
-                aria-label="Kind"
-                className={inputClass}
+                className="rounded-lg px-2.5 py-1 font-semibold text-indigo-300 hover:bg-white/10"
               >
-                {canvasKindSchema.options.map(k => (
-                  <option key={k} value={k}>
-                    {KIND_META[k].label}
-                  </option>
-                ))}
-              </select>
-              <div className="flex gap-1.5">
-                <button
-                  type="submit"
-                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-indigo-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add
-                </button>
+                Undo
+              </button>
+            </div>
+          </div>
+        )}
+
+        {editing && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/20 p-4" onClick={() => setEditing(null)}>
+            <form
+              onSubmit={saveEdit}
+              onClick={e => e.stopPropagation()}
+              onKeyDown={e => {
+                if (e.key === 'Escape') setEditing(null);
+              }}
+              className="flex w-full max-w-sm flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            >
+              <p className="text-sm font-semibold text-slate-900">Edit link</p>
+              <input name="title" defaultValue={editing.title} autoFocus aria-label="Title" maxLength={300} className={inputClass} />
+              <textarea
+                name="note"
+                defaultValue={editing.note}
+                placeholder="Note"
+                aria-label="Note"
+                rows={4}
+                maxLength={5000}
+                className={`${inputClass} resize-none`}
+              />
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={resetAdd}
-                  className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                  onClick={() => setEditing(null)}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
+                <button type="submit" className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
+                  Save
+                </button>
               </div>
             </form>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              className="flex aspect-square min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-slate-300 bg-white text-slate-500 shadow-sm transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600"
-            >
-              <Plus className="h-7 w-7" />
-              <span className="text-sm font-medium">Add</span>
-            </button>
-          )}
-
-          {visible.map(t => {
-            const meta = KIND_META[t.kind];
-            const Icon = meta.icon;
-            const domain = getDomain(t.url);
-            const ytId = t.kind === 'youtube' ? getYouTubeId(t.url) : null;
-            const done = t.status === 'done';
-
-            if (editingId === t.id) {
-              return (
-                <form
-                  key={t.id}
-                  onSubmit={e => {
-                    e.preventDefault();
-                    saveEdit(t);
-                  }}
-                  onKeyDown={e => onFormKey(e, () => setEditingId(null))}
-                  className="flex aspect-square min-w-0 flex-col justify-between gap-1.5 overflow-hidden rounded-2xl border border-indigo-300 bg-white p-2.5 shadow-sm"
-                >
-                  <input
-                    type="text"
-                    autoFocus
-                    value={editTitle}
-                    onChange={e => setEditTitle(e.target.value)}
-                    placeholder="Title"
-                    aria-label="Edit title"
-                    className={inputClass}
-                  />
-                  <textarea
-                    value={editNote}
-                    onChange={e => setEditNote(e.target.value)}
-                    placeholder="Note"
-                    aria-label="Edit note"
-                    className={`${inputClass} min-h-0 flex-1 resize-none`}
-                  />
-                  <div className="flex gap-1.5">
-                    <button
-                      type="submit"
-                      className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-indigo-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(null)}
-                      className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              );
-            }
-
-            return (
-              <article
-                key={t.id}
-                data-tile-id={t.id}
-                onPointerDown={e => startGesture(e, t.id)}
-                onClickCapture={e => {
-                  if (suppressClickRef.current) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }
-                }}
-                onDragStart={e => e.preventDefault()}
-                onContextMenu={e => {
-                  if (draggingRef.current) e.preventDefault();
-                }}
-                className={`group relative aspect-square min-w-0 select-none overflow-hidden rounded-2xl border border-slate-200 bg-white [-webkit-touch-callout:none] ${
-                  dragId === t.id
-                    ? 'z-50 cursor-grabbing touch-none shadow-xl transition-none'
-                    : 'cursor-grab shadow-sm transition hover:shadow-md'
-                }`}
-              >
-                <a
-                  href={t.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  draggable={false}
-                  aria-label={`Open ${t.title}`}
-                  className="absolute inset-0 block"
-                >
-                  <div className={`absolute inset-0 ${done ? 'opacity-60 grayscale' : ''}`}>
-                    {ytId ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={youtubeThumbnail(ytId)}
-                        alt=""
-                        loading="lazy"
-                        draggable={false}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${meta.cover}`}>
-                        <Icon className={`h-14 w-14 ${meta.iconColor}`} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 pb-2.5 pt-10">
-                    <p
-                      className={`line-clamp-2 break-words text-sm font-semibold text-white ${done ? 'line-through' : ''}`}
-                    >
-                      {t.title}
-                    </p>
-                    <div className="mt-0.5 flex items-center gap-1.5">
-                      {domain && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`}
-                          alt=""
-                          loading="lazy"
-                          width={14}
-                          height={14}
-                          draggable={false}
-                          onError={e => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                          className="h-3.5 w-3.5 shrink-0 rounded-sm"
-                        />
-                      )}
-                      <span className="min-w-0 flex-1 truncate text-[11px] text-white/70">{domain}</span>
-                      {t.note && (
-                        <span title={t.note} className="shrink-0 text-white/80">
-                          <StickyNote className="h-3.5 w-3.5" />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </a>
-
-                <span className="pointer-events-none absolute left-2 top-2 inline-flex max-w-[55%] items-center gap-1 truncate rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-700 backdrop-blur">
-                  {meta.label}
-                  {done && <Check className="h-3 w-3 text-emerald-600" aria-label="Done" />}
-                </span>
-
-                <div className="absolute right-2 top-2 flex gap-1 md:opacity-0 md:transition-opacity md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                  <button
-                    type="button"
-                    onClick={e => {
-                      stop(e);
-                      toggleStatus(t);
-                    }}
-                    aria-label={done ? 'Reopen' : 'Mark done'}
-                    title={done ? 'Reopen' : 'Mark done'}
-                    className={actionBtn}
-                  >
-                    {done ? <RotateCcw className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={e => {
-                      stop(e);
-                      startEdit(t);
-                    }}
-                    aria-label="Edit"
-                    title="Edit"
-                    className={actionBtn}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={e => {
-                      stop(e);
-                      remove(t);
-                    }}
-                    aria-label="Delete"
-                    title="Delete"
-                    className={`${actionBtn} hover:text-red-600`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-
-        {load === 'ready' && visible.length === 0 && (
-          <p className="mt-4 text-sm text-slate-500">
-            {tiles.length === 0 ? "Add a video or article you're into right now." : 'No tiles match this filter.'}
-          </p>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

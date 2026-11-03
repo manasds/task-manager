@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { listTiles } from '@/lib/canvas';
+import { listSections, listTiles } from '@/lib/canvas';
 import { ensureMigrated } from '@/lib/db';
 import { getSessionUser } from '@/lib/session';
 
 export const runtime = 'nodejs';
 
-/** GET /api/canvas: this user's tiles in display order. */
+/** GET /api/canvas: this user's tiles in display order, and the section boxes they sit in. */
 export async function GET() {
   try {
     await ensureMigrated();
@@ -15,7 +15,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
-    return NextResponse.json({ tiles: await listTiles(user.id) });
+    const [tiles, sections] = await Promise.all([listTiles(user.id), listSections(user.id)]);
+
+    return NextResponse.json({ tiles, sections });
   } catch (error) {
     console.error(error);
 
