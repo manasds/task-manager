@@ -109,4 +109,14 @@ CREATE TABLE IF NOT EXISTS canvas_sections (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, id)
 );
+
+-- Keys the browser extension saves links with. Only a SHA-256 hash of each key is stored.
+CREATE TABLE IF NOT EXISTS extension_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  extension_id TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_used_at TIMESTAMPTZ
+);
 `;

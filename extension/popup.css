@@ -1,0 +1,55 @@
+* { box-sizing: border-box; }
+body {
+  width: 340px;
+  margin: 0;
+  padding: 12px 14px 14px;
+  font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: #1e293b;
+  background: #fff;
+}
+.hidden { display: none !important; }
+.top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.brand { font-weight: 700; color: #0f172a; }
+.link { margin-left: auto; color: #4f46e5; font-size: 12px; font-weight: 600; text-decoration: none; }
+.link:hover { text-decoration: underline; }
+.lead { margin: 4px 0 12px; color: #475569; }
+.message { margin: 0 0 10px; padding: 6px 8px; border-radius: 8px; background: #fef2f2; color: #b91c1c; font-size: 12px; }
+form, section { display: flex; flex-direction: column; gap: 8px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: #64748b; }
+input, select, textarea {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 400;
+  color: #1e293b;
+  background: #fff;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: #818cf8; box-shadow: 0 0 0 3px #e0e7ff; }
+textarea { resize: none; }
+.url { margin: -4px 0 0; font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1.91 / 1;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f1f5f9, #cbd5e1) center / cover no-repeat;
+  color: #64748b;
+  font-size: 12px;
+  overflow: hidden;
+}
+.cover.has-image span { display: none; }
+button, .as-button { cursor: pointer; font: inherit; border-radius: 8px; padding: 8px 10px; text-align: center; text-decoration: none; }
+.primary { border: 0; background: #4f46e5; color: #fff; font-weight: 600; }
+.primary:hover { background: #4338ca; }
+.primary:disabled { opacity: .6; cursor: default; }
+.secondary { border: 1px solid #e2e8f0; background: #fff; color: #334155; font-weight: 500; }
+.quiet { border: 0; background: none; color: #94a3b8; font-size: 11px; padding: 2px; }
+.quiet:hover { color: #475569; }
+.settings { margin-top: 6px; color: #64748b; font-size: 12px; }
+.settings summary { cursor: pointer; }
+.settings form { flex-direction: row; margin-top: 6px; }
+.done { margin: 6px 0 4px; font-size: 14px; color: #047857; }

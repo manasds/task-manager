@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Tasky Saver",
+  "description": "Save the page you're on, or any link, to your Tasky canvas.",
+  "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0WuOUafIkzkHtJ6ZNzeTUTh0vEuUZ2lMnCTLC/7/KaYuUUQCN7/238WsB+vaB/2LrF8G8ObNYW/I5xKos+09iaNjXncxzNBMZVvWhqQk2lroh263d495z/iNZZ0ANh6/rNrl6tuhGUHrPAoqZgIiPK1+fB7Q5XotH1xQ8vqE3zSwQRHL0aw4J/YXmCdtImfYhwGTz+4zol1O3fLrFRYklli9qKv/ZSLMjhlWi8TdbqIjNjdU5TTSs/Wx9VTYicBhuhu/HqM+G+d5Ef02f3GgOsgfhw4iNL+PDrBnDFN1sZy1J3wDqJQtRhM/LTYsnM9VcxscKnULiIgf9GN6ALYurwIDAQAB",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Save to Tasky",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "identity",
+    "storage",
+    "activeTab",
+    "contextMenus",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://tasky.manasbuilds.me/*",
+    "http://localhost:3000/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
+      "description": "Save this page to Tasky"
+    }
+  }
+}

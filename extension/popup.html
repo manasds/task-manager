@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Save to Tasky</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="top">
+    <img src="icons/32.png" alt="" width="18" height="18" />
+    <span class="brand">Save to Tasky</span>
+    <a id="open-canvas" class="link hidden" href="#" target="_blank" rel="noopener">Open canvas</a>
+  </header>
+
+  <p id="message" class="message hidden" role="status"></p>
+
+  <!-- Signed out -->
+  <section id="signed-out" class="hidden">
+    <p class="lead">Save the page you're on, or any link, to your Tasky canvas.</p>
+    <button id="sign-in" class="primary" type="button">Sign in with Google</button>
+    <details class="settings">
+      <summary>Tasky address</summary>
+      <form id="base-form">
+        <input id="base" type="url" required placeholder="https://tasky.manasbuilds.me" aria-label="Tasky address" />
+        <button class="secondary" type="submit">Use</button>
+      </form>
+    </details>
+  </section>
+
+  <!-- Save form -->
+  <form id="save-form" class="hidden">
+    <div id="cover" class="cover"><span id="cover-domain"></span></div>
+    <label>Title<input id="title" type="text" maxlength="300" /></label>
+    <p id="url" class="url"></p>
+    <label>Section<select id="section"></select></label>
+    <label>Note<textarea id="note" rows="2" maxlength="5000" placeholder="Optional"></textarea></label>
+    <button id="save" class="primary" type="submit">Save to Tasky</button>
+    <button id="sign-out" class="quiet" type="button">Disconnect this browser</button>
+  </form>
+
+  <!-- Saved -->
+  <section id="saved" class="hidden">
+    <p class="done">✓ Saved to <strong id="saved-section"></strong></p>
+    <a id="saved-open" class="primary as-button" href="#" target="_blank" rel="noopener">Open canvas</a>
+  </section>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

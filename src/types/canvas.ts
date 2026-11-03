@@ -48,3 +48,14 @@ export const linkPreviewSchema = z.object({
 });
 
 export type LinkPreview = z.infer<typeof linkPreviewSchema>;
+
+/** What the browser extension sends to save a link. The server fills in anything left out. */
+export const saveLinkSchema = z.object({
+  url: webUrl,
+  title: z.string().trim().max(300).optional(),
+  note: z.string().trim().max(5000).optional(),
+  /** Missing or unknown: the first section, or a new "Links" section when there are none. */
+  sectionId: z.string().min(1).max(200).optional(),
+  /** The page's own preview image, read by the extension; saves a Microlink lookup. */
+  image: webUrl.optional(),
+});

@@ -77,6 +77,16 @@ export async function deleteTile(userId: string, id: string): Promise<void> {
   await pool.query('DELETE FROM canvas_tiles WHERE user_id = $1 AND id = $2', [userId, id]);
 }
 
+/** The highest sort position in a section, or null when it is empty. */
+export async function lastPositionInSection(userId: string, sectionId: string): Promise<number | null> {
+  const result = await pool.query<{ last: number | null }>(
+    'SELECT max(position) AS last FROM canvas_tiles WHERE user_id = $1 AND section_id = $2',
+    [userId, sectionId]
+  );
+
+  return result.rows[0]?.last ?? null;
+}
+
 export async function listSections(userId: string): Promise<CanvasSection[]> {
   const result = await pool.query<DbSection>(
     'SELECT id, name, x, y, cols, created_at FROM canvas_sections WHERE user_id = $1 ORDER BY created_at, id',
