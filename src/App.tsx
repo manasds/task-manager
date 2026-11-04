@@ -209,6 +209,25 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     []
   );
 
+  // Ctrl+N opens a new task. On a Mac the browser keeps Cmd+N for a new window, but Ctrl+N is free.
+  // Typing in a field keeps Ctrl+N's text meaning (next line), and an open task window keeps focus.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.code !== 'KeyN' || e.repeat) return;
+
+      if (isModalOpen || viewingActivityId) return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      e.preventDefault();
+      handleOpenNewTaskModal('backlog');
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isModalOpen, viewingActivityId, handleOpenNewTaskModal]);
+
   const handleEditActivity = useCallback((act: Activity) => {
     setEditingActivity(act);
     setModalDefaultStatus(act.status);
@@ -275,19 +294,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
         : `Focus session: ${act.title}`
     );
   }, [saveTimer, showToast]);
-
-  const handleLogTime = useCallback((minutes: number) => {
-    const timer = timerRef.current;
-
-    if (!timer) return;
-    logMinutes(timer.activityId, minutes);
-    setTimer({
-      ...timer,
-      secondsElapsed: 0,
-      startedAt: timer.isRunning ? new Date().toISOString() : undefined,
-    });
-    showToast(`Logged ${formatMinutes(minutes)} to activity`);
-  }, [logMinutes, showToast]);
 
   const handleStopTimer = useCallback(() => {
     const timer = timerRef.current;
@@ -481,7 +487,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
           activity={activeTimerTask}
           timer={timer}
           onTimerChange={setTimer}
-          onLogTime={handleLogTime}
           onCompleteActivity={handleCompleteActivity}
           onStop={handleStopTimer}
         />
