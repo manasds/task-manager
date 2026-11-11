@@ -15,6 +15,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { useSessionPersistence } from './hooks/useSessionPersistence';
 import { applyRemoteActivities } from './utils/syncPolicy';
+import { finishesTask, mergeTaskEdit, moveToStatus } from './utils/taskTransitions';
 import { createWorkSession, formatMinutes, timerElapsedSeconds } from './utils/workSessions';
 
 // Only one view and usually no modal is on screen, so these load on first use.
@@ -78,6 +79,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
 
       if (update.deletes.length > 0) {
         setTimer((current) => (current && update.deletes.includes(current.activityId) ? null : current));
+        setViewingActivityId((current) => (current && update.deletes.includes(current) ? null : current));
       }
 
       if (update.dailyGoalMinutes !== undefined) setDailyGoalMinutes(update.dailyGoalMinutes);
@@ -156,76 +158,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     setActiveTab(tab);
   }, []);
 
-  const handleUpdateActivity = useCallback((updated: Activity) => {
-    const next = withUpdatedAt(updated);
-    setActivities((prev) => {
-      const exists = prev.some((a) => a.id === next.id);
-
-      if (exists) return prev.map((a) => (a.id === next.id ? next : a));
-
-      return [next, ...prev];
-    });
-  }, []);
-
-  const handleDeleteActivity = useCallback((activityId: string) => {
-    const removed = activitiesRef.current.find((a) => a.id === activityId);
-    setActivities((prev) => prev.filter((a) => a.id !== activityId));
-    setTimer((current) => (current?.activityId === activityId ? null : current));
-    showToast(
-      'Activity deleted',
-      removed
-        ? () => {
-            handleUpdateActivity(removed);
-            dismissToast();
-          }
-        : undefined
-    );
-  }, [showToast, dismissToast, handleUpdateActivity]);
-
-  const handleMoveActivityStatus = useCallback((activityId: string, newStatus: ActivityStatus) => {
-    const now = new Date().toISOString();
-    setActivities((prev) =>
-      prev.map((a) => {
-        if (a.id !== activityId) return a;
-
-        return {
-          ...a,
-          status: newStatus,
-          completedAt: newStatus === 'completed' ? now : undefined,
-          updatedAt: now,
-        };
-      })
-    );
-  }, []);
-
-  const handleOpenNewTaskModal = useCallback(
-    (initialStatus: ActivityStatus = 'backlog', initialTime?: string, initialDate?: string) => {
-      setEditingActivity(null);
-      setModalDefaultStatus(initialStatus);
-      setModalDefaultTime(initialTime);
-      setModalDefaultDate(initialDate);
-      setIsModalOpen(true);
-    },
-    []
-  );
-
-  const handleEditActivity = useCallback((act: Activity) => {
-    setEditingActivity(act);
-    setModalDefaultStatus(act.status);
-    setModalDefaultTime(act.scheduledTime);
-    setIsModalOpen(true);
-  }, []);
-
-  const handleViewActivity = useCallback((act: Activity) => setViewingActivityId(act.id), []);
-
-  const handleCreateActivity = useCallback(
-    (date: string, time?: string) =>
-      handleOpenNewTaskModal(date === getTodayDateString() ? 'in_progress' : 'backlog', time, date),
-    [handleOpenNewTaskModal]
-  );
-
-  const viewingActivity = viewingActivityId ? activities.find((a) => a.id === viewingActivityId) : undefined;
-
   /** Add a work session ending now to an activity. */
   const logMinutes = useCallback((activityId: string, minutes: number) => {
     const now = new Date().toISOString();
@@ -256,6 +188,108 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     [logMinutes]
   );
 
+  /** A task just finished, however it was done: end its focus timer and save the time. */
+  const endTimerOnFinish = useCallback(
+    (activityId: string) => {
+      const timer = timerRef.current;
+
+      if (timer?.activityId !== activityId) return;
+      const saved = saveTimer(timer);
+      setTimer(null);
+      showToast(saved > 0 ? `Activity completed · saved ${formatMinutes(saved)}` : 'Activity completed');
+    },
+    [saveTimer, showToast]
+  );
+
+  const handleUpdateActivity = useCallback((updated: Activity) => {
+    const previous = activitiesRef.current.find((a) => a.id === updated.id);
+    const next = withUpdatedAt(updated);
+    setActivities((prev) => {
+      const exists = prev.some((a) => a.id === next.id);
+
+      if (exists) return prev.map((a) => (a.id === next.id ? next : a));
+
+      return [next, ...prev];
+    });
+
+    if (finishesTask(previous, next)) endTimerOnFinish(next.id);
+  }, [endTimerOnFinish]);
+
+  const handleDeleteActivity = useCallback((activityId: string) => {
+    const removed = activitiesRef.current.find((a) => a.id === activityId);
+    const removedTimer = timerRef.current?.activityId === activityId ? timerRef.current : null;
+    setActivities((prev) => prev.filter((a) => a.id !== activityId));
+    setTimer((current) => (current?.activityId === activityId ? null : current));
+    showToast(
+      'Activity deleted',
+      removed
+        ? () => {
+            handleUpdateActivity(removed);
+
+            // Unless another focus session started in the meantime, pick the timer back up.
+            if (removedTimer) setTimer((current) => current ?? removedTimer);
+            dismissToast();
+          }
+        : undefined
+    );
+  }, [showToast, dismissToast, handleUpdateActivity]);
+
+  const handleMoveActivityStatus = useCallback((activityId: string, newStatus: ActivityStatus) => {
+    const now = new Date().toISOString();
+    const activity = activitiesRef.current.find((a) => a.id === activityId);
+    setActivities((prev) => prev.map((a) => (a.id === activityId ? moveToStatus(a, newStatus, now) : a)));
+
+    if (activity && finishesTask(activity, moveToStatus(activity, newStatus, now))) endTimerOnFinish(activityId);
+  }, [endTimerOnFinish]);
+
+  const handleOpenNewTaskModal = useCallback(
+    (initialStatus: ActivityStatus = 'backlog', initialTime?: string, initialDate?: string) => {
+      setEditingActivity(null);
+      setModalDefaultStatus(initialStatus);
+      setModalDefaultTime(initialTime);
+      setModalDefaultDate(initialDate);
+      setIsModalOpen(true);
+    },
+    []
+  );
+
+  const viewingActivity = viewingActivityId ? activities.find((a) => a.id === viewingActivityId) : undefined;
+
+  // Ctrl+N opens a new task. On a Mac the browser keeps Cmd+N for a new window, but Ctrl+N is free.
+  // Typing in a field keeps Ctrl+N's text meaning (next line), and an open task window keeps focus.
+  const isViewingTask = viewingActivity !== undefined;
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.code !== 'KeyN' || e.repeat) return;
+
+      if (isModalOpen || isViewingTask) return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      e.preventDefault();
+      handleOpenNewTaskModal('backlog');
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isModalOpen, isViewingTask, handleOpenNewTaskModal]);
+
+  const handleEditActivity = useCallback((act: Activity) => {
+    setEditingActivity(act);
+    setModalDefaultStatus(act.status);
+    setModalDefaultTime(act.scheduledTime);
+    setIsModalOpen(true);
+  }, []);
+
+  const handleViewActivity = useCallback((act: Activity) => setViewingActivityId(act.id), []);
+
+  const handleCreateActivity = useCallback(
+    (date: string, time?: string) =>
+      handleOpenNewTaskModal(date === getTodayDateString() ? 'in_progress' : 'backlog', time, date),
+    [handleOpenNewTaskModal]
+  );
+
   const handleStartFocus = useCallback((act: Activity) => {
     const timer = timerRef.current;
     const activeTimerTask = timer ? activitiesRef.current.find((a) => a.id === timer.activityId) ?? null : null;
@@ -276,19 +310,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     );
   }, [saveTimer, showToast]);
 
-  const handleLogTime = useCallback((minutes: number) => {
-    const timer = timerRef.current;
-
-    if (!timer) return;
-    logMinutes(timer.activityId, minutes);
-    setTimer({
-      ...timer,
-      secondsElapsed: 0,
-      startedAt: timer.isRunning ? new Date().toISOString() : undefined,
-    });
-    showToast(`Logged ${formatMinutes(minutes)} to activity`);
-  }, [logMinutes, showToast]);
-
   const handleStopTimer = useCallback(() => {
     const timer = timerRef.current;
 
@@ -298,25 +319,10 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     showToast(saved > 0 ? `Focus stopped · saved ${formatMinutes(saved)}` : 'Focus stopped · under a minute, nothing logged');
   }, [saveTimer, showToast]);
 
-  const handleCompleteActivity = useCallback((activityId: string) => {
-    const timer = timerRef.current;
-    const saved = timer?.activityId === activityId ? saveTimer(timer) : 0;
-    const now = new Date().toISOString();
-    setActivities((prev) =>
-      prev.map((a) => {
-        if (a.id !== activityId) return a;
-
-        return {
-          ...a,
-          status: 'completed',
-          completedAt: now,
-          updatedAt: now,
-        };
-      })
-    );
-    setTimer(null);
-    showToast(saved > 0 ? `Activity completed · saved ${formatMinutes(saved)}` : 'Activity completed');
-  }, [saveTimer, showToast]);
+  const handleCompleteActivity = useCallback(
+    (activityId: string) => handleMoveActivityStatus(activityId, 'completed'),
+    [handleMoveActivityStatus]
+  );
 
   const handleExportData = () => {
     const dataStr =
@@ -405,7 +411,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
         {activeTab === 'board' && (
           <BoardView
             activities={activities}
-            onUpdateActivity={handleUpdateActivity}
             onDeleteActivity={handleDeleteActivity}
             onMoveActivityStatus={handleMoveActivityStatus}
             onStartFocus={handleStartFocus}
@@ -454,7 +459,10 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       {isModalOpen && (
         <TaskModal
           onClose={() => setIsModalOpen(false)}
-          onSave={handleUpdateActivity}
+          onSave={(edited) => {
+            const latest = editingActivity && activitiesRef.current.find((a) => a.id === editingActivity.id);
+            handleUpdateActivity(editingActivity && latest ? mergeTaskEdit(editingActivity, edited, latest) : edited);
+          }}
           initialActivity={editingActivity}
           defaultStatus={modalDefaultStatus}
           defaultTime={modalDefaultTime}
@@ -481,7 +489,6 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
           activity={activeTimerTask}
           timer={timer}
           onTimerChange={setTimer}
-          onLogTime={handleLogTime}
           onCompleteActivity={handleCompleteActivity}
           onStop={handleStopTimer}
         />

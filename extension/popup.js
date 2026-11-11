@@ -40,31 +40,66 @@ async function readPage(tab) {
   }
 }
 
-async function showForm(tab) {
+function domainOf(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+/** Show a preview image on the cover, or the domain when there is none. */
+function setCover(url, image) {
+  const cover = $('cover');
+  $('cover-domain').textContent = domainOf(url) || 'Paste a link';
+
+  if (/^https?:\/\//.test(image || '')) {
+    cover.style.backgroundImage = `url("${image.replace(/"/g, '%22')}")`;
+    cover.classList.add('has-image');
+    cover.dataset.image = image;
+  } else {
+    cover.style.backgroundImage = '';
+    cover.classList.remove('has-image');
+    delete cover.dataset.image;
+  }
+}
+
+/** A link picked with right-click "Save link to Tasky…" just before the popup opened. */
+async function takePendingLink() {
+  try {
+    const { pendingLink } = await chrome.storage.session.get('pendingLink');
+    await chrome.storage.session.remove('pendingLink');
+
+    return pendingLink && Date.now() - pendingLink.at < 60_000 ? pendingLink : null;
+  } catch {
+    return null;
+  }
+}
+
+// What the form was filled with, so a different pasted link drops the page's title and image.
+let prefilled = { url: '', title: '' };
+
+/** Fill the form with a link: the one right-clicked, else the page you're on, else empty to paste into. */
+async function showForm(tab, pending) {
   const { base, lastSection } = await getSettings();
   $('open-canvas').href = `${base}/canvas`;
   $('open-canvas').classList.remove('hidden');
 
-  if (!canSave(tab?.url)) {
-    show('save-form');
-    $('save').disabled = true;
-    say("This page can't be saved. Open a website and try again.");
+  let link = { url: '', title: '', image: '' };
 
-    return;
+  if (pending) link = { url: pending.url, title: pending.title || '', image: '' };
+  else if (canSave(tab?.url)) {
+    const page = await readPage(tab);
+    link = { url: tab.url, title: page.title || tab.title || domainOf(tab.url), image: page.image };
   }
 
-  const [page, sections] = await Promise.all([readPage(tab), listSections()]);
-  const domain = new URL(tab.url).hostname.replace(/^www\./, '');
+  const sections = await listSections();
 
-  $('title').value = (page.title || tab.title || domain).slice(0, 300);
-  $('url').textContent = tab.url;
-  $('cover-domain').textContent = domain;
-
-  if (/^https?:\/\//.test(page.image)) {
-    $('cover').style.backgroundImage = `url("${page.image.replace(/"/g, '%22')}")`;
-    $('cover').classList.add('has-image');
-    $('cover').dataset.image = page.image;
-  }
+  prefilled = { url: link.url, title: link.title.slice(0, 300) };
+  $('url').value = link.url;
+  $('title').value = prefilled.title;
+  $('title').placeholder = 'Filled in from the page if left empty';
+  setCover(link.url, link.image);
 
   const select = $('section');
   select.replaceChildren();
@@ -74,13 +109,27 @@ async function showForm(tab) {
   for (const s of sections) select.append(new Option(s.name, s.id));
   select.value = sections.some(s => s.id === lastSection) ? lastSection : (sections[0]?.id ?? '');
   show('save-form');
-  $('title').focus();
-  $('title').select();
+
+  const first = link.url ? $('title') : $('url');
+  first.focus();
+  first.select();
 }
+
+$('url').addEventListener('input', () => {
+  const url = $('url').value.trim();
+
+  if (url === prefilled.url) return;
+
+  // A different link: the page's title and image no longer belong to it.
+  if ($('title').value === prefilled.title) $('title').value = '';
+  prefilled = { url, title: '' };
+  setCover(url, '');
+});
 
 async function start() {
   say('');
   const { token } = await getSettings();
+  const pending = await takePendingLink();
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (!token) {
@@ -90,12 +139,14 @@ async function start() {
   }
 
   try {
-    await showForm(tab);
+    await showForm(tab, pending);
   } catch (error) {
     if (error instanceof SignedOutError) show('signed-out');
     else {
-      show('signed-out');
-      say(error.message);
+      // Still signed in, just can't reach Tasky right now.
+      show('save-form');
+      $('save').disabled = true;
+      say('Could not reach Tasky. Check your connection and try again.');
     }
   }
 }
@@ -122,7 +173,14 @@ $('sign-out').addEventListener('click', async () => {
 
 $('save-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const url = $('url').value.trim();
+
+  if (!canSave(url)) {
+    say('Enter a web link that starts with http:// or https://');
+    $('url').focus();
+
+    return;
+  }
 
   $('save').disabled = true;
   $('save').textContent = 'Saving…';
@@ -130,7 +188,7 @@ $('save-form').addEventListener('submit', async e => {
 
   try {
     const saved = await saveLink({
-      url: tab.url,
+      url,
       title: $('title').value.trim() || undefined,
       note: $('note').value.trim() || undefined,
       sectionId: $('section').value || undefined,

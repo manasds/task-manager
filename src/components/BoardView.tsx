@@ -21,7 +21,6 @@ import { isActivityOnDate } from '../utils/workSessions';
 
 interface BoardViewProps {
   activities: Activity[];
-  onUpdateActivity: (activity: Activity) => void;
   onDeleteActivity: (activityId: string) => void;
   onMoveActivityStatus: (activityId: string, newStatus: ActivityStatus, targetIndex?: number) => void;
   onStartFocus: (activity: Activity) => void;
@@ -34,7 +33,6 @@ interface BoardViewProps {
 
 const BoardViewBase: React.FC<BoardViewProps> = ({
   activities,
-  onUpdateActivity,
   onDeleteActivity,
   onMoveActivityStatus,
   onStartFocus,
@@ -142,20 +140,8 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
 
     if (!act) return;
 
-    if (act.status === 'completed') {
-      onUpdateActivity({
-        ...act,
-        status: 'in_progress',
-        completedAt: undefined,
-      });
-    } else {
-      onUpdateActivity({
-        ...act,
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-      });
-    }
-  }, [onUpdateActivity]);
+    onMoveActivityStatus(activityId, act.status === 'completed' ? 'in_progress' : 'completed');
+  }, [onMoveActivityStatus]);
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">

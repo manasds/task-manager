@@ -3,7 +3,9 @@
 A browser extension that saves the page you're on, or any link, to your Tasky canvas.
 
 - **Toolbar button** (or <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>): pick a section, edit the title, add a note, save.
-- **Right-click** a page or a link: *Save page to Tasky* / *Save link to Tasky* puts it in the section you used last.
+  The link starts as the page you're on; paste any other link over it to save that instead.
+- **Right-click a link** in an article: *Save link to Tasky…* opens the same popup with that link filled in.
+- **Right-click a page**: *Save page to Tasky* puts it straight in the section you used last.
 - **Sign in with Google** through Tasky. The extension gets its own key, which Tasky stores only as a hash; *Disconnect this browser* revokes it.
 - The page's own preview image is sent along, so saving from the extension doesn't use the Microlink preview allowance.
 

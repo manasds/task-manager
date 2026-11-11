@@ -205,17 +205,21 @@ export function useSessionPersistence(
       const previous = documentRef.current;
       documentRef.current = document;
       const user = userRef.current;
+      let storageFailed = false;
 
-      try {
-        saveLocalDocument(user?.id ?? GUEST_SCOPE, document);
-      } catch {
+      const reportStorageFailure = () => {
+        storageFailed = true;
         setState((prev) => ({
           ...prev,
           lastError: 'This device could not save locally (storage full?)',
           phase: 'error',
         }));
+      };
 
-        return;
+      try {
+        saveLocalDocument(user?.id ?? GUEST_SCOPE, document);
+      } catch {
+        reportStorageFailure();
       }
 
       if (!markDirty || !user) return;
@@ -223,11 +227,18 @@ export function useSessionPersistence(
       // Tab/date changes rewrite the doc but leave tasks and goal untouched; nothing to diff.
       if (previous.activities === document.activities && previous.dailyGoalMinutes === document.dailyGoalMinutes) return;
 
+      // Still record the edit when storage failed: `previous` has moved on, so it would never be diffed again.
       const meta = recordLocalEdits(metaRef.current, previous, document);
 
       if (meta === metaRef.current) return;
-      saveMeta(meta);
-      setState((prev) => ({ ...prev, phase: prev.phase === 'flushing' ? prev.phase : 'dirty' }));
+
+      try {
+        saveMeta(meta);
+      } catch {
+        reportStorageFailure();
+      }
+
+      if (!storageFailed) setState((prev) => ({ ...prev, phase: prev.phase === 'flushing' ? prev.phase : 'dirty' }));
 
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
       debounceRef.current = window.setTimeout(() => {

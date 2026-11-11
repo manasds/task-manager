@@ -195,6 +195,10 @@ export default function CanvasView() {
   const sectionsRef = useRef<CanvasSection[]>([]);
   /** Writes run one after another so the server sees edits in the order they were made. */
   const writesRef = useRef<Promise<void>>(Promise.resolve());
+  /** Writes queued or running. The server's copy lacks their edits, so it must not replace the screen yet. */
+  const pendingWritesRef = useRef(0);
+  /** A write failed: show the server's copy once the queue has drained. */
+  const reloadAfterWritesRef = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const placedRef = useRef(false);
   const backfilledRef = useRef(false);
@@ -203,6 +207,14 @@ export default function CanvasView() {
   const reload = useCallback(async (): Promise<boolean> => {
     try {
       const saved = await fetchCanvas();
+
+      // An edit was made while this was loading; try again once it has saved.
+      if (pendingWritesRef.current > 0) {
+        reloadAfterWritesRef.current = true;
+
+        return true;
+      }
+
       tilesRef.current = saved.tiles;
       sectionsRef.current = saved.sections;
       setTiles(saved.tiles);
@@ -228,19 +240,29 @@ export default function CanvasView() {
 
       if (!save) return;
       setError(null);
-      writesRef.current = writesRef.current.then(save).then(
-        () => undefined,
-        async err => {
-          if (err instanceof ApiError && err.status === 401) {
-            setLoad('signed-out');
+      pendingWritesRef.current += 1;
+      writesRef.current = writesRef.current
+        .then(save)
+        .then(
+          () => undefined,
+          err => {
+            if (err instanceof ApiError && err.status === 401) {
+              setLoad('signed-out');
 
-            return;
+              return;
+            }
+
+            setError('Could not save that change. Showing what is saved.');
+            reloadAfterWritesRef.current = true;
           }
+        )
+        .then(async () => {
+          pendingWritesRef.current -= 1;
 
-          setError('Could not save that change. Showing what is saved.');
+          if (pendingWritesRef.current > 0 || !reloadAfterWritesRef.current) return;
+          reloadAfterWritesRef.current = false;
           await reload();
-        }
-      );
+        });
     },
     [reload]
   );

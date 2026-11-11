@@ -139,6 +139,8 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
   const fittedRef = useRef(true);
   const animRef = useRef(0);
   const gestureRef = useRef<Gesture | null>(null);
+  /** The pointer that started the current gesture; other fingers are ignored until it ends. */
+  const gesturePointerRef = useRef<number | null>(null);
   const dragPosRef = useRef<Point>({ x: 0, y: 0 });
 
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -358,7 +360,8 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || !(e.target instanceof Element) || e.target.closest('button, input')) return;
+    if (gestureRef.current || e.button !== 0 || !(e.target instanceof Element) || e.target.closest('button, input')) return;
+    gesturePointerRef.current = e.pointerId;
     cancelAnimationFrame(animRef.current);
     const sx = e.clientX;
     const sy = e.clientY;
@@ -392,7 +395,7 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const g = gestureRef.current;
 
-    if (!g) return;
+    if (!g || e.pointerId !== gesturePointerRef.current) return;
     const dx = e.clientX - g.sx;
     const dy = g.type === 'resize' ? 0 : e.clientY - g.sy;
 
@@ -434,7 +437,18 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
     }
   };
 
-  const onPointerUp = () => {
+  /** The browser took the pointer away: put everything back without opening or moving anything. */
+  const onPointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerId !== gesturePointerRef.current) return;
+    gestureRef.current = null;
+    viewportRef.current?.classList.remove('cursor-grabbing');
+    setDrag(null);
+    setMoving(null);
+    setResizing(null);
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerId !== gesturePointerRef.current) return;
     const g = gestureRef.current;
     gestureRef.current = null;
     viewportRef.current?.classList.remove('cursor-grabbing');
@@ -487,7 +501,7 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={onPointerCancel}
         onDoubleClick={onDoubleClick}
       >
         <div ref={worldRef} className="absolute left-0 top-0 origin-top-left">

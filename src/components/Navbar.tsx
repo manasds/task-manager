@@ -253,6 +253,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => onOpenNewTaskModal()}
+            title="New task (Ctrl+N)"
             className="hidden sm:flex items-center gap-1 h-9 pl-2.5 pr-3 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />

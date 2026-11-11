@@ -3,7 +3,6 @@ import {
   Play,
   Pause,
   Plus,
-  Square,
   Check
 } from 'lucide-react';
 import { Activity, CATEGORIES } from '../types/activity';
@@ -15,8 +14,6 @@ interface FocusTimerBarProps {
   activity: Activity;
   timer: FocusTimerSnapshot;
   onTimerChange: (timer: FocusTimerSnapshot) => void;
-  /** Save the elapsed minutes as a work session and reset the clock. */
-  onLogTime: (minutes: number) => void;
   onCompleteActivity: (activityId: string) => void;
   /** Stop the timer, saving any elapsed time. */
   onStop: () => void;
@@ -40,7 +37,6 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
   activity,
   timer,
   onTimerChange,
-  onLogTime,
   onCompleteActivity,
   onStop,
 }) => {
@@ -76,10 +72,6 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
 
   const handleAddFiveMinutes = () => {
     onTimerChange({ ...timer, secondsElapsed: timer.secondsElapsed + 300 });
-  };
-
-  const handleCommitLoggedTime = () => {
-    onLogTime(pendingMinutes);
   };
 
   const handleCompleteAndLog = () => {
@@ -181,35 +173,24 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
-              {secondsElapsed >= 30 && (
-                <button
-                  onClick={handleCommitLoggedTime}
-                  className={`${quietButton} px-2.5 text-xs font-semibold whitespace-nowrap tabular-nums`}
-                  title="Save elapsed minutes and keep focusing"
-                >
-                  Log {formatMinutes(pendingMinutes)}
-                </button>
-              )}
+              <button
+                onClick={onStop}
+                className={`${quietButton} px-2.5 text-xs font-semibold whitespace-nowrap tabular-nums`}
+                title="Stop the timer and save time"
+              >
+                {secondsElapsed >= 30 ? `Log ${formatMinutes(pendingMinutes)}` : 'Log'}
+              </button>
 
               {!isCompleted && (
                 <button
                   onClick={handleCompleteAndLog}
-                  className="min-h-11 flex items-center gap-1.5 px-3.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl transition-colors whitespace-nowrap active:scale-95"
-                  title="Save time and mark activity completed"
+                  className={`${controlButton} gap-1.5 px-2.5 text-xs font-semibold text-slate-400 hover:text-emerald-300 hover:bg-white/10 whitespace-nowrap`}
+                  title="Finish the task: save time and mark it done"
                 >
-                  <Check className="w-4 h-4 stroke-[2.5]" />
-                  Done
+                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  Mark done
                 </button>
               )}
-
-              <button
-                onClick={onStop}
-                className={`${controlButton} text-slate-400 hover:text-white hover:bg-white/10`}
-                title="Stop and save time"
-                aria-label="Stop and save time"
-              >
-                <Square className="w-3.5 h-3.5 fill-current" />
-              </button>
             </div>
           </div>
         </div>
