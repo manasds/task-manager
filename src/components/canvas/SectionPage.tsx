@@ -209,12 +209,22 @@ export default function SectionPage(props: Props) {
       setDrag({ ...current, index, x: px - gx, y: py - gy });
     };
 
-    const onUp = () => {
+    const stopListening = () => {
       clearTimeout(hold);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('pointercancel', onCancel);
       window.removeEventListener('touchmove', blockScroll);
+    };
+
+    // The browser took the pointer away: put the card back without opening or moving anything.
+    const onCancel = () => {
+      stopListening();
+      setDrag(null);
+    };
+
+    const onUp = () => {
+      stopListening();
 
       if (started) {
         const current = dragRef.current;
@@ -228,7 +238,7 @@ export default function SectionPage(props: Props) {
 
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('pointercancel', onCancel);
     window.addEventListener('touchmove', blockScroll, { passive: false });
 
     if (touch) hold = setTimeout(begin, TOUCH_HOLD_MS);

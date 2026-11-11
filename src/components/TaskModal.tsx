@@ -116,7 +116,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   const pendingLogMinutes = parseInt(logMinutes, 10) || 0;
-  const target = !initialActivity ? doingTasks.find((t) => t.id === logTargetId) : undefined;
+  // The "Log time to" choice is only on the Log Time tab, so it only applies there.
+  const target = !initialActivity && tab === "log" ? doingTasks.find((t) => t.id === logTargetId) : undefined;
   const targetSessions = target?.workSessions ?? [];
   const shownSessions = target ? [...targetSessions, ...workSessions] : workSessions;
   const loggedTotal = totalSessionMinutes(shownSessions);
