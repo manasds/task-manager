@@ -26,7 +26,7 @@ export interface DayAgendaProps {
   onNextDay: () => void;
 }
 
-const NOW_COLOR = '#c2410c';
+const NOW_COLOR = 'var(--now)';
 const QUICK_TIMES = ['09:00', '13:00', '16:00'];
 
 const TIME_BUTTON_CLASS =
@@ -48,7 +48,7 @@ function AgendaRow({
 
   const cardStyle: React.CSSProperties = logged
     ? { background: theme.fillSoft, border: `1.5px dashed ${theme.border}` }
-    : { background: theme.fill, boxShadow: focusing ? 'inset 0 0 0 2px #6366f1' : undefined };
+    : { background: theme.fill, boxShadow: focusing ? 'inset 0 0 0 2px var(--cat-build)' : undefined };
 
   return (
     <button

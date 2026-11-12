@@ -22,21 +22,21 @@ export interface CalendarTypeTheme {
 export const CALENDAR_TYPES: Record<CalendarType, CalendarTypeTheme> = {
   build: {
     label: CATEGORIES.build.label,
-    dot: '#818cf8',
-    fill: '#e0e7ff',
-    fillSoft: CATEGORIES.build.lightBg,
-    border: '#a5b4fc',
+    dot: 'var(--cal-build-dot)',
+    fill: 'var(--cal-build-fill)',
+    fillSoft: 'var(--cal-build-soft)',
+    border: 'var(--cal-build-border)',
     text: CATEGORIES.build.textColor,
-    textMuted: '#5b61a8',
+    textMuted: 'var(--cal-build-muted)',
   },
   learn: {
     label: CATEGORIES.learn.label,
-    dot: '#a78bfa',
-    fill: '#ede9fe',
-    fillSoft: CATEGORIES.learn.lightBg,
-    border: '#c4b5fd',
+    dot: 'var(--cal-learn-dot)',
+    fill: 'var(--cal-learn-fill)',
+    fillSoft: 'var(--cal-learn-soft)',
+    border: 'var(--cal-learn-border)',
     text: CATEGORIES.learn.textColor,
-    textMuted: '#7a5aa8',
+    textMuted: 'var(--cal-learn-muted)',
   },
 };
 

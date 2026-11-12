@@ -331,7 +331,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     cy="50"
                     r="40"
                     fill="transparent"
-                    stroke="#f1f5f9"
+                    style={{ stroke: 'var(--chart-track)' }}
                     strokeWidth="9"
                   />
                   <circle
@@ -339,7 +339,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     cy="50"
                     r="40"
                     fill="transparent"
-                    stroke="#4f46e5"
+                    style={{ stroke: 'var(--cat-build)' }}
                     strokeWidth="9"
                     strokeDasharray={2 * Math.PI * 40}
                     strokeDashoffset={2 * Math.PI * 40 * (1 - todayGoalPercent / 100)}
@@ -429,7 +429,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                           key={slice.category}
                           d={path}
                           fill="none"
-                          stroke={slice.color}
+                          style={{ stroke: slice.color }}
                           strokeWidth={isHovered ? 26 : 22}
                           strokeLinecap="round"
                           className="transition-all duration-200 cursor-pointer"
