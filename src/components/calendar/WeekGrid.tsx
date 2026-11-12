@@ -31,7 +31,7 @@ const LANE_GAP = 4;
 const DAY_CARD_HEIGHT = 112;
 
 /** Hour lines drawn as the row's background, so they line up with the cards for free. */
-const HOUR_LINES = `repeating-linear-gradient(to right, rgb(226 232 240 / 0.9) 0 1px, transparent 1px ${HOUR_WIDTH}px)`;
+const HOUR_LINES = `repeating-linear-gradient(to right, var(--grid-line) 0 1px, transparent 1px ${HOUR_WIDTH}px)`;
 
 const NO_ITEMS: CalendarItem[] = [];
 
@@ -285,7 +285,7 @@ export function WeekGrid({
             ))}
             {nowInRange && (
               <span
-                className="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-[5px] bg-[#c2410c] px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white"
+                className="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-[5px] bg-[var(--now)] px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white"
                 style={{ left: TIME_PAD + nowLeft }}
               >
                 {format(now, 'HH:mm')}
@@ -314,7 +314,7 @@ export function WeekGrid({
           ))}
           {nowInRange && (
             <div
-              className="pointer-events-none absolute inset-y-0 z-10 w-[2px] -translate-x-1/2 bg-[#c2410c]"
+              className="pointer-events-none absolute inset-y-0 z-10 w-[2px] -translate-x-1/2 bg-[var(--now)]"
               style={{ left: timeOrigin + nowLeft }}
             />
           )}

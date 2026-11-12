@@ -14,7 +14,7 @@ const FOCUS = 'outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
 
 export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority, onClose }: CalendarSidebarFiltersProps) {
   return (
-    <nav aria-label="Calendar sidebar" className="flex h-full flex-col bg-[#f8fafc] px-3 py-4 text-slate-900">
+    <nav aria-label="Calendar sidebar" className="flex h-full flex-col bg-[var(--cal-bg)] px-3 py-4 text-slate-900">
       <div className="flex items-center justify-between pl-3">
         <h3 className="text-[13px] text-slate-500">Types</h3>
         <button
@@ -47,7 +47,7 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
                   style={
                     on
                       ? { backgroundColor: color, border: `1.5px solid ${color}` }
-                      : { backgroundColor: '#fff', border: `1.5px solid ${color}` }
+                      : { backgroundColor: 'var(--surface)', border: `1.5px solid ${color}` }
                   }
                 >
                   {on && <Check className="h-3 w-3 text-white" strokeWidth={3} />}

@@ -1,6 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { Plus, Download, Upload, MoreHorizontal, LayoutGrid, Smartphone } from 'lucide-react';
+import { Plus, Download, Upload, MoreHorizontal, LayoutGrid, Smartphone, Sun, Moon, Monitor } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { useTheme, type ThemePreference } from '../hooks/useTheme';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { CloudUser } from '../types/document';
 import { SyncPhase } from '../hooks/useSessionPersistence';
@@ -27,6 +29,42 @@ const SYNC_DOT: Record<SyncPhase, { color: string; label: string; detail: string
 const menuItemClass =
   'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-100';
 
+const THEME_OPTIONS: { id: ThemePreference; label: string; icon: LucideIcon }[] = [
+  { id: 'light', label: 'Light', icon: Sun },
+  { id: 'dark', label: 'Dark', icon: Moon },
+  { id: 'system', label: 'System', icon: Monitor },
+];
+
+function ThemeSwitch({ preference, setPreference }: ReturnType<typeof useTheme>) {
+  return (
+    <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+      <span className="text-sm text-slate-700">Theme</span>
+      <div role="radiogroup" aria-label="Theme" className="flex rounded-lg bg-slate-100 p-0.5">
+        {THEME_OPTIONS.map(({ id, label, icon: Icon }) => {
+          const active = preference === id;
+
+          return (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={label}
+              title={label}
+              onClick={() => setPreference(id)}
+              className={`flex size-7 pointer-coarse:size-9 items-center justify-center rounded-md transition-colors ${
+                active ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function UtilityMenu({
   onExportData,
   onImportData,
@@ -46,6 +84,8 @@ function UtilityMenu({
 }) {
   const [open, setOpen] = React.useState(false);
   const pwa = usePWAInstall();
+  // Held here, not in the switch, so "System" keeps following the OS while the menu is closed.
+  const theme = useTheme();
   const menuRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -134,6 +174,8 @@ function UtilityMenu({
             <Upload className="w-3.5 h-3.5 text-slate-400" />
             Import
           </button>
+          <div className="my-1 border-t border-slate-100" />
+          <ThemeSwitch {...theme} />
           {!pwa.isInstalled && (pwa.isInstallable || pwa.isIOS) && (
             <>
               <div className="my-1 border-t border-slate-100" />

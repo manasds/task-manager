@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { X, Pencil, CalendarDays, Clock, Timer, ListChecks } from "lucide-react";
+import { X, Pencil, CalendarDays, Clock, Timer, CheckCircle2, Circle } from "lucide-react";
 import { Activity, CATEGORIES, PRIORITY_CONFIG, STATUS_COLUMNS } from "../types/activity";
 import { formatMinutes, parseLocalDate } from "../utils/workSessions";
 
 interface TaskDetailModalProps {
   activity: Activity;
-  /** Saves edited notes; called on close only if they changed. */
+  /** Saves edited notes (on close, only if changed) and checklist ticks (immediately). */
   onSave: (activity: Activity) => void;
   onClose: () => void;
   /** Open the full edit form instead. */
@@ -35,7 +35,7 @@ function Detail({ icon: Icon, label, children }: { icon: LucideIcon; label: stri
 const iconButton =
   "flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 outline-hidden hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-400 transition-colors";
 
-/** Read-only view of a task. Only the notes can be edited here. */
+/** Quick view of a task. Notes and checklist ticks can be edited here; everything else opens the full form. */
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSave, onClose, onEdit }) => {
   const [notes, setNotes] = useState(activity.description ?? "");
   const category = CATEGORIES[activity.category];
@@ -47,6 +47,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
     const trimmed = notes.trim();
 
     if (trimmed !== (activity.description ?? "")) onSave({ ...activity, description: trimmed || undefined });
+  };
+
+  const toggleSubtask = (id: string) => {
+    onSave({
+      ...activity,
+      subtasks: activity.subtasks.map((s) => (s.id === id ? { ...s, completed: !s.completed } : s)),
+    });
   };
 
   const close = () => {
@@ -139,15 +146,43 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
               {formatMinutes(activity.actualMinutes)}
               <span className="text-slate-400"> of {formatMinutes(activity.estimatedMinutes)}</span>
             </Detail>
-            {activity.subtasks.length > 0 && (
-              <Detail icon={ListChecks} label="Checklist">
-                {doneCount}/{activity.subtasks.length} done
-              </Detail>
-            )}
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 flex flex-col px-5 sm:px-6 pt-4 pb-5 mt-4 border-t border-slate-100">
+        {activity.subtasks.length > 0 && (
+          <div className="px-5 sm:px-6 pt-4 mt-4 border-t border-slate-100">
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700">Checklist</span>
+              <span className="text-[11px] font-medium text-slate-400 tabular-nums">
+                {doneCount}/{activity.subtasks.length} done
+              </span>
+            </div>
+            <ul className="-mx-2 max-h-44 overflow-y-auto">
+              {activity.subtasks.map((sub) => (
+                <li key={sub.id}>
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={sub.completed}
+                    onClick={() => toggleSubtask(sub.id)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2 min-h-9 text-left hover:bg-slate-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-400 transition-colors"
+                  >
+                    {sub.completed ? (
+                      <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+                    ) : (
+                      <Circle className="size-4 shrink-0 text-slate-300" />
+                    )}
+                    <span className={`min-w-0 truncate text-sm ${sub.completed ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                      {sub.title}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className={`flex-1 min-h-0 flex flex-col px-5 sm:px-6 pt-4 pb-5 ${activity.subtasks.length > 0 ? "mt-3" : "mt-4"} border-t border-slate-100`}>
           <label htmlFor="task-detail-notes" className="mb-2 text-xs font-semibold text-slate-700">
             Notes
           </label>
@@ -156,7 +191,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
             placeholder="Context, requirements, links or outcomes..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="flex-1 block w-full min-h-60 resize-none px-4 py-3 rounded-xl bg-slate-50 border border-slate-200/80 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+            className={`flex-1 block w-full ${activity.subtasks.length > 0 ? "min-h-36" : "min-h-60"} resize-none px-4 py-3 rounded-xl bg-slate-50 border border-slate-200/80 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
           />
           <div className="mt-4 flex justify-end">
             <button

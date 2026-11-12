@@ -32,3 +32,135 @@
     transition-duration: 1ms !important;
   }
 }
+
+/* Native select arrows sit flush against the edge and differ per browser; draw one chevron
+   with the same inset everywhere. Unlayered so it wins over px-* utilities on the right side. */
+select:not([multiple]) {
+  appearance: none;
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 14px;
+  padding-right: 2.25rem;
+}
+
+/* ───────────── Theme tokens ─────────────
+   Light values match the shipped UI exactly. Dark is a designed palette, not an inversion:
+   layered slate surfaces (page < surface < raised), softened text contrast, accents lifted
+   to their 300/400 shades for text and kept as solid fills for buttons, and pastel fills
+   swapped for low-alpha tints of the same hue. */
+:root {
+  --surface: #fff;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --cal-bg: #f8fafc;
+  --grid-line: rgb(226 232 240 / 0.9);
+  --chart-track: #f1f5f9;
+  --now: #c2410c;
+  --cat-build: #4f46e5; --cat-build-bg: #eef2ff; --cat-build-border: #c7d2fe; --cat-build-text: #3730a3;
+  --cat-learn: #7c3aed; --cat-learn-bg: #f5f3ff; --cat-learn-border: #ddd6fe; --cat-learn-text: #5b21b6;
+  --pri-urgent: #dc2626; --pri-high: #ea580c; --pri-medium: #2563eb; --pri-low: #64748b;
+  --cal-build-dot: #818cf8; --cal-build-fill: #e0e7ff; --cal-build-border: #a5b4fc; --cal-build-muted: #5b61a8; --cal-build-soft: #eef2ff;
+  --cal-learn-dot: #a78bfa; --cal-learn-fill: #ede9fe; --cal-learn-border: #c4b5fd; --cal-learn-muted: #7a5aa8; --cal-learn-soft: #f5f3ff;
+}
+
+/* Applied by the `dark` class on <html>, which useTheme sets from the user's choice or the system setting. */
+.dark {
+  & {
+    color-scheme: dark;
+    --surface: #151821;
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a91a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    --cal-bg: #11141b;
+    --grid-line: rgb(255 255 255 / 0.05);
+    --chart-track: #232834;
+    --now: #fb923c;
+    --cat-build: #818cf8; --cat-build-bg: rgb(129 140 248 / 0.14); --cat-build-border: rgb(129 140 248 / 0.3); --cat-build-text: #e0e7ff;
+    --cat-learn: #a78bfa; --cat-learn-bg: rgb(167 139 250 / 0.14); --cat-learn-border: rgb(167 139 250 / 0.3); --cat-learn-text: #ede9fe;
+    --pri-urgent: #f87171; --pri-high: #fb923c; --pri-medium: #60a5fa; --pri-low: #8b92a0;
+    /* Solid tints (not alpha) so grid lines don't show through, and Build/Learn keep distinct hues. */
+    --cal-build-dot: #818cf8; --cal-build-fill: #2a2d5b; --cal-build-border: #5c5fd6; --cal-build-muted: #a5b4fc; --cal-build-soft: #1b1e35;
+    --cal-learn-dot: #a78bfa; --cal-learn-fill: #362a5d; --cal-learn-border: #8061d9; --cal-learn-muted: #c4b5fd; --cal-learn-soft: #201d35;
+
+    /* Neutral ramp: cool, slightly blue-tinted greys so it still reads as "slate". */
+    --color-slate-50: #0d1016;   /* page */
+    --color-slate-100: #1c2029;  /* subtle fills, hairlines */
+    --color-slate-200: #262b36;  /* borders, tracks */
+    --color-slate-300: #363c49;
+    --color-slate-400: #6c7383;
+    --color-slate-500: #8a91a0;
+    --color-slate-600: #a3a9b6;
+    --color-slate-700: #c0c5cf;
+    --color-slate-800: #d8dce3;
+    --color-slate-900: #eceef2;
+    --color-neutral-100: #1c2029;
+    --color-white: #151821;
+
+    /* Tinted washes instead of pastels. */
+    --color-indigo-50: rgb(99 102 241 / 0.12);
+    --color-indigo-100: rgb(99 102 241 / 0.2);
+    --color-indigo-200: rgb(129 140 248 / 0.3);
+    --color-indigo-300: #a5b4fc;
+    --color-indigo-600: #5b5ff0;
+    --color-indigo-700: #6d70f5;
+    --color-rose-50: rgb(244 63 94 / 0.12);
+    --color-red-50: rgb(239 68 68 / 0.12);
+    --color-amber-50: rgb(245 158 11 / 0.12);
+    --color-emerald-50: rgb(16 185 129 / 0.12);
+    --color-violet-50: rgb(139 92 246 / 0.12);
+    --color-sky-50: rgb(14 165 233 / 0.12);
+    --color-rose-100: rgb(244 63 94 / 0.2); --color-rose-200: rgb(244 63 94 / 0.3);
+    --color-red-100: rgb(239 68 68 / 0.2); --color-red-200: rgb(239 68 68 / 0.3);
+    --color-amber-100: rgb(245 158 11 / 0.2); --color-amber-200: rgb(245 158 11 / 0.3);
+    --color-emerald-100: rgb(16 185 129 / 0.2); --color-emerald-200: rgb(16 185 129 / 0.3);
+    --color-violet-100: rgb(139 92 246 / 0.2); --color-violet-200: rgb(139 92 246 / 0.3);
+    --color-orange-50: rgb(249 115 22 / 0.12); --color-orange-100: rgb(249 115 22 / 0.2);
+  }
+
+  body { background: #0d1016; }
+  ::selection { background: rgb(99 102 241 / 0.35); color: #fff; }
+
+  /* Surfaces: white cards become the first elevation step above the page. */
+  /* --color-white is the surface colour in dark, so bg-white keeps its cascade order; real white text is restored below. */
+  .text-white, .hover\:text-white:hover { color: #fff; }
+  .bg-white\/10 { background-color: rgb(255 255 255 / 0.1); }
+  .ring-white\/10 { --tw-ring-color: rgb(255 255 255 / 0.08); }
+  [role='dialog'].bg-white, [role='dialog'] > .bg-white, [role='dialog'] .bg-white.rounded-2xl { background-color: #1a1e27; }
+  /* Board columns sit a step below the cards so cards read as lifted. */
+  @media (min-width: 40rem) { .sm\:bg-white { background-color: #11141b; } }
+  .hover\:bg-slate-50:hover, .active\:bg-slate-50:active { background-color: #1a1e27; }
+
+  /* "Ink" chips and primary buttons flip to a light fill with dark text… */
+  .bg-slate-900, .bg-slate-900.text-white { color: #0d1016; }
+  .bg-slate-900 .text-white { color: #0d1016; }
+  .hover\:bg-slate-800:hover { background-color: #d8dce3; }
+  /* …but floating chrome (focus bar, toasts, tooltips) stays dark and raised. */
+  .bg-slate-900.rounded-2xl, .bg-slate-900.shadow-xl, .bg-slate-900.shadow-lg, .bg-slate-900\/95 {
+    background-color: #232835; color: #eceef2; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.5);
+  }
+  .bg-slate-900.rounded-2xl .text-white, .bg-slate-900.shadow-xl .text-white, .bg-slate-900.shadow-lg .text-white { color: #fff; }
+  .bg-slate-900.rounded-2xl .hover\:bg-slate-800:hover, .bg-slate-900.shadow-xl .hover\:bg-slate-800:hover,
+  .bg-slate-900.shadow-lg .hover\:bg-slate-800:hover, .hover\:bg-white\/10:hover { background-color: rgb(255 255 255 / 0.08); }
+  .border-slate-800 { border-color: rgb(255 255 255 / 0.08); }
+
+  /* Scrims darken rather than haze. */
+  .bg-slate-900\/50 { background-color: rgb(0 0 0 / 0.6); }
+  .bg-slate-900\/30 { background-color: rgb(0 0 0 / 0.45); }
+  .bg-slate-900\/20 { background-color: rgb(0 0 0 / 0.35); }
+  .bg-slate-900\/\[0\.04\] { background-color: rgb(255 255 255 / 0.04); }
+  .bg-slate-900\/\[0\.03\] { background-color: rgb(255 255 255 / 0.03); }
+
+  /* Accent text lifts to lighter shades so it reads on dark. */
+  .text-indigo-600, .hover\:text-indigo-600:hover, .group:hover .group-hover\:text-indigo-600 { color: #a5b4fc; }
+  .text-indigo-700, .text-indigo-800, .text-indigo-900, .hover\:text-indigo-700:hover { color: #c7d2fe; }
+  .text-rose-500, .text-rose-600, .text-red-500, .text-red-600, .hover\:text-rose-600:hover, .hover\:text-red-600:hover { color: #fb7185; }
+  .text-rose-700, .text-red-700 { color: #fda4af; }
+  .text-amber-500, .text-amber-600 { color: #fbbf24; }
+  .text-amber-700 { color: #fcd34d; }
+  .text-emerald-600, .hover\:text-emerald-600:hover { color: #34d399; }
+  .text-emerald-700 { color: #6ee7b7; }
+  .text-blue-700 { color: #93c5fd; }
+  .text-violet-600\/70 { color: rgb(196 181 253 / 0.8); }
+  .text-sky-600\/70 { color: rgb(125 211 252 / 0.8); }
+
+  /* Shadows mean little on dark; keep a faint edge instead. */
+  .shadow-sm, .shadow-xs { box-shadow: 0 0 0 1px rgb(255 255 255 / 0.02); }
+}

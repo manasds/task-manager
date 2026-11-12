@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
+import { THEME_BOOT_SCRIPT } from '@/lib/theme';
 import './globals.css';
 
 const jakarta = Plus_Jakarta_Sans({
@@ -37,7 +38,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // The boot script adds the `dark` class before React hydrates.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body
         className={`${jakarta.variable} ${jetbrains.variable} bg-slate-50 text-slate-900 antialiased font-sans selection:bg-indigo-100 selection:text-indigo-900`}
       >

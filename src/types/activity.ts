@@ -64,18 +64,18 @@ export const CATEGORIES: Record<ActivityCategory, CategoryMeta> = {
   build: {
     id: 'build',
     label: 'Build',
-    color: '#4f46e5', // indigo-600
-    lightBg: '#eef2ff',
-    borderColor: '#c7d2fe',
-    textColor: '#3730a3',
+    color: 'var(--cat-build)', // indigo-600
+    lightBg: 'var(--cat-build-bg)',
+    borderColor: 'var(--cat-build-border)',
+    textColor: 'var(--cat-build-text)',
   },
   learn: {
     id: 'learn',
     label: 'Learn',
-    color: '#7c3aed', // violet-600
-    lightBg: '#f5f3ff',
-    borderColor: '#ddd6fe',
-    textColor: '#5b21b6',
+    color: 'var(--cat-learn)', // violet-600
+    lightBg: 'var(--cat-learn-bg)',
+    borderColor: 'var(--cat-learn-border)',
+    textColor: 'var(--cat-learn-text)',
   },
 };
 
@@ -87,10 +87,10 @@ export const STATUS_COLUMNS: { id: ActivityStatus; title: string; shortTitle: st
 ];
 
 export const PRIORITY_CONFIG: Record<ActivityPriority, { label: string; dotColor: string; textColor: string }> = {
-  urgent: { label: 'Urgent', dotColor: '#dc2626', textColor: 'text-rose-700' },
-  high: { label: 'High', dotColor: '#ea580c', textColor: 'text-amber-700' },
-  medium: { label: 'Medium', dotColor: '#2563eb', textColor: 'text-blue-700' },
-  low: { label: 'Low', dotColor: '#64748b', textColor: 'text-slate-600' },
+  urgent: { label: 'Urgent', dotColor: 'var(--pri-urgent)', textColor: 'text-rose-700' },
+  high: { label: 'High', dotColor: 'var(--pri-high)', textColor: 'text-amber-700' },
+  medium: { label: 'Medium', dotColor: 'var(--pri-medium)', textColor: 'text-blue-700' },
+  low: { label: 'Low', dotColor: 'var(--pri-low)', textColor: 'text-slate-600' },
 };
 
 /** A task as an older version may have saved it. */
