@@ -157,7 +157,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
                 {doneCount}/{activity.subtasks.length} done
               </span>
             </div>
-            <ul className="-mx-2 max-h-44 overflow-y-auto">
+            <ul className="-mx-2 max-h-44 overflow-y-auto scrollbar-slim">
               {activity.subtasks.map((sub) => (
                 <li key={sub.id}>
                   <button
@@ -191,7 +191,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
             placeholder="Context, requirements, links or outcomes..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className={`flex-1 block w-full ${activity.subtasks.length > 0 ? "min-h-36" : "min-h-60"} resize-none px-4 py-3 rounded-xl bg-slate-50 border border-slate-200/80 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
+            className={`flex-1 block w-full ${activity.subtasks.length > 0 ? "min-h-36" : "min-h-60"} resize-none scrollbar-slim px-4 py-3 rounded-xl bg-slate-50 border border-slate-200/80 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-slate-300 focus:outline-hidden focus:shadow-sm transition-[background-color,border-color,box-shadow]`}
           />
           <div className="mt-4 flex justify-end">
             <button
