@@ -24,6 +24,31 @@
   }
 }
 
+/* A fixed thin scrollbar: same width at rest, on hover and while scrolling, inset from rounded corners. */
+@utility scrollbar-slim {
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    margin-block: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -51,6 +76,7 @@ select:not([multiple]) {
    swapped for low-alpha tints of the same hue. */
 :root {
   --surface: #fff;
+  --scrollbar-thumb: #cbd5e1;
   --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --cal-bg: #f8fafc;
   --grid-line: rgb(226 232 240 / 0.9);
@@ -68,6 +94,7 @@ select:not([multiple]) {
   & {
     color-scheme: dark;
     --surface: #151821;
+    --scrollbar-thumb: #4a5160;
     --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a91a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     --cal-bg: #11141b;
     --grid-line: rgb(255 255 255 / 0.05);

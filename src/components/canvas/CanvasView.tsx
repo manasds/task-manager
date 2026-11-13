@@ -783,15 +783,17 @@ export default function CanvasView() {
         )}
 
         {load === 'signed-out' && (
-          <div className="m-6 flex max-w-sm flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-600">Sign in to save links to your canvas.</p>
-            <button
-              type="button"
-              onClick={signIn}
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
-            >
-              Continue with Google
-            </button>
+          <div className="absolute inset-0 flex items-center justify-center p-6">
+            <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
+              <p className="text-sm text-slate-600">Sign in to save links to your canvas.</p>
+              <button
+                type="button"
+                onClick={signIn}
+                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+              >
+                Continue with Google
+              </button>
+            </div>
           </div>
         )}
 

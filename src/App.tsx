@@ -13,10 +13,12 @@ import { ByTypeView } from './components/ByTypeView';
 import { FocusTimerBar } from './components/FocusTimerBar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { GuestSignInNudge, GuestTaskLimitModal } from './components/GuestSignInPrompt';
 import { useSessionPersistence } from './hooks/useSessionPersistence';
 import { applyRemoteActivities } from './utils/syncPolicy';
 import { finishesTask, mergeTaskEdit, moveToStatus } from './utils/taskTransitions';
 import { createWorkSession, formatMinutes, timerElapsedSeconds } from './utils/workSessions';
+import { countGuestTasks, guestAtLimit, GUEST_TASK_LIMIT, shouldNudgeGuest } from './utils/guestLimits';
 
 // Only one view and usually no modal is on screen, so these load on first use.
 const CalendarView = dynamic(() => import('./components/calendar/CalendarView').then((m) => m.CalendarView), {
@@ -46,6 +48,15 @@ function withUpdatedAt(activity: Activity): Activity {
 /** Set before the sign-out reload so the fresh page can confirm it. */
 const SIGNED_OUT_FLAG = 'orbittask_signed_out';
 
+/** Set before a sign-in started from a guest prompt, so the signed-in page can confirm the tasks moved. */
+const GUEST_SIGN_IN_FLAG = 'orbittask_guest_sign_in';
+
+/** The guest closed the sign-in card; it stays closed on this browser. */
+const NUDGE_DISMISSED_KEY = 'orbittask_signin_nudge_dismissed';
+
+/** Pause between the task window closing and the sign-in prompt appearing. */
+const NUDGE_DELAY_MS = 700;
+
 /** Drop a timer whose task no longer exists; it has nothing to log to. */
 function timerFor(timer: FocusTimerSnapshot | null, activities: Activity[]): FocusTimerSnapshot | null {
   return timer && activities.some((a) => a.id === timer.activityId) ? timer : null;
@@ -70,6 +81,9 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
   const [modalDefaultTime, setModalDefaultTime] = useState<string | undefined>(undefined);
   const [modalDefaultDate, setModalDefaultDate] = useState<string | undefined>(undefined);
   const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [nudgeDismissed, setNudgeDismissed] = useState(true);
+  const [nudgeShown, setNudgeShown] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const persistence = useSessionPersistence(
@@ -129,6 +143,17 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     if (sessionStorage.getItem(SIGNED_OUT_FLAG)) {
       sessionStorage.removeItem(SIGNED_OUT_FLAG);
       showToast('Signed out');
+    }
+
+    if (userId && sessionStorage.getItem(GUEST_SIGN_IN_FLAG)) {
+      sessionStorage.removeItem(GUEST_SIGN_IN_FLAG);
+      showToast('Signed in · your tasks are saved to your account');
+    }
+
+    try {
+      setNudgeDismissed(localStorage.getItem(NUDGE_DISMISSED_KEY) === '1');
+    } catch {
+      setNudgeDismissed(false);
     }
 
   }, [authReady, userId, currentDocument, showToast]);
@@ -244,14 +269,66 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
 
   const handleOpenNewTaskModal = useCallback(
     (initialStatus: ActivityStatus = 'backlog', initialTime?: string, initialDate?: string) => {
+      if (!userId && guestAtLimit(activitiesRef.current)) {
+        setIsLimitModalOpen(true);
+
+        return;
+      }
+
       setEditingActivity(null);
       setModalDefaultStatus(initialStatus);
       setModalDefaultTime(initialTime);
       setModalDefaultDate(initialDate);
       setIsModalOpen(true);
     },
-    []
+    [userId]
   );
+
+  const { signIn } = persistence;
+
+  const handleGuestSignIn = useCallback(async () => {
+    sessionStorage.setItem(GUEST_SIGN_IN_FLAG, '1');
+
+    try {
+      await signIn();
+    } catch (error) {
+      sessionStorage.removeItem(GUEST_SIGN_IN_FLAG);
+      showToast(error instanceof Error ? error.message : 'Google sign-in failed');
+    }
+  }, [signIn, showToast]);
+
+  const dismissNudge = useCallback(() => {
+    setNudgeDismissed(true);
+
+    try {
+      localStorage.setItem(NUDGE_DISMISSED_KEY, '1');
+    } catch {
+      // Storage blocked: the prompt stays closed for this visit only.
+    }
+  }, []);
+
+  // Wait for a calm moment: no open window, no running focus timer. Then pop up after a short beat,
+  // so the prompt lands once the new task is on the board rather than over the closing task window.
+  const nudgeDue =
+    hydrated &&
+    !userId &&
+    !isModalOpen &&
+    !isLimitModalOpen &&
+    !viewingActivityId &&
+    !timer &&
+    shouldNudgeGuest(activities, nudgeDismissed);
+
+  useEffect(() => {
+    if (!nudgeDue) return;
+    const timeout = setTimeout(() => setNudgeShown(true), NUDGE_DELAY_MS);
+
+    return () => {
+      clearTimeout(timeout);
+      setNudgeShown(false);
+    };
+  }, [nudgeDue]);
+
+  const showNudge = nudgeDue && nudgeShown;
 
   const viewingActivity = viewingActivityId ? activities.find((a) => a.id === viewingActivityId) : undefined;
 
@@ -262,7 +339,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     const onKeyDown = (e: KeyboardEvent) => {
       if (!e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.code !== 'KeyN' || e.repeat) return;
 
-      if (isModalOpen || isViewingTask) return;
+      if (isModalOpen || isViewingTask || isLimitModalOpen) return;
       const target = e.target instanceof HTMLElement ? e.target : null;
 
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
@@ -273,7 +350,7 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
     window.addEventListener('keydown', onKeyDown);
 
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isModalOpen, isViewingTask, handleOpenNewTaskModal]);
+  }, [isModalOpen, isViewingTask, isLimitModalOpen, handleOpenNewTaskModal]);
 
   const handleEditActivity = useCallback((act: Activity) => {
     setEditingActivity(act);
@@ -360,6 +437,12 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
 
           return activity.success ? [{ ...activity.data, updatedAt: now }] : [];
         });
+
+        if (!userId && countGuestTasks(imported) > GUEST_TASK_LIMIT) {
+          setIsLimitModalOpen(true);
+
+          return;
+        }
 
         setActivities(imported);
         setTimer((current) => timerFor(current, imported));
@@ -501,6 +584,22 @@ export default function App({ initialUser, sessionError }: { initialUser: CloudU
       />
 
       <OfflineIndicator signedIn={!!persistence.user} />
+
+      {showNudge && (
+        <GuestSignInNudge
+          taskCount={countGuestTasks(activities)}
+          onSignIn={() => void handleGuestSignIn()}
+          onDismiss={dismissNudge}
+        />
+      )}
+
+      {isLimitModalOpen && (
+        <GuestTaskLimitModal
+          taskCount={countGuestTasks(activities)}
+          onSignIn={() => void handleGuestSignIn()}
+          onClose={() => setIsLimitModalOpen(false)}
+        />
+      )}
 
       {toast && (
         <div
