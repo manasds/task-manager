@@ -177,7 +177,7 @@ select:not([multiple]) {
   --tray: #f4f4f5;
   --scrollbar-thumb: #d4d4d8;
   --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --cal-bg: #fafafa;
+  --cal-bg: #fafafa; /* weekend rows in the week grid */
   --grid-line: rgb(228 228 231 / 0.9);
   --chart-track: #f4f4f5;
   --now: #ff7319;
@@ -202,18 +202,18 @@ select:not([multiple]) {
 .dark {
   & {
     color-scheme: dark;
-    --page: #09090b;
-    --surface: #18181b;
-    --tray: #121214;
+    --page: #0b0b0d;
+    --surface: #1c1c1f;
+    --tray: #141416;
     --scrollbar-thumb: #52525c;
     --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d8d98' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    --cal-bg: #121214;
+    --cal-bg: #18181a; /* a shade under the surface, so weekend rows recede without turning black */
     --grid-line: rgb(255 255 255 / 0.05);
-    --chart-track: #27272a;
+    --chart-track: #2a2a2f;
     --now: #ff8a3d;
 
-    --btn-a: #fff; --btn-b: #d4d4d8; --btn-line: #fff; --btn-ink: #18181b; --btn-hi: rgb(255 255 255 / 0.9);
-    --paper-a: #232327; --paper-b: #1b1b1e; --paper-hi: rgb(255 255 255 / 0.06); --paper-ink: #b4b4bd; --paper-line: #3f3f46; --paper-line-hover: #63636e;
+    --btn-a: #fafafa; --btn-b: #d4d4d8; --btn-line: #fafafa; --btn-ink: #18181b; --btn-hi: rgb(255 255 255 / 0.9);
+    --paper-a: #29292e; --paper-b: #212125; --paper-hi: rgb(255 255 255 / 0.06); --paper-ink: #c4c4cc; --paper-line: #3f3f46; --paper-line-hover: #6b6b76;
     --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.05), 0 12px 32px rgb(0 0 0 / 0.5);
 
@@ -228,18 +228,18 @@ select:not([multiple]) {
     --cal-learn-dot: #f472d0; --cal-learn-fill: #45203d; --cal-learn-border: #c14aa8; --cal-learn-muted: #f0a6dd; --cal-learn-soft: #2a1626;
 
     /* Neutral ramp, zinc. */
-    --color-slate-50: #09090b;   /* page */
-    --color-slate-100: #1c1c1f;  /* subtle fills, hairlines */
-    --color-slate-200: #27272a;  /* borders, tracks */
+    --color-slate-50: #0b0b0d;   /* page */
+    --color-slate-100: #26262a;  /* subtle fills and hairlines: a step above the surface so hovers and chips show */
+    --color-slate-200: #2a2a2f;  /* borders, tracks */
     --color-slate-300: #3f3f46;
-    --color-slate-400: #63636e;
+    --color-slate-400: #6b6b76;
     --color-slate-500: #8d8d98;
     --color-slate-600: #a8a8b3;
     --color-slate-700: #c4c4cc;
     --color-slate-800: #dcdce1;
-    --color-slate-900: #fafafa;
-    --color-neutral-100: #1c1c1f;
-    --color-white: #18181b;
+    --color-slate-900: #f4f4f5;
+    --color-neutral-100: #26262a;
+    --color-white: #1c1c1f;
 
     /* The ink scale flips with the text: light fills, white washes. */
     --color-indigo-50: rgb(255 255 255 / 0.06);
@@ -256,7 +256,7 @@ select:not([multiple]) {
     /* Tinted washes instead of pastels. */
     --color-rose-50: rgb(244 63 94 / 0.12);
     --color-red-50: rgb(239 68 68 / 0.12);
-    --color-amber-50: rgb(245 158 11 / 0.12);
+    --color-amber-50: #2e2715; /* solid: the chart's target chip sits on a dashed line that would show through */
     --color-emerald-50: rgb(16 185 129 / 0.12);
     --color-violet-50: rgb(139 92 246 / 0.12);
     --color-sky-50: rgb(14 165 233 / 0.12);
@@ -268,7 +268,7 @@ select:not([multiple]) {
     --color-orange-50: rgb(249 115 22 / 0.12); --color-orange-100: rgb(249 115 22 / 0.2);
   }
 
-  body { background: #09090b; }
+  body { background: #0b0b0d; }
   ::selection { background: rgb(255 255 255 / 0.25); color: #fff; }
 
   /* Surfaces: white cards become the first elevation step above the page. */
@@ -276,8 +276,8 @@ select:not([multiple]) {
   .text-white, .hover\:text-white:hover { color: #fff; }
   .bg-white\/10 { background-color: rgb(255 255 255 / 0.1); }
   .ring-white\/10 { --tw-ring-color: rgb(255 255 255 / 0.08); }
-  [role='dialog'].bg-white, [role='dialog'] > .bg-white, [role='dialog'] .bg-white.rounded-2xl, [role='dialog'] .bg-white.rounded-3xl { background-color: #1f1f23; }
-  .hover\:bg-slate-50:hover, .active\:bg-slate-50:active { background-color: #1f1f23; }
+  [role='dialog'].bg-white, [role='dialog'] > .bg-white, [role='dialog'] .bg-white.rounded-2xl, [role='dialog'] .bg-white.rounded-3xl { background-color: #232327; }
+  .hover\:bg-slate-50:hover, .active\:bg-slate-50:active { background-color: #232327; }
 
   /* "Ink" chips and primary buttons flip to a light fill with dark text… */
   .bg-slate-900, .bg-slate-900.text-white, .bg-indigo-600, .bg-indigo-600.text-white, .bg-indigo-500.text-white { color: #18181b; }
@@ -285,7 +285,12 @@ select:not([multiple]) {
   .hover\:bg-slate-800:hover { background-color: #d4d4d8; }
   /* …but floating chrome (focus bar, toasts, tooltips) stays dark and raised. */
   .bg-slate-900.rounded-2xl, .bg-slate-900.shadow-xl, .bg-slate-900.shadow-lg, .bg-slate-900\/95 {
-    background-color: #27272a; color: #fafafa; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.5);
+    background-color: #2a2a2f; color: #fafafa; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.5);
+    /* This chrome is dark in light mode too, and its contents are written for a dark bar (light greys,
+       a white play button). Give them the light ramp back, or the flipped ramp turns them near-invisible. */
+    --color-slate-50: #fafafa; --color-slate-100: #f4f4f5; --color-slate-200: #e4e4e7; --color-slate-300: #d4d4d8;
+    --color-slate-400: #9f9fa9; --color-slate-500: #71717b; --color-slate-600: #52525c; --color-slate-700: #3f3f46;
+    --color-slate-800: #27272a; --color-slate-900: #18181b; --color-white: #fff;
   }
   .bg-slate-900.rounded-2xl .text-white, .bg-slate-900.shadow-xl .text-white, .bg-slate-900.shadow-lg .text-white { color: #fff; }
   .bg-slate-900.rounded-2xl .hover\:bg-slate-800:hover, .bg-slate-900.shadow-xl .hover\:bg-slate-800:hover,
@@ -312,4 +317,6 @@ select:not([multiple]) {
 
   /* Shadows mean little on dark; keep a faint edge instead. */
   .shadow-sm, .shadow-xs { box-shadow: 0 0 0 1px rgb(255 255 255 / 0.02); }
+  /* The selected item of a segmented control: clearly raised above its tray. */
+  .bg-white.shadow-xs { background-color: #303036; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.4); }
 }

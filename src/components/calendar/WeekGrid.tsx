@@ -145,7 +145,7 @@ function DayRow({
         aria-pressed={selected}
         aria-label={format(day, 'EEEE, MMMM d')}
         className={`sticky left-0 z-20 flex shrink-0 items-center gap-2 border-r border-slate-200 px-3 text-left text-[13px] outline-none hover:bg-slate-100 focus-visible:bg-slate-100 ${
-          weekend ? 'bg-slate-50' : 'bg-white'
+          weekend ? 'bg-(--cal-bg)' : 'bg-white'
         } ${selected ? 'shadow-[inset_2px_0_0_var(--color-slate-900)]' : ''}`}
         style={{ width: GUTTER_WIDTH }}
       >
@@ -170,7 +170,7 @@ function DayRow({
         onMouseLeave={() => setHoverMinutes(null)}
         aria-label={`${format(day, 'EEEE')}: click an empty slot to add an activity`}
         className={`relative shrink-0 cursor-cell transition-colors ${
-          isOver ? 'bg-slate-100/80' : weekend ? 'bg-slate-50/80' : ''
+          isOver ? 'bg-slate-100/80' : weekend ? 'bg-(--cal-bg)' : ''
         }`}
         style={{
           marginLeft: TIME_PAD,

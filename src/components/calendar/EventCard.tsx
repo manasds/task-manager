@@ -94,7 +94,7 @@ export function EventCard({ item, left, width, top, height, roomy, selected, act
         boxShadow: selected
           ? `inset 0 0 0 2px ${theme.text}8c`
           : active
-            ? 'inset 0 0 0 2px var(--color-indigo-500)'
+            ? `inset 0 0 0 2px ${theme.dot}`
             : undefined,
         opacity: item.completed && !isDragging ? 0.6 : undefined,
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,

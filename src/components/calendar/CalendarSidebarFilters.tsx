@@ -70,10 +70,10 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
               type="button"
               aria-pressed={on}
               onClick={() => onTogglePriority(priority)}
-              className={`h-7 rounded-full px-2.5 text-xs ${FOCUS} ${
+              className={`h-7 rounded-full border px-2.5 text-xs transition-colors ${FOCUS} ${
                 on
-                  ? 'btn-ink font-medium'
-                  : 'btn-paper text-slate-400 line-through'
+                  ? 'border-slate-300 bg-white font-medium text-slate-800'
+                  : 'border-transparent bg-transparent text-slate-400 line-through hover:bg-slate-100'
               }`}
             >
               {PRIORITY_LABELS[priority]}
