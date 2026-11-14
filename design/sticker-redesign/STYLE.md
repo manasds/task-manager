@@ -46,6 +46,8 @@ This is a **look-only** change. The app must behave exactly as before.
 
 - **Never put `text-white` on a `btn-ink` element or inside it.** In dark the fill is light and the text is dark.
   `btn-ink` sets the colour; icons inherit it through `currentColor`.
+- `btn-ink` and `btn-paper` never set `translate`, `scale` or `rotate`, so they are safe on elements positioned
+  with `-translate-x-1/2` and similar. Keep it that way: a press state that moves a centred button loses the click.
 - Do not write `dark:` variants. Dark mode works through tokens and a few class-keyed rules in globals.css.
 - These class combinations are matched by dark rules and must keep working. If an element has them today and is
   **floating dark chrome** (focus bar, toast, tooltip), leave the combination in place:

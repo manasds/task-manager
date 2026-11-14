@@ -494,7 +494,7 @@ export function CalendarView({
 
   return (
     <div className="mx-auto max-w-[1600px] md:px-6 md:pt-5">
-      <div className="relative flex h-[calc(100dvh-19.5rem)] min-h-[520px] flex-col overflow-hidden border-y border-slate-200 bg-white md:h-[calc(100dvh-11.5rem)] md:min-h-[640px] md:rounded-3xl md:border">
+      <div className="relative flex h-[calc(100dvh-19.75rem)] min-h-[520px] flex-col overflow-hidden border-y border-slate-200 bg-white md:h-[calc(100dvh-11.5rem)] md:min-h-[640px] md:rounded-3xl md:border">
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}

@@ -628,7 +628,7 @@ export default function CanvasView() {
           onClick={() => setFilter(f.id)}
           aria-pressed={filter === f.id}
           className={`shrink-0 rounded-full px-3 py-1 text-xs ${
-            filter === f.id ? 'bg-slate-100 font-semibold text-slate-900 ring-1 ring-slate-300' : 'bg-slate-100 font-medium text-slate-600'
+            filter === f.id ? 'bg-slate-900 font-semibold text-white' : 'bg-slate-100 font-medium text-slate-600'
           }`}
         >
           {f.label}
