@@ -106,8 +106,8 @@ const BoardCard = memo(function BoardCard({ tile, x, y, dragging, instant, onOpe
       onKeyDown={e => {
         if (e.key === 'Enter') onOpen(tile);
       }}
-      className={`group absolute flex select-none flex-col overflow-hidden rounded-xl border border-slate-200 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
-        dragging ? 'pointer-events-none z-50 cursor-grabbing' : 'z-10 cursor-grab shadow-sm hover:shadow-md'
+      className={`group absolute flex select-none flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+        dragging ? 'pointer-events-none z-50 cursor-grabbing' : 'card-lift z-10 cursor-grab'
       }`}
       style={{
         left: x,
@@ -497,7 +497,7 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
     <div ref={rootRef} className="absolute inset-0">
       <div
         ref={viewportRef}
-        className="absolute inset-0 cursor-grab touch-none overflow-hidden bg-white"
+        className="absolute inset-0 cursor-grab touch-none overflow-hidden bg-page"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -512,7 +512,7 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
               <div
                 key={section.id}
                 data-section-id={section.id}
-                className={`group/sec absolute rounded-2xl border ${target ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 bg-slate-50'}`}
+                className={`group/sec absolute rounded-3xl border ${target ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 bg-tray'}`}
                 style={{
                   left: rect.x,
                   top: rect.y,
@@ -537,14 +537,14 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
                         if (e.key === 'Escape') props.onRename(section.id, null);
                       }}
                       onBlur={e => props.onRename(section.id, e.currentTarget.value)}
-                      className="w-56 rounded-md border border-indigo-300 bg-white px-1.5 py-0.5 text-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                      className="w-56 rounded-lg border border-indigo-300 bg-page px-1.5 py-0.5 text-lg font-semibold tracking-tight text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                     />
                   ) : (
-                    <span data-name title="Double-click to rename" className="truncate text-lg font-bold tracking-tight text-slate-900">
+                    <span data-name title="Double-click to rename" className="truncate text-lg font-semibold tracking-tight text-slate-900">
                       {section.name}
                     </span>
                   )}
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                  <span className="rounded-full bg-white px-1.5 py-px font-mono text-[11px] font-medium text-slate-500">
                     {count}
                   </span>
                   <button
@@ -552,7 +552,7 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
                     onClick={() => props.onDeleteSection(section.id)}
                     title="Delete section"
                     aria-label={`Delete ${section.name}`}
-                    className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 opacity-0 transition-opacity hover:bg-slate-100 hover:text-red-600 focus-visible:opacity-100 group-hover/sec:opacity-100"
+                    className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-xl text-slate-500 opacity-0 transition-colors hover:bg-slate-100 hover:text-red-600 focus-visible:opacity-100 group-hover/sec:opacity-100"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -561,7 +561,7 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
                     onClick={() => onFocus(section.id)}
                     title="Open full page"
                     aria-label={`Open ${section.name}`}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                   >
                     <Maximize2 className="h-3.5 w-3.5" />
                   </button>
@@ -604,7 +604,7 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
         <button
           type="button"
           onClick={() => fit(true)}
-          className="absolute left-1/2 top-4 z-20 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-lg hover:bg-slate-50"
+          className="absolute left-1/2 top-4 z-20 inline-flex -translate-x-1/2 items-center gap-1.5 btn-paper rounded-full px-3.5 py-1.5 text-xs font-medium"
         >
           <LocateFixed className="h-3.5 w-3.5 text-indigo-600" /> Back to your board
         </button>
@@ -612,7 +612,7 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
 
       {/* Above the section page too, so its tabs switch sections from there. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-4 z-40 flex justify-center px-4">
-        <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white/95 p-1 shadow-lg backdrop-blur">
+        <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 p-1 pop-shadow backdrop-blur">
           {[{ id: null, name: 'Whole board' }, ...sections].map(s => {
             const active = (focusId ?? null) === s.id;
 
@@ -622,8 +622,8 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
                 type="button"
                 onClick={() => (s.id === null && !focusId ? fit(true) : onFocus(s.id))}
                 aria-pressed={active}
-                className={`whitespace-nowrap rounded-lg px-2.5 py-1 text-xs ${
-                  active ? 'bg-indigo-600 font-semibold text-white' : 'font-medium text-slate-600 hover:bg-slate-100'
+                className={`whitespace-nowrap rounded-[10px] px-2.5 py-1 text-xs ${
+                  active ? 'bg-slate-100 font-semibold text-slate-900' : 'font-medium text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 {s.name}
@@ -641,7 +641,7 @@ const CanvasBoard = forwardRef<BoardHandle, Props>(function CanvasBoard(props, r
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
-              <span ref={zoomLabelRef} className="w-10 shrink-0 text-center text-[11px] tabular-nums text-slate-500" />
+              <span ref={zoomLabelRef} className="w-10 shrink-0 text-center font-mono text-[11px] tabular-nums text-slate-500" />
               <button
                 type="button"
                 onClick={() => zoomAtCentre(1.2)}

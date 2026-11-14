@@ -1,5 +1,6 @@
 import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { Clock } from 'lucide-react';
+import { Sticker } from '@/components/Sticker';
 import { formatRange } from '@/lib/calendar/layout';
 import { CALENDAR_TYPES } from '@/lib/calendar/theme';
 import type { CalendarItem } from '@/lib/calendar/types';
@@ -47,8 +48,8 @@ export function UpcomingRail({ items, today, now, onSelectItem }: UpcomingRailPr
   return (
     <section aria-label="Upcoming events" className="flex h-full min-h-0 flex-col">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-medium text-slate-900">Upcoming</h2>
-        <span className="text-sm text-slate-500">Next 7 days</span>
+        <h2 className="text-sm font-medium tracking-tight text-slate-900">Upcoming</h2>
+        <span className="font-mono text-xs text-slate-500">Next 7 days</span>
       </div>
 
       <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto">
@@ -56,7 +57,10 @@ export function UpcomingRail({ items, today, now, onSelectItem }: UpcomingRailPr
           <div key={group.day.toISOString()}>
             <h3 className="text-sm text-slate-500">{dayLabel(group.day, today)}</h3>
             {group.items.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-400">No more events today</p>
+              <div className="mt-2 flex items-center gap-2">
+                <Sticker name="smile" className="size-9 -rotate-[8deg]" />
+                <p className="text-sm text-slate-400">No more events today</p>
+              </div>
             ) : (
               <ul className="mt-1.5 space-y-0.5">
                 {group.items.map((item) => (
@@ -64,7 +68,7 @@ export function UpcomingRail({ items, today, now, onSelectItem }: UpcomingRailPr
                     <button
                       type="button"
                       onClick={(e) => onSelectItem(item, e.currentTarget)}
-                      className="flex w-full items-start gap-3 rounded-lg px-2 py-1.5 text-left outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-400"
+                      className="flex w-full items-start gap-3 rounded-xl px-2 py-1.5 text-left outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-400"
                     >
                       <span
                         aria-hidden
@@ -78,7 +82,7 @@ export function UpcomingRail({ items, today, now, onSelectItem }: UpcomingRailPr
                             <Clock aria-label="Logged" className="w-3 shrink-0 text-slate-400" />
                           )}
                         </span>
-                        <span className="block truncate text-[13px] text-slate-500">
+                        <span className="block truncate font-mono text-xs text-slate-500">
                           {formatRange(item.start, item.end)} · {CALENDAR_TYPES[item.type].label}
                         </span>
                       </span>

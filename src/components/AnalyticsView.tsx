@@ -146,9 +146,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
       
       {/* Analytics Header & Scope Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-3xl border border-slate-200">
         <div>
-          <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h2 className="text-base font-medium text-slate-900 tracking-tight flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-indigo-600" />
             <span>Productivity & Velocity</span>
           </h2>
@@ -158,19 +158,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+          <div className="flex items-center gap-1 bg-tray p-0.5 rounded-xl w-full sm:w-auto">
             <button
               onClick={() => setTimeframe('7days')}
-              className={`flex-1 sm:flex-initial min-h-9 px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-                timeframe === '7days' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+              className={`flex-1 sm:flex-initial min-h-9 px-3 py-1 text-xs font-semibold rounded-[9px] transition-all ${
+                timeframe === '7days' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               7 Days
             </button>
             <button
               onClick={() => setTimeframe('14days')}
-              className={`flex-1 sm:flex-initial min-h-9 px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-                timeframe === '14days' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+              className={`flex-1 sm:flex-initial min-h-9 px-3 py-1 text-xs font-semibold rounded-[9px] transition-all ${
+                timeframe === '14days' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               14 Days
@@ -183,11 +183,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch">
         
         {/* Custom Velocity Chart */}
-        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                <h3 className="text-base font-medium tracking-tight text-slate-900">
                   Daily Focus Velocity
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -196,19 +196,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
 
               {/* Metric Toggle */}
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+              <div className="flex items-center gap-1 bg-tray p-0.5 rounded-xl self-start sm:self-auto">
                 <button
                   onClick={() => setVelocityMetric('hours')}
-                  className={`min-h-9 px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
-                    velocityMetric === 'hours' ? 'bg-white text-slate-900 shadow-2xs font-semibold' : 'text-slate-600'
+                  className={`min-h-9 px-2.5 py-1 text-xs font-medium rounded-[9px] transition-all ${
+                    velocityMetric === 'hours' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Hours
                 </button>
                 <button
                   onClick={() => setVelocityMetric('tasks')}
-                  className={`min-h-9 px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
-                    velocityMetric === 'tasks' ? 'bg-white text-slate-900 shadow-2xs font-semibold' : 'text-slate-600'
+                  className={`min-h-9 px-2.5 py-1 text-xs font-medium rounded-[9px] transition-all ${
+                    velocityMetric === 'tasks' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Tasks
@@ -224,7 +224,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     className="absolute left-0 right-0 border-t border-dashed border-amber-400 z-10 pointer-events-none"
                     style={{ bottom: `${(dailyGoalMinutes / 60 / maxHours) * 100}%` }}
                   >
-                    <span className="absolute right-1 -top-2.5 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-sm border border-amber-200 tabular-nums">
+                    <span className="absolute right-1 -top-2.5 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-[7px] border border-amber-200 font-mono tabular-nums">
                       Target: {(dailyGoalMinutes / 60).toFixed(1)}h
                     </span>
                   </div>
@@ -267,7 +267,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       <div
                         className={`w-full max-w-9 rounded-t-lg transition-all duration-300 ${
                           isHovered
-                            ? 'bg-indigo-600 shadow-md'
+                            ? 'bg-indigo-600'
                             : d.dateStr === today
                             ? 'bg-indigo-500 ring-2 ring-indigo-200'
                             : 'bg-indigo-400/90'
@@ -314,10 +314,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
 
         {/* Circular Target & Interactive Goal Setting */}
-        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              <h3 className="text-base font-medium tracking-tight text-slate-900">
                 Today's Goal Gauge
               </h3>
               <Target className="w-4 h-4 text-amber-500" />
@@ -349,10 +349,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 </svg>
 
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-2xl font-extrabold text-slate-900 tabular-nums">
+                  <span className="text-2xl font-medium tracking-tight text-slate-900 font-mono tabular-nums">
                     {todayGoalPercent}%
                   </span>
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <span className="text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-wider tabular-nums">
                     {Math.floor(todayLoggedMinutes / 60)}h {todayLoggedMinutes % 60}m logged
                   </span>
                 </div>
@@ -360,7 +360,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             </div>
 
             {/* Slider with touch hit area */}
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2 mt-2">
+            <div className="bg-tray p-3 rounded-2xl space-y-2 mt-2">
               <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
                 <span className="flex items-center gap-1">
                   <Sliders className="w-3.5 h-3.5 text-slate-400" />
@@ -389,7 +389,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
             <span>Remaining today:</span>
-            <span className="font-bold text-slate-800 tabular-nums">
+            <span className="font-mono font-bold text-slate-800 tabular-nums">
               {Math.max(0, dailyGoalMinutes - todayLoggedMinutes)}m
             </span>
           </div>
@@ -401,11 +401,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch">
         
         {/* Category Donut */}
-        <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-6 bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                <h3 className="text-base font-medium tracking-tight text-slate-900">
                   Category Breakdown
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -447,10 +447,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         <span className="text-[11px] font-semibold text-slate-600 line-clamp-1">
                           {CATEGORIES[hoveredCategory]?.label}
                         </span>
-                        <span className="text-base font-bold text-slate-900 tabular-nums">
+                        <span className="text-base font-medium tracking-tight text-slate-900 font-mono tabular-nums">
                           {Math.round((categoryTotals[hoveredCategory] / 60) * 10) / 10}h
                         </span>
-                        <span className="text-[10px] text-slate-500 tabular-nums">
+                        <span className="text-[10px] text-slate-500 font-mono tabular-nums">
                           {grandTotalMinutes > 0
                             ? `${Math.round((categoryTotals[hoveredCategory] / grandTotalMinutes) * 100)}%`
                             : ''}
@@ -459,10 +459,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     ) : (
                       <>
                         <span className="text-[11px] text-slate-500 font-medium">Focus</span>
-                        <span className="text-base font-bold text-slate-900 tabular-nums">
+                        <span className="text-base font-medium tracking-tight text-slate-900 font-mono tabular-nums">
                           {Math.round((grandTotalMinutes / 60) * 10) / 10}h
                         </span>
-                        <span className="text-[10px] text-slate-400">{daysCount} days</span>
+                        <span className="text-[10px] text-slate-400 font-mono tabular-nums">{daysCount} days</span>
                       </>
                     )}
                   </div>
@@ -479,8 +479,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     onMouseLeave={() => setHoveredCategory(null)}
                     className={`flex items-center justify-between p-2 rounded-xl border transition-colors cursor-pointer min-h-10 ${
                       hoveredCategory === slice.category
-                        ? 'bg-slate-50 border-slate-300 shadow-2xs'
-                        : 'border-transparent hover:bg-slate-50/60'
+                        ? 'bg-tray border-slate-300'
+                        : 'border-transparent hover:bg-tray'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -494,7 +494,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     </div>
                     <div className="flex items-center gap-2 shrink-0 text-xs">
                       <span className="text-slate-500 font-mono tabular-nums">{slice.hours}h</span>
-                      <span className="font-bold text-slate-800 tabular-nums w-8 text-right">
+                      <span className="font-mono font-bold text-slate-800 tabular-nums w-8 text-right">
                         {slice.percentage}%
                       </span>
                     </div>
@@ -513,11 +513,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
 
         {/* 24-Hour Focus Density */}
-        <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-6 bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                <h3 className="text-base font-medium tracking-tight text-slate-900">
                   Focus by Hour
                 </h3>
                 <p className="text-xs text-slate-500">

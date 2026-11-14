@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
+import { Sticker } from "./Sticker";
 import { Activity, PRIORITY_CONFIG } from "../types/activity";
 import type { CanvasTile } from "../types/canvas";
 import { fetchCanvas } from "../api/client";
@@ -20,10 +21,10 @@ type LinksState =
   | { phase: "ready"; tiles: CanvasTile[] };
 
 const mutedText =
-  "h-28 border-2 border-dashed border-slate-200/90 rounded-2xl flex items-center justify-center p-4 text-center text-xs text-slate-400";
+  "h-44 border-[1.5px] border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center gap-2 p-4 text-center text-xs font-medium text-slate-500";
 
 const cardClass =
-  "block bg-white rounded-2xl border border-slate-200 hover:border-slate-300 p-3 space-y-2.5 text-left transition-[color,background-color,border-color,opacity,filter] duration-200";
+  "block bg-white rounded-2xl border border-slate-200 card-lift hover:border-slate-300 p-3 space-y-2.5 text-left transition-[color,background-color,border-color,opacity,filter] duration-200";
 
 const doneClass =
   "bg-slate-50/70 opacity-60 saturate-50 hover:opacity-100 hover:saturate-100";
@@ -44,13 +45,13 @@ const Column: React.FC<{
   action?: React.ReactNode;
   children: React.ReactNode;
 }> = ({ title, count, action, children }) => (
-  <div className="flex flex-col bg-white border border-neutral-100 p-3 sm:p-3.5 min-h-125 sm:min-h-155 h-full">
-    <div className="flex items-center justify-between pb-3 px-1 border-b border-slate-200/60 mb-3">
+  <div className="flex flex-col bg-tray rounded-3xl p-3 min-h-125 sm:min-h-155 h-full">
+    <div className="flex items-center justify-between px-1.5 pt-1 mb-2.5">
       <div className="flex items-center gap-2">
-        <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+        <h3 className="text-[15px] font-semibold tracking-tight text-slate-900">
           {title}
         </h3>
-        <span className="text-[11px] font-semibold text-slate-600 bg-white/90 border border-slate-200 px-2 py-0.5 rounded-md tabular-nums shadow-2xs">
+        <span className="text-[11px] font-mono font-medium text-slate-500 bg-white border border-slate-200 px-1.5 py-px rounded-full tabular-nums">
           {count}
         </span>
       </div>
@@ -124,7 +125,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
             {a.title}
           </p>
           <span
-            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${PRIORITY_PILL[a.priority]}`}
+            className={`shrink-0 rounded-[7px] px-1.5 py-0.5 text-[11px] font-semibold ${PRIORITY_PILL[a.priority]}`}
           >
             {PRIORITY_CONFIG[a.priority].label}
           </span>
@@ -135,7 +136,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
               e.stopPropagation();
               onDelete(a.id);
             }}
-            className="shrink-0 size-7 max-sm:size-11 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            className="shrink-0 size-7 max-sm:size-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -145,7 +146,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
             {a.description}
           </p>
         )}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500 tabular-nums">
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500 font-mono tabular-nums">
           <span>{formatDay(new Date(a.createdAt))}</span>
           {a.deadline && (
             <span
@@ -164,7 +165,10 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
   const taskColumn = (title: string, list: Activity[]) => (
     <Column title={title} count={list.length}>
       {list.length === 0 ? (
-        <div className={mutedText}>Nothing here</div>
+        <div className={mutedText}>
+          <Sticker name="spark" className="size-14 -rotate-[10deg]" />
+          Nothing here
+        </div>
       ) : (
         list.map(taskCard)
       )}
@@ -175,7 +179,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch gap-3 sm:gap-4">
         {taskColumn("To Build", ofType("build"))}
         {taskColumn("Learning", ofType("learn"))}
         <Column
@@ -197,7 +201,10 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
           ) : links.phase === "error" ? (
             <div className={mutedText}>Could not load links.</div>
           ) : tiles.length === 0 ? (
-            <div className={mutedText}>Nothing here</div>
+            <div className={mutedText}>
+              <Sticker name="spark" className="size-14 -rotate-[10deg]" />
+              Nothing here
+            </div>
           ) : (
             tiles.map((t) => {
               const ytId = getYouTubeId(t.url);
@@ -216,7 +223,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
                       <img
                         src={youtubeThumbnail(ytId)}
                         alt=""
-                        className="shrink-0 w-12 h-8 rounded-md object-cover"
+                        className="shrink-0 w-12 h-8 rounded-lg object-cover"
                       />
                     )}
                     <p className="flex-1 min-w-0 text-sm font-semibold leading-snug text-slate-900 line-clamp-2">
@@ -226,7 +233,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
                   <p className="text-xs leading-relaxed text-slate-500 line-clamp-2">
                     {getDomain(t.url)}
                   </p>
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500 tabular-nums">
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500 font-mono tabular-nums">
                     <span>{formatDay(new Date(t.createdAt))}</span>
                   </div>
                 </a>

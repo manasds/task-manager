@@ -14,15 +14,15 @@ const FOCUS = 'outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
 
 export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority, onClose }: CalendarSidebarFiltersProps) {
   return (
-    <nav aria-label="Calendar sidebar" className="flex h-full flex-col bg-[var(--cal-bg)] px-3 py-4 text-slate-900">
+    <nav aria-label="Calendar sidebar" className="flex h-full flex-col px-3 py-4 text-slate-900">
       <div className="flex items-center justify-between pl-3">
-        <h3 className="text-[13px] text-slate-500">Types</h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Types</h3>
         <button
           type="button"
           onClick={onClose}
           aria-label="Hide filters"
           aria-expanded={true}
-          className={`${ghostIconClass} rounded-lg`}
+          className={`${ghostIconClass} rounded-xl`}
         >
           <PanelLeft className="size-4" />
         </button>
@@ -39,11 +39,11 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
                 role="checkbox"
                 aria-checked={on}
                 onClick={() => onToggleType(type)}
-                className={`flex h-9 w-full items-center gap-3 rounded-lg px-3 text-sm hover:bg-slate-100 ${FOCUS}`}
+                className={`flex h-9 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors hover:bg-slate-100 ${FOCUS}`}
               >
                 <span
                   aria-hidden
-                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px]"
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[7px]"
                   style={
                     on
                       ? { backgroundColor: color, border: `1.5px solid ${color}` }
@@ -59,7 +59,7 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
         })}
       </ul>
 
-      <h3 className="mt-6 px-3 text-[13px] text-slate-500">Priority</h3>
+      <h3 className="mt-6 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Priority</h3>
       <div className="mt-2 flex flex-wrap gap-1.5 px-3">
         {PRIORITY_ORDER.map((priority) => {
           const on = filters.priorities[priority];
@@ -70,10 +70,10 @@ export function CalendarSidebarFilters({ filters, onToggleType, onTogglePriority
               type="button"
               aria-pressed={on}
               onClick={() => onTogglePriority(priority)}
-              className={`h-7 rounded-full border px-2.5 text-xs ${FOCUS} ${
+              className={`h-7 rounded-full px-2.5 text-xs ${FOCUS} ${
                 on
-                  ? 'border-slate-300 bg-white font-medium text-slate-800'
-                  : 'border-transparent bg-transparent text-slate-400 line-through hover:bg-slate-100'
+                  ? 'btn-ink font-medium'
+                  : 'btn-paper text-slate-400 line-through'
               }`}
             >
               {PRIORITY_LABELS[priority]}

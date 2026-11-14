@@ -494,7 +494,7 @@ export function CalendarView({
 
   return (
     <div className="mx-auto max-w-[1600px] md:px-6 md:pt-5">
-      <div className="relative flex h-[calc(100dvh-17.5rem)] min-h-[520px] flex-col overflow-hidden border-y border-slate-200 bg-[var(--cal-bg)] md:h-[calc(100dvh-9.5rem)] md:min-h-[640px] md:rounded-2xl md:border md:shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="relative flex h-[calc(100dvh-19.5rem)] min-h-[520px] flex-col overflow-hidden border-y border-slate-200 bg-white md:h-[calc(100dvh-11.5rem)] md:min-h-[640px] md:rounded-3xl md:border">
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}
@@ -515,7 +515,7 @@ export function CalendarView({
                     className="absolute inset-0 z-30 bg-slate-900/20"
                   />
                 )}
-                <aside className="absolute inset-y-0 left-0 z-40 w-[200px] shrink-0 overflow-y-auto border-r border-slate-200 bg-[var(--cal-bg)] md:static md:z-auto">
+                <aside className="absolute inset-y-0 left-0 z-40 w-[200px] shrink-0 overflow-y-auto border-r border-slate-200 bg-tray md:static md:z-auto">
                   <CalendarSidebarFilters
                     filters={filters}
                     onToggleType={toggleType}
@@ -589,7 +589,7 @@ export function CalendarView({
               )}
             </section>
 
-            <aside className="hidden w-[284px] shrink-0 overflow-y-auto border-l border-slate-200 bg-[var(--cal-bg)] px-5 py-4 lg:block">
+            <aside className="hidden w-[284px] shrink-0 overflow-y-auto border-l border-slate-200 bg-white px-5 py-4 lg:block">
               {rail}
             </aside>
           </div>
@@ -607,14 +607,14 @@ export function CalendarView({
               onClick={() => setRailSheetOpen(false)}
               className="absolute inset-0 bg-slate-900/30"
             />
-            <div className="animate-in absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto rounded-t-2xl bg-[var(--cal-bg)] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl md:inset-x-auto md:right-4 md:bottom-4 md:w-[320px] md:rounded-2xl">
+            <div className="animate-in absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto rounded-t-3xl border border-slate-200 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 pop-shadow md:inset-x-auto md:right-4 md:bottom-4 md:w-[320px] md:rounded-3xl">
               <div className="mb-3 flex items-center justify-between">
                 <span className="mx-auto h-1 w-10 rounded-full bg-slate-300 md:hidden" />
                 <button
                   type="button"
                   onClick={() => setRailSheetOpen(false)}
                   aria-label="Close"
-                  className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/60"
+                  className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
                 >
                   <X className="size-4" />
                 </button>

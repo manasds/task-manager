@@ -8,7 +8,7 @@ const VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
 ];
 
 export const ghostIconClass =
-  'flex size-8 items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
+  'flex size-8 items-center justify-center text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
 
 export interface CalendarHeaderProps {
   title: string;
@@ -45,26 +45,26 @@ export function CalendarHeader({
           onClick={onToggleSidebar}
           aria-label="Show filters"
           aria-expanded={false}
-          className={`${ghostIconClass} rounded-lg`}
+          className={`${ghostIconClass} rounded-xl`}
         >
           <PanelLeft className="size-4" />
         </button>
       )}
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-[17px] font-semibold leading-tight text-slate-900">{title}</h2>
-        <p className="mt-0.5 truncate text-[13px] text-slate-500">{subtitle}</p>
+        <h2 className="truncate text-[20px] font-normal leading-tight tracking-tight text-slate-900 md:text-[26px]">{title}</h2>
+        <p className="mt-0.5 truncate font-mono text-xs text-slate-500">{subtitle}</p>
       </div>
 
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onToday}
-          className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-800 hover:bg-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          className="btn-paper h-8 rounded-xl px-3 text-[13px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
         >
           Today
         </button>
 
-        <div className="flex h-8 items-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="btn-paper flex h-8 items-center overflow-hidden rounded-xl">
           <button type="button" onClick={onPrev} aria-label="Previous" className={ghostIconClass}>
             <ChevronLeft className="size-4" />
           </button>
@@ -74,7 +74,7 @@ export function CalendarHeader({
           </button>
         </div>
 
-        <div role="tablist" aria-label="Calendar view" className="hidden h-8 items-center rounded-lg bg-slate-100 p-0.5 md:flex">
+        <div role="tablist" aria-label="Calendar view" className="hidden h-8 items-center rounded-xl bg-tray p-0.5 md:flex">
           {VIEW_MODES.map(({ id, label }) => (
             <button
               key={id}
@@ -82,9 +82,9 @@ export function CalendarHeader({
               role="tab"
               aria-selected={view === id}
               onClick={() => onViewChange(id)}
-              className={`h-7 rounded-md px-3.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-slate-400 ${
+              className={`h-7 rounded-[9px] px-3.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-slate-400 ${
                 view === id
-                  ? 'bg-white font-medium text-slate-900 shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+                  ? 'bg-white font-medium text-slate-900 shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
@@ -93,7 +93,7 @@ export function CalendarHeader({
           ))}
         </div>
 
-        <button type="button" onClick={onOpenRail} aria-label="Month and upcoming" className={`${ghostIconClass} rounded-lg lg:hidden`}>
+        <button type="button" onClick={onOpenRail} aria-label="Month and upcoming" className={`${ghostIconClass} rounded-xl lg:hidden`}>
           <CalendarRange className="size-4" />
         </button>
       </div>

@@ -1,18 +1,18 @@
 import type { Metadata, Viewport } from 'next';
-import { JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
+import { Geist, Geist_Mono } from 'next/font/google';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { THEME_BOOT_SCRIPT } from '@/lib/theme';
 import './globals.css';
 
-const jakarta = Plus_Jakarta_Sans({
+const geistSans = Geist({
   subsets: ['latin'],
-  variable: '--font-jakarta',
+  variable: '--font-geist-sans',
   weight: ['400', '500', '600', '700'],
 });
 
-const jetbrains = JetBrains_Mono({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
-  variable: '--font-jetbrains',
+  variable: '--font-geist-mono',
   weight: ['400', '500', '600'],
 });
 
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f172a',
+  themeColor: '#18181b',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body
-        className={`${jakarta.variable} ${jetbrains.variable} bg-slate-50 text-slate-900 antialiased font-sans selection:bg-indigo-100 selection:text-indigo-900`}
+        className={`${geistSans.variable} ${geistMono.variable} bg-page text-slate-900 antialiased font-sans selection:bg-amber-100 selection:text-amber-900`}
       >
         <ServiceWorkerRegister />
         {children}

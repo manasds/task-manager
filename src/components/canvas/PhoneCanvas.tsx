@@ -13,6 +13,7 @@ import {
   StickyNote,
   Trash2,
 } from 'lucide-react';
+import { Sticker } from '@/components/Sticker';
 import type { CanvasSection, CanvasTile } from '@/types/canvas';
 import { getDomain } from '@/utils/canvas';
 import { KIND_META, coverImage, type CardActions } from './LinkCard';
@@ -65,15 +66,15 @@ function SectionRow({ name, tiles, muted, onOpen }: { name: string; tiles: Canva
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 border-b border-slate-100 py-4 text-left active:bg-slate-50">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className={`truncate text-[17px] font-bold tracking-tight ${muted ? 'text-slate-500' : 'text-slate-900'}`}>{name}</span>
-            <span className="rounded-full border border-slate-200 px-1.5 py-0.5 text-[11px] font-semibold text-slate-500">{tiles.length}</span>
+            <span className={`truncate text-[17px] font-semibold tracking-tight ${muted ? 'text-slate-500' : 'text-slate-900'}`}>{name}</span>
+            <span className="rounded-full bg-slate-100 px-1.5 py-px font-mono text-[11px] font-medium text-slate-500">{tiles.length}</span>
           </div>
           {domains.length > 0 ? (
             <div className="mt-1.5 flex items-center">
               {domains.slice(0, 5).map((d, i) => (
                 <Favicon key={d} domain={d} className={`h-5 w-5 rounded-full border-2 border-white bg-white ${i ? '-ml-1.5' : ''}`} />
               ))}
-              <span className="ml-2 truncate text-xs text-slate-400">{domains.slice(0, 3).join(', ')}</span>
+              <span className="ml-2 truncate font-mono text-[11px] text-slate-400">{domains.slice(0, 3).join(', ')}</span>
             </div>
           ) : (
             <p className="mt-1 text-xs text-slate-400">No links yet</p>
@@ -101,7 +102,7 @@ function PhoneCard({ tile, onOpen, onMenu }: { tile: CanvasTile; onOpen: () => v
       onKeyDown={e => {
         if (e.key === 'Enter') onOpen();
       }}
-      className="relative flex w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm active:bg-slate-50"
+      className="relative flex w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white card-lift active:bg-slate-50"
     >
       <div className="relative aspect-[1.91/1] w-full overflow-hidden bg-slate-100">
         {image ? (
@@ -123,7 +124,7 @@ function PhoneCard({ tile, onOpen, onMenu }: { tile: CanvasTile; onOpen: () => v
           <p className={`line-clamp-2 break-words text-[15px] font-semibold leading-snug ${done ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
             {tile.title}
           </p>
-          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="mt-1.5 flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
             {domain && <Favicon domain={domain} className="h-4 w-4 shrink-0 rounded-sm" />}
             <span className="min-w-0 truncate">{domain}</span>
             {tile.note && <StickyNote className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-label="Has a note" />}
@@ -181,10 +182,10 @@ export default function PhoneCanvas(props: Props) {
     run();
   };
 
-  const menuItem = 'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] text-slate-800 active:bg-slate-100';
+  const menuItem = 'flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left text-[15px] text-slate-800 active:bg-slate-100';
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-white">
+    <div className="absolute inset-0 overflow-hidden bg-page">
       <div
         className="absolute inset-0 flex flex-col transition-transform duration-300 ease-out"
         style={{ transform: openId ? 'translateX(-30%)' : 'none' }}
@@ -200,7 +201,7 @@ export default function PhoneCanvas(props: Props) {
             <button
               type="button"
               onClick={props.onAddSection}
-              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-medium text-slate-500 active:bg-slate-50"
+              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-slate-300 py-3 text-sm font-medium text-slate-500 active:bg-slate-50"
             >
               <Plus className="h-4 w-4" /> New section
             </button>
@@ -209,7 +210,7 @@ export default function PhoneCanvas(props: Props) {
       </div>
 
       <div
-        className="absolute inset-0 flex flex-col bg-white transition-transform duration-300 ease-out"
+        className="absolute inset-0 flex flex-col bg-page transition-transform duration-300 ease-out"
         style={{ transform: openId ? 'none' : 'translateX(100%)' }}
         aria-hidden={openId === null}
       >
@@ -218,7 +219,7 @@ export default function PhoneCanvas(props: Props) {
             type="button"
             onClick={() => onOpenChange(null)}
             aria-label="Back to sections"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 active:bg-slate-100"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 active:bg-slate-100"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -235,19 +236,19 @@ export default function PhoneCanvas(props: Props) {
                 if (e.key === 'Escape') props.onRename(section.id, null);
               }}
               onBlur={e => props.onRename(section.id, e.currentTarget.value)}
-              className="min-w-0 flex-1 rounded-md border border-indigo-300 px-2 py-1 text-base font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="min-w-0 flex-1 rounded-lg border border-indigo-300 bg-page px-2 py-1 text-base font-semibold tracking-tight text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-100"
             />
           ) : (
-            <h2 className="min-w-0 truncate text-base font-bold text-slate-900">{section?.name ?? 'Unsorted'}</h2>
+            <h2 className="min-w-0 truncate text-base font-semibold tracking-tight text-slate-900">{section?.name ?? 'Unsorted'}</h2>
           )}
-          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">{list.length}</span>
+          <span className="rounded-full bg-slate-100 px-1.5 py-px font-mono text-[11px] font-medium text-slate-500">{list.length}</span>
           {section && (
             <div className="ml-auto flex items-center">
               <button
                 type="button"
                 onClick={() => props.onStartRename(section.id)}
                 aria-label={`Rename ${section.name}`}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 active:bg-slate-100"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 active:bg-slate-100"
               >
                 <Pencil className="h-4 w-4" />
               </button>
@@ -255,7 +256,7 @@ export default function PhoneCanvas(props: Props) {
                 type="button"
                 onClick={() => props.onDeleteSection(section.id)}
                 aria-label={`Delete ${section.name}`}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 active:bg-slate-100 active:text-red-600"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 active:bg-slate-100 active:text-red-600"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -265,7 +266,10 @@ export default function PhoneCanvas(props: Props) {
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {list.length === 0 ? (
-            <p className="px-6 py-24 text-center text-sm text-slate-400">No links here yet. Use Add to save one.</p>
+            <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-2xl border-[1.5px] border-dashed border-slate-300 px-6 py-14">
+              <Sticker name="moon" className="size-14 -rotate-[10deg]" />
+              <p className="text-center text-sm text-slate-400">No links here yet. Use Add to save one.</p>
+            </div>
           ) : (
             <div className="flex flex-col gap-4 px-4 pb-24 pt-4">
               {list.map(tile => (
@@ -279,7 +283,7 @@ export default function PhoneCanvas(props: Props) {
       {menuFor && (
         <>
           <div className="absolute inset-0 z-30 bg-slate-900/30" onClick={() => setMenuFor(null)} />
-          <div role="dialog" aria-label={menuFor.title} className="absolute inset-x-0 bottom-0 z-40 rounded-t-2xl bg-white p-2 pb-6 shadow-2xl">
+          <div role="dialog" aria-label={menuFor.title} className="absolute inset-x-0 bottom-0 z-40 rounded-t-3xl border border-slate-200 bg-white p-2 pb-6 pop-shadow">
             <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-200" />
             <p className="truncate px-3 pb-2 text-xs font-medium text-slate-400">{menuFor.title}</p>
             <button type="button" className={menuItem} onClick={() => act(() => props.onToggleDone(menuFor))}>

@@ -130,10 +130,10 @@ export function EventPopover({
   const pct = checklist && checklist.total > 0 ? Math.round((checklist.done / checklist.total) * 100) : 0;
 
   const iconButton =
-    'flex h-7 w-7 items-center justify-center rounded-md text-slate-500 outline-none hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-slate-400';
+    'flex h-7 w-7 items-center justify-center rounded-xl text-slate-500 transition-colors outline-none hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-slate-400';
 
-  const footerButton = 'h-8 rounded-lg px-3 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
-  const secondary = `${footerButton} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`;
+  const footerButton = 'h-8 rounded-xl px-3 text-[13px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
+  const secondary = `${footerButton} btn-paper`;
 
   return createPortal(
     <div
@@ -141,11 +141,11 @@ export function EventPopover({
       role="dialog"
       aria-label={item.title}
       tabIndex={-1}
-      className="fixed z-50 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.08)] outline-none"
+      className="fixed z-50 rounded-[20px] border border-slate-200 bg-white p-4 pop-shadow outline-none"
       style={{ width: `min(${WIDTH}px, calc(100vw - ${MARGIN * 2}px))`, left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? 'visible' : 'hidden' }}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-1.5 rounded-[7px] bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
           <span className="h-2 w-2 rounded-sm" style={{ background: theme.dot }} />
           {theme.label}
         </div>
@@ -163,7 +163,7 @@ export function EventPopover({
           </button>
         </div>
       </div>
-      <h3 className="mt-3 text-[15px] font-medium text-slate-900">{item.title}</h3>
+      <h3 className="mt-3 text-[15px] font-medium tracking-tight text-slate-900">{item.title}</h3>
       <ul className="mt-3 space-y-2.5 text-sm text-slate-800">
         <Row icon={Clock}>
           {format(item.start, 'EEE, MMM d')} · {formatRange(item.start, item.end)}
@@ -199,7 +199,7 @@ export function EventPopover({
               <button
                 type="button"
                 onClick={onStartFocus}
-                className={`${footerButton} flex items-center gap-1.5 bg-slate-900 text-white hover:bg-slate-800`}
+                className={`${footerButton} btn-ink flex items-center gap-1.5`}
               >
                 <Play className="h-3.5 w-3.5" aria-hidden />
                 Start focus
@@ -209,7 +209,7 @@ export function EventPopover({
             Unschedule
           </button>
           {canRemoveFromDay && (
-            <button type="button" onClick={onRemoveFromDay} className={`${secondary} text-rose-600 hover:bg-rose-50`}>
+            <button type="button" onClick={onRemoveFromDay} className={`${footerButton} border border-slate-200 bg-white text-rose-600 hover:bg-rose-50`}>
               Remove from day
             </button>
           )}

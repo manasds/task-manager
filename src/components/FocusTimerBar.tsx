@@ -141,7 +141,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
               {formatClock(secondsElapsed)}
             </div>
             {estimateMinutes > 0 && (
-              <div className={`mt-1 text-[11px] tabular-nums ${isOver ? 'text-amber-300' : 'text-slate-400'}`}>
+              <div className={`mt-1 text-[11px] font-mono tabular-nums ${isOver ? 'text-amber-300' : 'text-slate-400'}`}>
                 {isOver
                   ? `${formatMinutes(overMinutes)} over estimate`
                   : `${formatMinutes(Math.floor(spentMinutes))} of ${formatMinutes(estimateMinutes)}`}
@@ -154,7 +154,7 @@ export const FocusTimerBar: React.FC<FocusTimerBarProps> = ({
             <div className="flex items-center gap-1">
               <button
                 onClick={handleToggleTimer}
-                className="size-11 shrink-0 flex items-center justify-center rounded-full bg-white text-slate-900 hover:bg-indigo-100 shadow-sm transition-colors active:scale-95"
+                className="size-11 shrink-0 flex items-center justify-center rounded-full bg-white text-slate-900 hover:bg-slate-100 shadow-sm transition-colors active:scale-95"
                 title={isRunning ? 'Pause timer' : 'Resume timer'}
                 aria-label={isRunning ? 'Pause timer' : 'Resume timer'}
               >

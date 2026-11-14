@@ -80,7 +80,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
       }}
     >
       <div
-        className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
+        className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col pop-shadow border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"
         aria-labelledby="task-detail-title"
@@ -93,17 +93,17 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
               <span
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[7px]"
                 style={{ backgroundColor: category.lightBg, color: category.textColor }}
               >
                 <span className="size-1.5 rounded-full" style={{ backgroundColor: category.color }} />
                 {category.label}
               </span>
-              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 ${priority.textColor}`}>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[7px] bg-slate-100 ${priority.textColor}`}>
                 <span className="size-1.5 rounded-full" style={{ backgroundColor: priority.dotColor }} />
                 {priority.label}
               </span>
-              {status && <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600">{status.title}</span>}
+              {status && <span className="px-1.5 py-0.5 rounded-[7px] bg-slate-100 text-slate-600">{status.title}</span>}
             </div>
             <div className="flex items-center gap-0.5 -mr-1.5 shrink-0">
               <button
@@ -133,7 +133,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
           </h3>
 
           {/* Two quiet rows of details, so the notes below get the space. */}
-          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-slate-600 tabular-nums">
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-slate-600 font-mono tabular-nums">
             <Detail icon={CalendarDays} label="Dates">
               {formatDate(activity.date)}
               {activity.deadline && <span className="text-slate-400"> → </span>}
@@ -153,7 +153,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
           <div className="px-5 sm:px-6 pt-4 mt-4 border-t border-slate-100">
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-700">Checklist</span>
-              <span className="text-[11px] font-medium text-slate-400 tabular-nums">
+              <span className="text-[11px] font-mono font-medium text-slate-400 tabular-nums">
                 {doneCount}/{activity.subtasks.length} done
               </span>
             </div>
@@ -191,13 +191,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ activity, onSa
             placeholder="Context, requirements, links or outcomes..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className={`flex-1 block w-full ${activity.subtasks.length > 0 ? "min-h-36" : "min-h-60"} resize-none scrollbar-slim px-4 py-3 rounded-xl bg-slate-50 border border-slate-200/80 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-slate-300 focus:outline-hidden focus:shadow-sm transition-[background-color,border-color,box-shadow]`}
+            className={`flex-1 block w-full ${activity.subtasks.length > 0 ? "min-h-36" : "min-h-60"} resize-none scrollbar-slim px-4 py-3 rounded-xl bg-page border border-slate-300 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-slate-300 focus:outline-hidden focus:shadow-sm transition-[background-color,border-color,box-shadow]`}
           />
           <div className="mt-4 flex justify-end">
             <button
               type="button"
               onClick={close}
-              className="h-9 px-5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-98 rounded-lg shadow-xs transition-all"
+              className="btn-ink h-9 px-5 text-sm font-medium rounded-xl"
             >
               Done
             </button>

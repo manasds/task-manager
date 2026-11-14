@@ -34,7 +34,7 @@ function writeLastSection(id: string) {
 const isWebLink = (value: string) => /^https?:\/\/\S+$/i.test(value);
 
 const fieldClass =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[15px] font-normal text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-[3px] focus:ring-indigo-100';
+  'w-full rounded-xl border border-slate-300 bg-page px-3 py-2.5 text-[15px] font-normal text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-[3px] focus:ring-indigo-100';
 
 const labelClass = 'flex flex-col gap-1 text-xs font-semibold text-slate-500';
 
@@ -172,12 +172,12 @@ export default function ShareSheet() {
   const domain = getDomain(url.trim());
 
   return (
-    <main className="min-h-dvh bg-slate-50 p-4 text-slate-800">
-      <div className="mx-auto w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <main className="min-h-dvh bg-page p-4 text-slate-800">
+      <div className="mx-auto w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-4 pop-shadow">
         <header className="mb-3 flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon.svg" alt="" width={20} height={20} />
-          <span className="font-bold text-slate-900">Save to Tasky</span>
+          <span className="font-semibold tracking-tight text-slate-900">Save to Tasky</span>
           {(phase === 'loading' || phase === 'form') && (
             <Link href="/canvas" className="ml-auto text-[13px] font-semibold text-indigo-600 hover:underline">
               Open canvas
@@ -186,7 +186,7 @@ export default function ShareSheet() {
         </header>
 
         {message && (
-          <p role="status" className="mb-3 rounded-lg bg-red-50 px-2.5 py-2 text-[13px] text-red-700">
+          <p role="status" className="mb-3 rounded-xl bg-red-50 px-2.5 py-2 text-[13px] text-red-700">
             {message}
           </p>
         )}
@@ -199,7 +199,7 @@ export default function ShareSheet() {
             <button
               type="button"
               onClick={signIn}
-              className="rounded-lg bg-indigo-600 px-3 py-2.5 text-[15px] font-semibold text-white hover:bg-indigo-700"
+              className="btn-ink rounded-xl px-3 py-2.5 text-[15px] font-medium"
             >
               Sign in with Google
             </button>
@@ -209,7 +209,7 @@ export default function ShareSheet() {
         {phase === 'form' && (
           <form onSubmit={save} className="flex flex-col gap-3">
             <div
-              className="flex aspect-[1.91/1] items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-slate-100 to-slate-300 bg-cover bg-center text-[13px] text-slate-500"
+              className="flex aspect-[1.91/1] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-100 to-slate-300 bg-cover bg-center text-[13px] text-slate-500"
               style={image ? { backgroundImage: `url("${image.replace(/"/g, '%22')}")` } : undefined}
             >
               {!image && (domain || 'Paste a link')}
@@ -264,7 +264,7 @@ export default function ShareSheet() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-indigo-600 px-3 py-3 text-[15px] font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="btn-ink rounded-xl px-3 py-3 text-[15px] font-medium disabled:opacity-60"
             >
               {saving ? 'Saving…' : 'Save to Tasky'}
             </button>
@@ -278,7 +278,7 @@ export default function ShareSheet() {
             </p>
             <Link
               href="/canvas"
-              className="rounded-lg bg-indigo-600 px-3 py-3 text-center text-[15px] font-semibold text-white hover:bg-indigo-700"
+              className="btn-ink rounded-xl px-3 py-3 text-center text-[15px] font-medium"
             >
               Open canvas
             </Link>

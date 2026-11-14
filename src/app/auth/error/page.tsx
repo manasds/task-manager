@@ -36,9 +36,9 @@ export default function AuthErrorPage() {
   }, [router]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
+    <main className="min-h-screen flex items-center justify-center bg-page px-6">
       <div className="max-w-md text-center">
-        <h1 className="text-lg font-semibold text-slate-900">Google sign-in did not finish</h1>
+        <h1 className="text-xl font-normal tracking-tight text-slate-900">Google sign-in did not finish</h1>
         <p className="mt-2 text-sm text-slate-600">
           {signedIn === null
             ? 'Checking whether you are already signed in…'
@@ -46,7 +46,7 @@ export default function AuthErrorPage() {
         </p>
         <Link
           href="/"
-          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white"
+          className="mt-6 inline-flex min-h-11 items-center justify-center btn-ink rounded-xl px-5 text-sm font-medium"
         >
           Back to the board
         </Link>

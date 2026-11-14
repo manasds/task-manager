@@ -1,8 +1,41 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* Recessed surface behind lifted cards: board columns, side panes, segmented controls. */
+  --color-tray: var(--tray);
+  /* Page background: pure white in light, near-black in dark. */
+  --color-page: var(--page);
+}
+
+/* ───────────── Palette ─────────────
+   The components are written against Tailwind's slate and indigo scales. The sticker design
+   uses zinc neutrals and has no accent hue (primary actions are ink black), so both scales
+   are remapped here instead of renaming classes across the app. */
+@theme {
+  --color-slate-50: #fafafa;
+  --color-slate-100: #f4f4f5;
+  --color-slate-200: #e4e4e7;
+  --color-slate-300: #d4d4d8;
+  --color-slate-400: #9f9fa9;
+  --color-slate-500: #71717b;
+  --color-slate-600: #52525c;
+  --color-slate-700: #3f3f46;
+  --color-slate-800: #27272a;
+  --color-slate-900: #18181b;
+  --color-slate-950: #09090b;
+
+  --color-indigo-50: #f4f4f5;
+  --color-indigo-100: #e4e4e7;
+  --color-indigo-200: #d4d4d8;
+  --color-indigo-300: #a1a1aa;
+  --color-indigo-400: #71717b;
+  --color-indigo-500: #27272a;
+  --color-indigo-600: #18181b;
+  --color-indigo-700: #3f3f46;
+  --color-indigo-800: #27272a;
+  --color-indigo-900: #18181b;
 }
 
 /* Minimal enter animation for toasts, sheets and the focus bar. */
@@ -49,6 +82,112 @@
   }
 }
 
+/* ───────────── Sticker design surfaces ─────────────
+   Colours come from theme tokens, so each of these follows light and dark on its own.
+   Do not pair btn-ink with text-white: dark mode turns the fill light and the text dark. */
+
+/* Primary action: ink fill with a top highlight. */
+@utility btn-ink {
+  color: var(--btn-ink);
+  border: 1px solid var(--btn-line);
+  background-image: linear-gradient(180deg, var(--btn-a), var(--btn-b));
+  box-shadow: inset 0 1px 0 var(--btn-hi), 0 1px 2px rgb(0 0 0 / 0.1);
+  transition: translate 150ms, filter 150ms;
+  &:hover {
+    filter: brightness(1.12);
+  }
+  &:active {
+    translate: 0 1px;
+  }
+  &:disabled {
+    opacity: 0.5;
+    filter: none;
+    translate: none;
+  }
+}
+
+/* Secondary action: paper fill with a hairline border. */
+@utility btn-paper {
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-line);
+  background-image: linear-gradient(180deg, var(--paper-a), var(--paper-b));
+  box-shadow: inset 0 1px 0 var(--paper-hi), 0 1px 2px rgb(0 0 0 / 0.04);
+  transition: translate 150ms, border-color 150ms;
+  &:hover {
+    border-color: var(--paper-line-hover);
+  }
+  &:active {
+    translate: 0 1px;
+  }
+}
+
+/* A white card lifted off a tray. */
+@utility card-lift {
+  box-shadow: var(--shadow-card);
+}
+
+/* Floating layers: menus, popovers, dialogs. */
+@utility pop-shadow {
+  box-shadow: var(--shadow-pop);
+}
+
+/* Pastel stat tile. Set the hue with tile-green / tile-blue / tile-yellow / tile-pink. */
+@utility tile {
+  position: relative;
+  overflow: hidden;
+  color: var(--tile-ink);
+  border: 1px solid var(--tile-edge);
+  background-image: linear-gradient(180deg, var(--tile-a), var(--tile-b));
+  box-shadow:
+    inset 0 1px 0 var(--tile-hi),
+    inset 0 -2px 6px rgb(0 0 0 / 0.04),
+    0 1px 1px rgb(0 0 0 / 0.05),
+    0 6px 14px rgb(0 0 0 / 0.05);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(var(--tile-grain) 0.6px, transparent 0.7px);
+    background-size: 3px 3px;
+    opacity: 0.06;
+  }
+}
+
+@utility tile-green {
+  --tile-a: var(--tile-green-a);
+  --tile-b: var(--tile-green-b);
+}
+
+@utility tile-blue {
+  --tile-a: var(--tile-blue-a);
+  --tile-b: var(--tile-blue-b);
+}
+
+@utility tile-yellow {
+  --tile-a: var(--tile-yellow-a);
+  --tile-b: var(--tile-yellow-b);
+}
+
+@utility tile-pink {
+  --tile-a: var(--tile-pink-a);
+  --tile-b: var(--tile-pink-b);
+}
+
+/* Die-cut sticker: the white outline is in the artwork, this adds the lift and the hover wiggle. */
+@utility sticker {
+  display: inline-block;
+  flex: none;
+  filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.28));
+  transition:
+    rotate 450ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    scale 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  &:hover {
+    rotate: 14deg;
+    scale: 1.12;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -70,64 +209,99 @@ select:not([multiple]) {
 }
 
 /* ───────────── Theme tokens ─────────────
-   Light values match the shipped UI exactly. Dark is a designed palette, not an inversion:
-   layered slate surfaces (page < surface < raised), softened text contrast, accents lifted
-   to their 300/400 shades for text and kept as solid fills for buttons, and pastel fills
-   swapped for low-alpha tints of the same hue. */
+   Light is zinc on a pure white page. Dark is a designed palette, not an inversion:
+   layered zinc surfaces (page < tray < surface < raised), softened text contrast, ink buttons
+   that flip to a light fill, and pastel fills swapped for deep tints of the same hue. */
 :root {
+  --page: #fff;
   --surface: #fff;
-  --scrollbar-thumb: #cbd5e1;
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --cal-bg: #f8fafc;
-  --grid-line: rgb(226 232 240 / 0.9);
-  --chart-track: #f1f5f9;
-  --now: #c2410c;
-  --cat-build: #4f46e5; --cat-build-bg: #eef2ff; --cat-build-border: #c7d2fe; --cat-build-text: #3730a3;
-  --cat-learn: #7c3aed; --cat-learn-bg: #f5f3ff; --cat-learn-border: #ddd6fe; --cat-learn-text: #5b21b6;
-  --pri-urgent: #dc2626; --pri-high: #ea580c; --pri-medium: #2563eb; --pri-low: #64748b;
-  --cal-build-dot: #818cf8; --cal-build-fill: #e0e7ff; --cal-build-border: #a5b4fc; --cal-build-muted: #5b61a8; --cal-build-soft: #eef2ff;
-  --cal-learn-dot: #a78bfa; --cal-learn-fill: #ede9fe; --cal-learn-border: #c4b5fd; --cal-learn-muted: #7a5aa8; --cal-learn-soft: #f5f3ff;
+  --tray: #f4f4f5;
+  --scrollbar-thumb: #d4d4d8;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --cal-bg: #fafafa;
+  --grid-line: rgb(228 228 231 / 0.9);
+  --chart-track: #f4f4f5;
+  --now: #ff7319;
+
+  --btn-a: #27272a; --btn-b: #18181b; --btn-line: #27272a; --btn-ink: #fff; --btn-hi: rgb(255 255 255 / 0.1);
+  --paper-a: #fff; --paper-b: #fafafa; --paper-hi: #fff; --paper-ink: #52525c; --paper-line: #d4d4d8; --paper-line-hover: #9f9fa9;
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-pop: 0 1px 1px rgb(0 0 0 / 0.06), 0 6px 14px rgb(0 0 0 / 0.07), 0 18px 36px rgb(0 0 0 / 0.1);
+
+  --tile-ink: #18181b; --tile-ink-2: #3f3f46; --tile-edge: rgb(255 255 255 / 0.65); --tile-hi: rgb(255 255 255 / 0.85);
+  --tile-track: rgb(0 0 0 / 0.1); --tile-fill: #18181b; --tile-grain: rgb(0 0 0 / 0.18);
+  --tile-green-a: #e9fbc8; --tile-green-b: #bfeb8f;
+  --tile-blue-a: #e9efff; --tile-blue-b: #c4d4ff;
+  --tile-yellow-a: #fff3ac; --tile-yellow-b: #ffd93d;
+  --tile-pink-a: #ffe0e2; --tile-pink-b: #ffb0b8;
+
+  --cat-build: #4d3dfd; --cat-build-bg: #e7e5ff; --cat-build-border: #c9c4ff; --cat-build-text: #2f22b8;
+  --cat-learn: #c026a8; --cat-learn-bg: #fbe4f6; --cat-learn-border: #f3bfe6; --cat-learn-text: #8a1877;
+  --pri-urgent: #e40014; --pri-high: #ea580c; --pri-medium: #3e53f8; --pri-low: #71717b;
+  --cal-build-dot: #6a5cff; --cal-build-fill: #e7e5ff; --cal-build-border: #8f85ff; --cal-build-muted: #5046c8; --cal-build-soft: #f4f3ff;
+  --cal-learn-dot: #d946c0; --cal-learn-fill: #fbe4f6; --cal-learn-border: #ea8fd6; --cal-learn-muted: #a13a8f; --cal-learn-soft: #fdf2fa;
 }
 
 /* Applied by the `dark` class on <html>, which useTheme sets from the user's choice or the system setting. */
 .dark {
   & {
     color-scheme: dark;
-    --surface: #151821;
-    --scrollbar-thumb: #4a5160;
-    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a91a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    --cal-bg: #11141b;
+    --page: #09090b;
+    --surface: #18181b;
+    --tray: #121214;
+    --scrollbar-thumb: #52525c;
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d8d98' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    --cal-bg: #121214;
     --grid-line: rgb(255 255 255 / 0.05);
-    --chart-track: #232834;
-    --now: #fb923c;
-    --cat-build: #818cf8; --cat-build-bg: rgb(129 140 248 / 0.14); --cat-build-border: rgb(129 140 248 / 0.3); --cat-build-text: #e0e7ff;
-    --cat-learn: #a78bfa; --cat-learn-bg: rgb(167 139 250 / 0.14); --cat-learn-border: rgb(167 139 250 / 0.3); --cat-learn-text: #ede9fe;
-    --pri-urgent: #f87171; --pri-high: #fb923c; --pri-medium: #60a5fa; --pri-low: #8b92a0;
-    /* Solid tints (not alpha) so grid lines don't show through, and Build/Learn keep distinct hues. */
-    --cal-build-dot: #818cf8; --cal-build-fill: #2a2d5b; --cal-build-border: #5c5fd6; --cal-build-muted: #a5b4fc; --cal-build-soft: #1b1e35;
-    --cal-learn-dot: #a78bfa; --cal-learn-fill: #362a5d; --cal-learn-border: #8061d9; --cal-learn-muted: #c4b5fd; --cal-learn-soft: #201d35;
+    --chart-track: #27272a;
+    --now: #ff8a3d;
 
-    /* Neutral ramp: cool, slightly blue-tinted greys so it still reads as "slate". */
-    --color-slate-50: #0d1016;   /* page */
-    --color-slate-100: #1c2029;  /* subtle fills, hairlines */
-    --color-slate-200: #262b36;  /* borders, tracks */
-    --color-slate-300: #363c49;
-    --color-slate-400: #6c7383;
-    --color-slate-500: #8a91a0;
-    --color-slate-600: #a3a9b6;
-    --color-slate-700: #c0c5cf;
-    --color-slate-800: #d8dce3;
-    --color-slate-900: #eceef2;
-    --color-neutral-100: #1c2029;
-    --color-white: #151821;
+    --btn-a: #fff; --btn-b: #d4d4d8; --btn-line: #fff; --btn-ink: #18181b; --btn-hi: rgb(255 255 255 / 0.9);
+    --paper-a: #232327; --paper-b: #1b1b1e; --paper-hi: rgb(255 255 255 / 0.06); --paper-ink: #b4b4bd; --paper-line: #3f3f46; --paper-line-hover: #63636e;
+    --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.05), 0 12px 32px rgb(0 0 0 / 0.5);
+
+    --tile-ink: #fafafa; --tile-ink-2: #c9c9d1; --tile-edge: rgb(255 255 255 / 0.08); --tile-hi: rgb(255 255 255 / 0.07);
+    --tile-track: rgb(255 255 255 / 0.12); --tile-fill: #ffd93d; --tile-grain: rgb(255 255 255 / 0.3);
+    --tile-green-a: #25381a; --tile-green-b: #1a2a12;
+    --tile-blue-a: #1d2646; --tile-blue-b: #151c36;
+    --tile-yellow-a: #40360d; --tile-yellow-b: #2e2608;
+    --tile-pink-a: #45202a; --tile-pink-b: #33161e;
+
+    --cat-build: #8f85ff; --cat-build-bg: rgb(125 112 255 / 0.18); --cat-build-border: rgb(125 112 255 / 0.35); --cat-build-text: #c9c4ff;
+    --cat-learn: #f472d0; --cat-learn-bg: rgb(244 114 208 / 0.16); --cat-learn-border: rgb(244 114 208 / 0.32); --cat-learn-text: #f9b8e6;
+    --pri-urgent: #f87171; --pri-high: #fb923c; --pri-medium: #8c9bff; --pri-low: #8d8d98;
+    /* Solid tints (not alpha) so grid lines don't show through, and Build/Learn keep distinct hues. */
+    --cal-build-dot: #8f85ff; --cal-build-fill: #26224f; --cal-build-border: #6a5cff; --cal-build-muted: #b3adff; --cal-build-soft: #18172e;
+    --cal-learn-dot: #f472d0; --cal-learn-fill: #45203d; --cal-learn-border: #c14aa8; --cal-learn-muted: #f0a6dd; --cal-learn-soft: #2a1626;
+
+    /* Neutral ramp, zinc. */
+    --color-slate-50: #09090b;   /* page */
+    --color-slate-100: #1c1c1f;  /* subtle fills, hairlines */
+    --color-slate-200: #27272a;  /* borders, tracks */
+    --color-slate-300: #3f3f46;
+    --color-slate-400: #63636e;
+    --color-slate-500: #8d8d98;
+    --color-slate-600: #a8a8b3;
+    --color-slate-700: #c4c4cc;
+    --color-slate-800: #dcdce1;
+    --color-slate-900: #fafafa;
+    --color-neutral-100: #1c1c1f;
+    --color-white: #18181b;
+
+    /* The ink scale flips with the text: light fills, white washes. */
+    --color-indigo-50: rgb(255 255 255 / 0.06);
+    --color-indigo-100: rgb(255 255 255 / 0.1);
+    --color-indigo-200: rgb(255 255 255 / 0.16);
+    --color-indigo-300: #d4d4d8;
+    --color-indigo-400: #a1a1aa;
+    --color-indigo-500: #e4e4e7;
+    --color-indigo-600: #fafafa;
+    --color-indigo-700: #d4d4d8;
+    --color-indigo-800: #e4e4e7;
+    --color-indigo-900: #fafafa;
 
     /* Tinted washes instead of pastels. */
-    --color-indigo-50: rgb(99 102 241 / 0.12);
-    --color-indigo-100: rgb(99 102 241 / 0.2);
-    --color-indigo-200: rgb(129 140 248 / 0.3);
-    --color-indigo-300: #a5b4fc;
-    --color-indigo-600: #5b5ff0;
-    --color-indigo-700: #6d70f5;
     --color-rose-50: rgb(244 63 94 / 0.12);
     --color-red-50: rgb(239 68 68 / 0.12);
     --color-amber-50: rgb(245 158 11 / 0.12);
@@ -142,26 +316,24 @@ select:not([multiple]) {
     --color-orange-50: rgb(249 115 22 / 0.12); --color-orange-100: rgb(249 115 22 / 0.2);
   }
 
-  body { background: #0d1016; }
-  ::selection { background: rgb(99 102 241 / 0.35); color: #fff; }
+  body { background: #09090b; }
+  ::selection { background: rgb(255 255 255 / 0.25); color: #fff; }
 
   /* Surfaces: white cards become the first elevation step above the page. */
   /* --color-white is the surface colour in dark, so bg-white keeps its cascade order; real white text is restored below. */
   .text-white, .hover\:text-white:hover { color: #fff; }
   .bg-white\/10 { background-color: rgb(255 255 255 / 0.1); }
   .ring-white\/10 { --tw-ring-color: rgb(255 255 255 / 0.08); }
-  [role='dialog'].bg-white, [role='dialog'] > .bg-white, [role='dialog'] .bg-white.rounded-2xl { background-color: #1a1e27; }
-  /* Board columns sit a step below the cards so cards read as lifted. */
-  @media (min-width: 40rem) { .sm\:bg-white { background-color: #11141b; } }
-  .hover\:bg-slate-50:hover, .active\:bg-slate-50:active { background-color: #1a1e27; }
+  [role='dialog'].bg-white, [role='dialog'] > .bg-white, [role='dialog'] .bg-white.rounded-2xl, [role='dialog'] .bg-white.rounded-3xl { background-color: #1f1f23; }
+  .hover\:bg-slate-50:hover, .active\:bg-slate-50:active { background-color: #1f1f23; }
 
   /* "Ink" chips and primary buttons flip to a light fill with dark text… */
-  .bg-slate-900, .bg-slate-900.text-white { color: #0d1016; }
-  .bg-slate-900 .text-white { color: #0d1016; }
-  .hover\:bg-slate-800:hover { background-color: #d8dce3; }
+  .bg-slate-900, .bg-slate-900.text-white, .bg-indigo-600, .bg-indigo-600.text-white, .bg-indigo-500.text-white { color: #18181b; }
+  .bg-slate-900 .text-white, .bg-indigo-600 .text-white { color: #18181b; }
+  .hover\:bg-slate-800:hover { background-color: #d4d4d8; }
   /* …but floating chrome (focus bar, toasts, tooltips) stays dark and raised. */
   .bg-slate-900.rounded-2xl, .bg-slate-900.shadow-xl, .bg-slate-900.shadow-lg, .bg-slate-900\/95 {
-    background-color: #232835; color: #eceef2; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.5);
+    background-color: #27272a; color: #fafafa; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.5);
   }
   .bg-slate-900.rounded-2xl .text-white, .bg-slate-900.shadow-xl .text-white, .bg-slate-900.shadow-lg .text-white { color: #fff; }
   .bg-slate-900.rounded-2xl .hover\:bg-slate-800:hover, .bg-slate-900.shadow-xl .hover\:bg-slate-800:hover,
@@ -175,9 +347,7 @@ select:not([multiple]) {
   .bg-slate-900\/\[0\.04\] { background-color: rgb(255 255 255 / 0.04); }
   .bg-slate-900\/\[0\.03\] { background-color: rgb(255 255 255 / 0.03); }
 
-  /* Accent text lifts to lighter shades so it reads on dark. */
-  .text-indigo-600, .hover\:text-indigo-600:hover, .group:hover .group-hover\:text-indigo-600 { color: #a5b4fc; }
-  .text-indigo-700, .text-indigo-800, .text-indigo-900, .hover\:text-indigo-700:hover { color: #c7d2fe; }
+  /* Status text lifts to lighter shades so it reads on dark. */
   .text-rose-500, .text-rose-600, .text-red-500, .text-red-600, .hover\:text-rose-600:hover, .hover\:text-red-600:hover { color: #fb7185; }
   .text-rose-700, .text-red-700 { color: #fda4af; }
   .text-amber-500, .text-amber-600 { color: #fbbf24; }

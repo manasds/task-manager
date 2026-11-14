@@ -29,13 +29,13 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
   return (
     <div className="select-none">
       <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-medium text-slate-900">{format(month, 'MMMM yyyy')}</h2>
+        <h2 className="text-[15px] font-medium tracking-tight text-slate-900">{format(month, 'MMMM yyyy')}</h2>
         <div className="flex items-center gap-1">
           <button
             type="button"
             aria-label="Previous month"
             onClick={() => onMonthChange(addMonths(first, -1))}
-            className={`flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200/60 ${FOCUS}`}
+            className={`flex h-7 w-7 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 ${FOCUS}`}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -43,14 +43,14 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
             type="button"
             aria-label="Next month"
             onClick={() => onMonthChange(addMonths(first, 1))}
-            className={`flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200/60 ${FOCUS}`}
+            className={`flex h-7 w-7 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 ${FOCUS}`}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-7 text-center text-xs text-slate-400">
+      <div className="mt-3 grid grid-cols-7 text-center font-mono text-xs text-slate-400">
         {WEEKDAYS.map((d, i) => (
           <div key={i} className="flex h-8 items-center justify-center">
             {d}
@@ -65,7 +65,7 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
           return (
             <div
               key={week[0].toISOString()}
-              className={`grid grid-cols-7 rounded-lg ${isAnchorWeek ? 'bg-slate-200/60' : ''}`}
+              className={`grid grid-cols-7 rounded-xl ${isAnchorWeek ? 'bg-slate-100' : ''}`}
             >
               {week.map((day) => {
                 const isToday = isSameDay(day, today);
@@ -78,10 +78,10 @@ export function MiniMonth({ anchorDate, today, month, onMonthChange, onSelectDat
                     aria-label={format(day, 'EEEE, MMMM d, yyyy')}
                     aria-current={isToday ? 'date' : undefined}
                     onClick={() => onSelectDate(day)}
-                    className={`mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-sm tabular-nums ${FOCUS} ${
+                    className={`mx-auto flex h-8 w-8 items-center justify-center rounded-[9px] font-mono text-xs tabular-nums ${FOCUS} ${
                       isToday
                         ? 'bg-slate-900 font-medium text-white'
-                        : `${inMonth ? 'text-slate-900' : 'text-slate-400'} hover:bg-slate-200/70`
+                        : `${inMonth ? 'text-slate-900' : 'text-slate-400'} hover:bg-slate-200`
                     }`}
                   >
                     {format(day, 'd')}

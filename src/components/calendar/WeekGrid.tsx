@@ -146,16 +146,16 @@ function DayRow({
         aria-label={format(day, 'EEEE, MMMM d')}
         className={`sticky left-0 z-20 flex shrink-0 items-center gap-2 border-r border-slate-200 px-3 text-left text-[13px] outline-none hover:bg-slate-100 focus-visible:bg-slate-100 ${
           weekend ? 'bg-slate-50' : 'bg-white'
-        } ${selected ? 'shadow-[inset_2px_0_0_#0f172a]' : ''}`}
+        } ${selected ? 'shadow-[inset_2px_0_0_var(--color-slate-900)]' : ''}`}
         style={{ width: GUTTER_WIDTH }}
       >
         <span className={isToday ? 'font-medium text-slate-900' : 'text-slate-500'}>{format(day, 'EEE')}</span>
         {isToday ? (
-          <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-slate-900 px-1 font-medium text-white">
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-[9px] bg-slate-900 px-1.5 font-mono font-medium text-white">
             {format(day, 'd')}
           </span>
         ) : (
-          <span className="font-medium text-slate-900">{format(day, 'd')}</span>
+          <span className="font-mono font-medium text-slate-900">{format(day, 'd')}</span>
         )}
       </button>
 
@@ -200,7 +200,7 @@ function DayRow({
         })}
         {hoverMinutes !== null && !dropPreview && (
           <div
-            className="pointer-events-none absolute flex items-center rounded-lg bg-slate-900/[0.04] px-2 text-[11px] font-medium tabular-nums text-slate-500"
+            className="pointer-events-none absolute flex items-center rounded-[14px] bg-slate-900/[0.04] px-2 font-mono text-[11px] font-medium tabular-nums text-slate-500"
             style={{
               left: (hoverMinutes / 60) * HOUR_WIDTH + 2,
               width: (SNAP_MINUTES / 60) * HOUR_WIDTH - 4,
@@ -212,7 +212,7 @@ function DayRow({
         )}
         {dropPreview && (
           <div
-            className="pointer-events-none absolute z-10 truncate rounded-lg border-[1.5px] border-dashed border-slate-400 bg-slate-900/[0.03] px-2 py-1 text-[11px] font-medium tabular-nums text-slate-500"
+            className="pointer-events-none absolute z-10 truncate rounded-[14px] border-[1.5px] border-dashed border-slate-400 bg-slate-900/[0.03] px-2 py-1 font-mono text-[11px] font-medium tabular-nums text-slate-500"
             style={{ left: dropPreview.left, width: dropPreview.width, ...laneBox(0) }}
           >
             {dropPreview.label}
@@ -277,7 +277,7 @@ export function WeekGrid({
             {HOURS.map((hour) => (
               <span
                 key={hour}
-                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-[12px] tabular-nums text-slate-500"
+                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-[11px] tabular-nums text-slate-500"
                 style={{ left: TIME_PAD + (hour - GRID_START_HOUR) * HOUR_WIDTH }}
               >
                 {String(hour).padStart(2, '0')}:00
@@ -285,7 +285,7 @@ export function WeekGrid({
             ))}
             {nowInRange && (
               <span
-                className="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-[5px] bg-[var(--now)] px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white"
+                className="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-[7px] bg-[var(--now)] px-1.5 py-0.5 font-mono text-[11px] font-medium tabular-nums text-white"
                 style={{ left: TIME_PAD + nowLeft }}
               >
                 {format(now, 'HH:mm')}
