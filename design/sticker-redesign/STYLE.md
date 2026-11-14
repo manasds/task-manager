@@ -94,8 +94,6 @@ Follow these so every screen matches. Keep whatever sizing and layout classes th
 
 - Already converted, copy their patterns: `src/components/Navbar.tsx`, `StatSummaryStrip.tsx`, `BoardView.tsx`,
   `TaskCard.tsx`.
-- Approved mockups: `design/sticker-redesign/mockup-light.png`, `mockup-dark.png`, `calendar-light.png`,
-  `calendar-dark.png`, and the HTML sources next to them.
 
 ## Before you finish
 
