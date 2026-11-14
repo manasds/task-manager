@@ -82,7 +82,7 @@ export function EventCard({ item, left, width, top, height, roomy, selected, act
       onClick={(e) => onSelect(item, e.currentTarget)}
       aria-label={label}
       title={tooltip}
-      className={`absolute flex flex-col justify-center overflow-hidden rounded-lg px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${cursor} ${isDragging ? 'z-20 opacity-60' : 'z-10'}`}
+      className={`absolute flex flex-col justify-center overflow-hidden rounded-[14px] px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${cursor} ${isDragging ? 'z-20 opacity-60' : 'z-10'}`}
       style={{
         top,
         height,
@@ -94,7 +94,7 @@ export function EventCard({ item, left, width, top, height, roomy, selected, act
         boxShadow: selected
           ? `inset 0 0 0 2px ${theme.text}8c`
           : active
-            ? 'inset 0 0 0 2px #6366f1'
+            ? `inset 0 0 0 2px ${theme.dot}`
             : undefined,
         opacity: item.completed && !isDragging ? 0.6 : undefined,
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -115,7 +115,7 @@ export function EventCard({ item, left, width, top, height, roomy, selected, act
         logged && <Clock className="mx-auto h-3 w-3 shrink-0" style={{ color: theme.text }} aria-hidden />
       )}
       {showRange && (
-        <span className="mt-0.5 flex min-w-0 items-center gap-1 text-xs" style={{ color: theme.textMuted }}>
+        <span className="mt-0.5 flex min-w-0 items-center gap-1 font-mono text-[11px]" style={{ color: theme.textMuted }}>
           {logged && <Clock className="h-3 w-3 shrink-0" aria-hidden />}
           <span className="truncate">{range}</span>
         </span>

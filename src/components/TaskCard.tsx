@@ -56,21 +56,27 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
   isTimerActiveForTask,
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
+
   const [menuPos, setMenuPos] = React.useState<{
     top: number;
     left: number;
   } | null>(null);
+
   const menuRef = React.useRef<HTMLDivElement>(null);
   const menuButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const categoryMeta = CATEGORIES[activity.category] || CATEGORIES.build;
+
   const priorityMeta =
     PRIORITY_CONFIG[activity.priority] || PRIORITY_CONFIG.medium;
+
   const isCompleted = activity.status === "completed";
+
   const isOverdue =
     !isCompleted &&
     !!activity.deadline &&
     activity.deadline < getTodayDateString();
+
   const shortCategory = categoryMeta.label.split(/[&/]/)[0].trim();
 
   const completedSubtasks = activity.subtasks.filter((s) => s.completed).length;
@@ -136,8 +142,10 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
     const { offsetWidth: width, offsetHeight: height } = menu;
     const gap = 4;
     const edge = 8;
+
     const bottomLimit =
       window.innerHeight - (window.innerWidth < 768 ? 80 : edge);
+
     const fitsBelow = rect.bottom + gap + height <= bottomLimit;
 
     const top =
@@ -149,6 +157,7 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
       Math.max(rect.right - width, edge),
       window.innerWidth - width - edge,
     );
+
     setMenuPos({ top, left });
   }, [showMenu]);
 
@@ -192,15 +201,15 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
         if (e.key === "Enter" && e.target === e.currentTarget) onView(activity);
       }}
       tabIndex={0}
-      className={`group relative box-border bg-white rounded-2xl border-2 cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500/40 transition-[color,background-color,border-color,opacity,filter] duration-200 select-none touch-manipulation ${
+      className={`group relative box-border bg-white rounded-2xl border card-lift cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500/40 transition-[color,background-color,border-color,opacity,filter] duration-200 select-none touch-manipulation ${
         hasFooterMeta ? "min-h-28" : ""
       } ${
         isDragging
           ? "opacity-40 scale-[0.98] border-indigo-400"
           : isTimerActiveForTask
-            ? "border-indigo-500 bg-indigo-50/30"
+            ? "border-slate-900 ring-[3px] ring-slate-400/20"
             : isCompleted
-              ? "border-slate-200/80 bg-slate-50/70 opacity-80 saturate-50 hover:opacity-100 hover:saturate-100 focus-within:opacity-100"
+              ? "border-slate-200/80 opacity-75 saturate-50 hover:opacity-100 hover:saturate-100 focus-within:opacity-100"
               : "border-slate-200 hover:border-slate-300"
       }`}
     >
@@ -209,7 +218,7 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
         <div className="flex items-center justify-between gap-1.5 text-xs">
           <div className="flex items-center gap-1.5 min-w-0">
             <span
-              className="inline-flex items-center gap-1 min-w-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+              className="inline-flex items-center gap-1 min-w-0 rounded-[7px] px-1.5 py-0.5 text-[11px] font-semibold"
               style={{
                 backgroundColor: categoryMeta.lightBg,
                 color: categoryMeta.textColor,
@@ -225,7 +234,7 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
             <span className="text-slate-300 shrink-0" aria-hidden="true">
               ·
             </span>
-            <span className="shrink-0 tabular-nums text-slate-500">
+            <span className="shrink-0 font-mono tabular-nums text-slate-500">
               {activity.estimatedMinutes}m
             </span>
             <span className="text-slate-300 shrink-0" aria-hidden="true">
@@ -267,7 +276,7 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
                       left: menuPos?.left ?? 0,
                       visibility: menuPos ? "visible" : "hidden",
                     }}
-                    className="w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 text-xs"
+                    className="w-48 bg-white border border-slate-200 rounded-2xl pop-shadow z-50 py-1 text-xs overflow-hidden"
                   >
                     <button
                       type="button"
@@ -350,7 +359,7 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
               className={`text-[15px] font-semibold transition-colors leading-snug line-clamp-2 ${
                 isCompleted
                   ? "text-slate-500 line-through"
-                  : "text-slate-900 group-hover:text-indigo-600"
+                  : "text-slate-900"
               }`}
             >
               {activity.title}
@@ -373,7 +382,7 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
           }`}
         >
           {hasFooterMeta && (
-            <div className="flex flex-wrap items-center gap-1.5 min-w-0 tabular-nums">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0 font-mono tabular-nums">
               {activity.deadline && (
                 <span
                   className={`${metaChip} ${isOverdue ? " text-rose-600" : " text-slate-600"}`}
@@ -448,8 +457,8 @@ const TaskCardBase: React.FC<TaskCardProps> = ({
               }
               className={`size-8 max-sm:size-9 rounded-full transition-[color,background-color,border-color,opacity] flex items-center justify-center ${
                 isTimerActiveForTask
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-600 border border-slate-200 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+                  ? "btn-ink"
+                  : "btn-paper opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
               }`}
             >
               <Play className="w-3 h-3 fill-current translate-x-px" />

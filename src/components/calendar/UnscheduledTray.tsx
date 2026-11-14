@@ -34,7 +34,7 @@ function ChipBody({ item }: { item: UnscheduledItem }) {
         >
           {item.title}
         </span>
-        <span className="block truncate text-xs" style={{ color: theme.textMuted }}>
+        <span className="block truncate font-mono text-[11px]" style={{ color: theme.textMuted }}>
           {item.durationMinutes} min · {PRIORITY_LABELS[item.priority]}
         </span>
       </span>
@@ -42,7 +42,7 @@ function ChipBody({ item }: { item: UnscheduledItem }) {
   );
 }
 
-const CHIP_CLASS = 'flex w-[200px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-left';
+const CHIP_CLASS = 'flex w-[200px] shrink-0 items-center gap-1.5 rounded-[14px] border border-slate-200 px-2.5 py-2 text-left';
 
 export function TrayChipPreview({ item }: { item: UnscheduledItem }) {
   return (
@@ -93,10 +93,10 @@ export function UnscheduledTray({ items, open, onToggle, dayLabel, addable, onAd
           className="flex h-11 flex-1 items-center gap-2 pl-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
         >
           <Inbox className="h-4 w-4 text-slate-500" aria-hidden />
-          <span className="text-sm font-medium text-slate-900">
+          <span className="text-sm font-medium tracking-tight text-slate-900">
             Unscheduled · <span className="font-normal text-slate-500">{dayLabel}</span>
           </span>
-          <span className="rounded-full bg-slate-100 px-2 text-xs text-slate-600">{items.length}</span>
+          <span className="rounded-full bg-slate-100 px-1.5 py-px font-mono text-[11px] font-medium text-slate-500">{items.length}</span>
           <span className="hidden text-sm text-slate-400 sm:inline">Drag onto the calendar</span>
           <Chevron className="ml-auto h-4 w-4 text-slate-500" aria-hidden />
         </button>
@@ -110,7 +110,7 @@ export function UnscheduledTray({ items, open, onToggle, dayLabel, addable, onAd
               if (id) onAddToDay(id);
               e.target.value = '';
             }}
-            className="h-8 max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 text-[13px] text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+            className="h-8 max-w-[180px] rounded-xl border border-slate-300 bg-white px-2 text-[13px] font-medium text-slate-600 outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
           >
             <option value="">+ Add task</option>
             {addable.map((a) => (

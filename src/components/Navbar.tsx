@@ -27,7 +27,7 @@ const SYNC_DOT: Record<SyncPhase, { color: string; label: string; detail: string
 };
 
 const menuItemClass =
-  'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-100';
+  'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-100';
 
 const THEME_OPTIONS: { id: ThemePreference; label: string; icon: LucideIcon }[] = [
   { id: 'light', label: 'Light', icon: Sun },
@@ -39,7 +39,7 @@ function ThemeSwitch({ preference, setPreference }: ReturnType<typeof useTheme>)
   return (
     <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
       <span className="text-sm text-slate-700">Theme</span>
-      <div role="radiogroup" aria-label="Theme" className="flex rounded-lg bg-slate-100 p-0.5">
+      <div role="radiogroup" aria-label="Theme" className="flex rounded-[10px] bg-slate-100 p-0.5">
         {THEME_OPTIONS.map(({ id, label, icon: Icon }) => {
           const active = preference === id;
 
@@ -52,7 +52,7 @@ function ThemeSwitch({ preference, setPreference }: ReturnType<typeof useTheme>)
               aria-label={label}
               title={label}
               onClick={() => setPreference(id)}
-              className={`flex size-7 pointer-coarse:size-9 items-center justify-center rounded-md transition-colors ${
+              className={`flex size-7 pointer-coarse:size-9 items-center justify-center rounded-lg transition-colors ${
                 active ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-400 hover:text-slate-700'
               }`}
             >
@@ -118,7 +118,7 @@ function UtilityMenu({
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="size-9 pointer-coarse:size-11 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+        className="size-9 pointer-coarse:size-11 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
         aria-label="More actions"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -141,7 +141,7 @@ function UtilityMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-40 mt-1.5 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+          className="absolute right-0 top-full z-40 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-1.5 pop-shadow"
         >
           {user && (
             <div>
@@ -231,40 +231,41 @@ export const Navbar: React.FC<NavbarProps> = ({
   const dot = SYNC_DOT[syncPhase];
 
   return (
-    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-12 md:h-14 flex items-center gap-6">
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center text-white">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    // z-40: above the calendar's sticky hour header (z-30), so the menu is never covered. Dialogs and toasts are z-50.
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-13 md:h-15 flex items-center gap-6">
+        <div className="group flex items-center gap-2.5 shrink-0">
+          {/* The lime tile is fixed art, so its glyph stays dark in both themes. */}
+          <div className="size-8 md:size-8.5 rounded-[10px] bg-lime-200 flex items-center justify-center text-[#18181b] -rotate-[4deg] shadow-[inset_0_1px_0_rgb(255_255_255/0.8),0_1px_2px_rgb(0_0_0/0.18)] transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9" />
               <path d="M12 7v5l3 3" />
             </svg>
           </div>
-          <span className="text-[15px] font-semibold tracking-tight text-slate-900">Tasky</span>
+          <span className="text-lg font-semibold tracking-tight text-slate-900">Tasky</span>
         </div>
 
         {/* Phones use the bottom bar instead. */}
-        <nav className="hidden md:flex items-stretch h-full gap-5" aria-label="Desktop Views">
+        <nav className="hidden md:flex items-center gap-1" aria-label="Desktop Views">
           {TABS.map(({ id, label }) => (
             <button
               key={id}
               type="button"
               onClick={() => handleTabClick(id)}
               aria-current={activeTab === id ? 'page' : undefined}
-              className={`relative text-sm whitespace-nowrap transition-colors ${
-                activeTab === id ? 'text-slate-900 font-medium' : 'text-slate-500 hover:text-slate-900'
+              className={`rounded-[10px] px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === id ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               {label}
-              {activeTab === id && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-indigo-600" />}
             </button>
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1.5 shrink-0">
+        <div className="ml-auto flex items-center gap-2 shrink-0">
           {user ? (
             <span
-              className="flex h-9 items-center gap-1.5 px-2 text-xs text-slate-500 whitespace-nowrap"
+              className="flex h-8 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 whitespace-nowrap"
               title={lastError || dot.detail}
             >
               <span className={`size-2 rounded-full ${dot.color}`} />
@@ -276,7 +277,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => {
                 void onGoogleSignIn().catch(() => {});
               }}
-              className="h-9 px-3 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+              className="h-9 px-3 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
             >
               Sign in
             </button>
@@ -296,7 +297,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             onClick={() => onOpenNewTaskModal()}
             title="New task (Ctrl+N)"
-            className="hidden sm:flex items-center gap-1 h-9 pl-2.5 pr-3 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+            className="hidden sm:flex items-center gap-1.5 h-9 pl-3 pr-3.5 text-sm font-medium rounded-xl btn-ink"
           >
             <Plus className="w-4 h-4" />
             New

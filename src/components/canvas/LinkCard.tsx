@@ -55,7 +55,7 @@ function LinkCardBody({ tile, size, onToggleDone, onEdit, onDelete }: Props) {
   const image = coverImage(tile);
   const domain = getDomain(tile.url);
   const page = size === 'page';
-  const btn = `inline-flex items-center justify-center rounded-full bg-white/95 text-slate-600 shadow-sm ${page ? 'h-7 w-7' : 'h-6 w-6'}`;
+  const btn = `inline-flex items-center justify-center rounded-full bg-white/95 text-slate-600 card-lift ${page ? 'h-7 w-7' : 'h-6 w-6'}`;
   const icon = page ? 'h-3.5 w-3.5' : 'h-3 w-3';
 
   return (
@@ -118,7 +118,7 @@ function LinkCardBody({ tile, size, onToggleDone, onEdit, onDelete }: Props) {
 
       <div className={`flex min-h-0 flex-1 flex-col ${page ? 'gap-2 p-4' : 'px-3 pb-3 pt-2.5'}`}>
         <p
-          className={`line-clamp-2 break-words font-semibold leading-snug ${page ? 'text-[15px]' : 'text-[13px]'} ${
+          className={`line-clamp-2 break-words font-semibold leading-snug tracking-tight ${page ? 'text-[15px]' : 'text-[13px]'} ${
             done ? 'text-slate-400 line-through' : 'text-slate-900'
           }`}
         >
@@ -138,7 +138,7 @@ function LinkCardBody({ tile, size, onToggleDone, onEdit, onDelete }: Props) {
               className="h-3.5 w-3.5 shrink-0 rounded-sm"
             />
           )}
-          <span className={`min-w-0 flex-1 truncate text-slate-500 ${page ? 'text-xs' : 'text-[11px]'}`}>{domain}</span>
+          <span className={`min-w-0 flex-1 truncate font-mono text-slate-500 ${page ? 'text-xs' : 'text-[11px]'}`}>{domain}</span>
           {tile.note && (
             <span title={tile.note} className="shrink-0 text-slate-400">
               <StickyNote className="h-3.5 w-3.5" />

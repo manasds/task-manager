@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { CheckCircle2, Clock, Target, Flame } from 'lucide-react';
 import { Activity } from '../types/activity';
+import { Sticker } from './Sticker';
 import { getTodayDateString, shiftIsoDate } from '../utils/dates';
 import { datesWithLoggedMinutes, isActivityOnDate, localDateString, loggedMinutesOnDate } from '../utils/workSessions';
 
@@ -52,109 +52,98 @@ const StatSummaryStripComponent: React.FC<StatSummaryStripProps> = ({
 
   const goalPercent = Math.min(100, Math.round((totalMinutesLogged / (dailyGoalMinutes || 360)) * 100));
 
+  const focusLogged = `${loggedHours}h ${String(loggedRemMinutes).padStart(2, '0')}m`;
+  const completionPercent = totalTasks > 0 ? `${Math.round((completedTasks / totalTasks) * 100)}%` : '';
+
+  const goalBar = (
+    <span className="block h-1.5 w-12 md:w-auto md:max-w-28 md:flex-1 rounded-full overflow-hidden bg-slate-200">
+      <span
+        className="block h-full rounded-full bg-(--tile-fill) transition-all duration-500"
+        style={{ width: `${goalPercent}%` }}
+      />
+    </span>
+  );
+
+  // md+: a white card per stat, with the sticker on a small pastel tile.
+  const card = 'flex items-center gap-3 rounded-[20px] border border-slate-200 bg-white px-3.5 py-3 card-lift';
+  const iconTile = 'flex size-11 shrink-0 items-center justify-center rounded-[14px]';
+  const label = 'text-xs font-medium text-slate-500';
+  const value = 'text-[22px] font-medium leading-none tracking-tight text-slate-900 tabular-nums';
+  const unit = 'text-xs font-medium text-slate-500';
+
   return (
-    <div className="bg-white border-b border-slate-200">
+    <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 pt-3 md:pt-4">
       {/* Phones: all four stats on one line. */}
-      <div className="md:hidden px-3 sm:px-6 h-9 flex items-center justify-between text-xs font-semibold text-slate-700 tabular-nums">
-        <span className="flex items-center gap-1" title="Completed today">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+      <div className="md:hidden h-10 px-3.5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white card-lift text-xs font-semibold text-slate-700 tabular-nums">
+        <span className="flex items-center gap-1.5" title="Completed today">
+          <Sticker name="check" className="size-4.5" />
           {completedTasks}/{totalTasks}
         </span>
-        <span className="flex items-center gap-1" title="Focus logged today">
-          <Clock className="w-3.5 h-3.5 text-indigo-600" />
-          {loggedHours}h {String(loggedRemMinutes).padStart(2, '0')}m
+        <span className="flex items-center gap-1.5" title="Focus logged today">
+          <Sticker name="clock" className="size-4.5" />
+          {focusLogged}
         </span>
         <span className="flex items-center gap-1.5" title="Daily target">
-          <Target className="w-3.5 h-3.5 text-amber-600" />
-          <span className="w-12 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-            <span className="block h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${goalPercent}%` }} />
-          </span>
+          <Sticker name="target" className="size-4.5" />
+          {goalBar}
           {goalPercent}%
         </span>
-        <span className="flex items-center gap-1" title="Streak">
-          <Flame className="w-3.5 h-3.5 text-rose-600" />
+        <span className="flex items-center gap-1.5" title="Streak">
+          <Sticker name="flame" className="size-4.5" />
           {streak}d
         </span>
       </div>
 
-      <div className="hidden md:block max-w-7xl mx-auto px-6 lg:px-8 py-3.5">
-        <div className="grid grid-cols-4 gap-6">
-          
-          {/* Stat 1: Daily Completion */}
-          <div className="flex items-center gap-2.5 sm:gap-3 p-2 sm:p-0 bg-slate-50/80 sm:bg-transparent rounded-xl border sm:border-0 border-slate-100">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Completion
-              </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
-                  {completedTasks}/{totalTasks}
-                </span>
-                <span className="text-[11px] text-slate-500 hidden sm:inline">
-                  {totalTasks > 0 ? `(${Math.round((completedTasks / totalTasks) * 100)}%)` : ''}
-                </span>
-              </div>
-            </div>
+      <div className="hidden md:grid grid-cols-4 gap-4">
+        <div className={card}>
+          <div className={`${iconTile} bg-(--tile-green-a)`}>
+            <Sticker name="check" className="size-7.5 rotate-[8deg]" />
           </div>
-
-          {/* Stat 2: Focus Time Logged */}
-          <div className="flex items-center gap-2.5 sm:gap-3 p-2 sm:p-0 bg-slate-50/80 sm:bg-transparent rounded-xl border sm:border-0 border-slate-100">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Focus Logged
-              </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
-                  {loggedHours}h {String(loggedRemMinutes).padStart(2, '0')}m
-                </span>
-              </div>
-            </div>
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <span className={label}>Completion</span>
+            <span className="flex items-baseline gap-1.5">
+              <span className={value}>
+                {completedTasks}/{totalTasks}
+              </span>
+              <span className={unit}>{completionPercent}</span>
+            </span>
           </div>
+        </div>
 
-          {/* Stat 3: Daily Target Progress */}
-          <div className="flex items-center gap-2.5 sm:gap-3 p-2 sm:p-0 bg-slate-50/80 sm:bg-transparent rounded-xl border sm:border-0 border-slate-100">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-              <Target className="w-4 h-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  Target
-                </span>
-                <span className="text-[11px] font-bold text-slate-700 tabular-nums">
-                  {goalPercent}%
-                </span>
-              </div>
-              <div className="w-full bg-slate-200/80 rounded-full h-1.5 mt-1 overflow-hidden">
-                <div
-                  className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${goalPercent}%` }}
-                />
-              </div>
-            </div>
+        <div className={card}>
+          <div className={`${iconTile} bg-(--tile-blue-a)`}>
+            <Sticker name="clock" className="size-7.5 -rotate-[8deg]" />
           </div>
-
-          {/* Stat 4: Active Streak */}
-          <div className="flex items-center gap-2.5 sm:gap-3 p-2 sm:p-0 bg-slate-50/80 sm:bg-transparent rounded-xl border sm:border-0 border-slate-100">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
-              <Flame className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Streak
-              </div>
-              <div className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
-                {streak} <span className="text-xs font-normal text-slate-500">{streak === 1 ? 'day' : 'days'}</span>
-              </div>
-            </div>
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <span className={label}>Focus Logged</span>
+            <span className={value}>{focusLogged}</span>
           </div>
+        </div>
 
+        <div className={card}>
+          <div className={`${iconTile} bg-(--tile-yellow-a)`}>
+            <Sticker name="target" className="size-7.5 rotate-[10deg]" />
+          </div>
+          <div className="min-w-0 flex-1 flex flex-col gap-1.5">
+            <span className={label}>Target</span>
+            <span className="flex items-center gap-2.5">
+              <span className={value}>{goalPercent}%</span>
+              {goalBar}
+            </span>
+          </div>
+        </div>
+
+        <div className={card}>
+          <div className={`${iconTile} bg-(--tile-pink-a)`}>
+            <Sticker name="flame" className="size-7.5 -rotate-[6deg]" />
+          </div>
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <span className={label}>Streak</span>
+            <span className="flex items-baseline gap-1.5">
+              <span className={value}>{streak}</span>
+              <span className={unit}>{streak === 1 ? 'day' : 'days'}</span>
+            </span>
+          </div>
         </div>
       </div>
     </div>

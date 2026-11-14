@@ -73,9 +73,9 @@ export default function ExtensionConnect() {
   };
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-slate-50 p-4 text-slate-800">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-lg font-bold text-slate-900">Connect Tasky Saver</h1>
+    <main className="flex min-h-dvh items-center justify-center bg-page p-4 text-slate-800">
+      <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 pop-shadow">
+        <h1 className="text-xl font-normal tracking-tight text-slate-900">Connect Tasky Saver</h1>
 
         {state.phase === 'loading' && <p className="mt-2 text-sm text-slate-500">Checking your sign-in…</p>}
 
@@ -89,7 +89,7 @@ export default function ExtensionConnect() {
             <button
               type="button"
               onClick={signIn}
-              className="mt-4 w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="mt-4 btn-ink w-full rounded-xl px-3 py-2 text-sm font-medium"
             >
               Continue with Google
             </button>
@@ -107,7 +107,7 @@ export default function ExtensionConnect() {
                 type="button"
                 onClick={() => finish('error=cancelled')}
                 disabled={state.phase === 'connecting'}
-                className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                className="btn-paper flex-1 rounded-xl px-3 py-2 text-sm font-medium"
               >
                 Cancel
               </button>
@@ -115,7 +115,7 @@ export default function ExtensionConnect() {
                 type="button"
                 onClick={() => void connect(state.email)}
                 disabled={state.phase === 'connecting'}
-                className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                className="btn-ink flex-1 rounded-xl px-3 py-2 text-sm font-medium disabled:opacity-60"
               >
                 {state.phase === 'connecting' ? 'Connecting…' : 'Connect'}
               </button>

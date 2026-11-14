@@ -29,7 +29,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => handleTabClick('board')}
           className={`flex flex-col items-center justify-center min-h-11 min-w-11 rounded-xl transition-all ${
             activeTab === 'board'
-              ? 'text-indigo-600 font-semibold'
+              ? 'text-slate-900 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
           aria-label="Board View"
@@ -43,7 +43,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => handleTabClick('types')}
           className={`flex flex-col items-center justify-center min-h-11 min-w-11 rounded-xl transition-all ${
             activeTab === 'types'
-              ? 'text-indigo-600 font-semibold'
+              ? 'text-slate-900 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
           aria-label="Kanban View"
@@ -57,7 +57,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => handleTabClick('calendar')}
           className={`flex flex-col items-center justify-center min-h-11 min-w-11 rounded-xl transition-all ${
             activeTab === 'calendar'
-              ? 'text-indigo-600 font-semibold'
+              ? 'text-slate-900 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
           aria-label="Calendar View"
@@ -71,7 +71,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => handleTabClick('analytics')}
           className={`flex flex-col items-center justify-center min-h-11 min-w-11 rounded-xl transition-all ${
             activeTab === 'analytics'
-              ? 'text-indigo-600 font-semibold'
+              ? 'text-slate-900 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
           aria-label="Analytics & Charts"
@@ -83,10 +83,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {/* Action: Quick Add Activity in Natural Thumb Zone */}
         <button
           onClick={() => onOpenNewTaskModal()}
-          className="flex flex-col items-center justify-center min-h-11 min-w-11 text-indigo-600 hover:text-indigo-700 active:scale-95 transition-transform"
+          className="flex flex-col items-center justify-center min-h-11 min-w-11 text-slate-900 active:scale-95 transition-transform"
           aria-label="Add New Activity"
         >
-          <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+          <div className="w-8 h-8 rounded-full btn-ink flex items-center justify-center">
             <Plus className="w-4 h-4 stroke-[2.5]" />
           </div>
           <span className="text-[10px] font-semibold text-slate-800 tracking-tight mt-0.5">New</span>

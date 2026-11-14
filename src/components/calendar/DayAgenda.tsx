@@ -30,7 +30,7 @@ const NOW_COLOR = 'var(--now)';
 const QUICK_TIMES = ['09:00', '13:00', '16:00'];
 
 const TIME_BUTTON_CLASS =
-  'inline-flex h-9 min-w-16 items-center justify-center rounded-lg bg-slate-100 px-3 text-[13px] font-medium tabular-nums text-slate-800 active:bg-slate-200';
+  'inline-flex h-9 min-w-16 items-center justify-center rounded-xl bg-slate-100 px-3 font-mono text-[13px] font-medium tabular-nums text-slate-800 active:bg-slate-200';
 
 function AgendaRow({
   item,
@@ -60,17 +60,17 @@ function AgendaRow({
       }`}
     >
       <span className="w-12 shrink-0">
-        <span className="block text-[13px] font-medium tabular-nums text-slate-900">{format(item.start, 'HH:mm')}</span>
-        <span className="block text-[12px] tabular-nums text-slate-400">{format(item.end, 'HH:mm')}</span>
+        <span className="block font-mono text-[13px] font-medium tabular-nums text-slate-900">{format(item.start, 'HH:mm')}</span>
+        <span className="block font-mono text-xs tabular-nums text-slate-400">{format(item.end, 'HH:mm')}</span>
       </span>
-      <span className="block min-w-0 flex-1 rounded-lg px-3 py-2" style={cardStyle}>
+      <span className="block min-w-0 flex-1 rounded-[14px] px-3 py-2" style={cardStyle}>
         <span
           className={`block truncate text-[14px] font-medium ${item.completed ? 'line-through' : ''}`}
           style={{ color: theme.text }}
         >
           {item.title}
         </span>
-        <span className="mt-0.5 flex items-center gap-1.5 text-[12px]" style={{ color: theme.textMuted }}>
+        <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px]" style={{ color: theme.textMuted }}>
           {logged ? (
             <span className="inline-flex items-center gap-1">
               <Clock className="size-3" aria-hidden />
@@ -99,7 +99,7 @@ function NowMarker({ now }: { now: Date }) {
   return (
     <div className="flex items-center gap-3 px-2 py-1" role="separator" aria-label={`Now, ${format(now, 'HH:mm')}`}>
       <span className="flex w-12 shrink-0">
-        <span className="rounded-[5px] px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white" style={{ background: NOW_COLOR }}>
+        <span className="rounded-[7px] px-1.5 py-0.5 font-mono text-[11px] font-medium tabular-nums text-white" style={{ background: NOW_COLOR }}>
           {format(now, 'HH:mm')}
         </span>
       </span>
@@ -125,11 +125,11 @@ function UnscheduledCard({
   const theme = CALENDAR_TYPES[item.type];
 
   return (
-    <li className="space-y-2.5 rounded-xl border border-slate-200 p-3">
+    <li className="space-y-2.5 rounded-[14px] border border-slate-200 p-3">
       <button
         type="button"
         onClick={() => onOpenItem(item.id)}
-        className="block w-full rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        className="block w-full rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
       >
         <span className="flex items-center gap-2">
           <span className="size-2 shrink-0 rounded-sm" style={{ background: theme.dot }} aria-hidden />
@@ -141,7 +141,7 @@ function UnscheduledCard({
             {item.title}
           </span>
         </span>
-        <span className="mt-0.5 block pl-4 text-[12px] text-slate-500">
+        <span className="mt-0.5 block pl-4 font-mono text-[11px] text-slate-500">
           {item.durationMinutes} min · {PRIORITY_LABELS[item.priority]}
         </span>
       </button>
@@ -256,8 +256,8 @@ export function DayAgenda({
 
         <section aria-label="Unscheduled" className="mt-5 border-t border-slate-100 pt-4">
           <div className="mb-3 flex items-center gap-2">
-            <h2 className="text-[14px] font-medium text-slate-900">Unscheduled</h2>
-            <span className="rounded-full bg-slate-100 px-2 text-xs text-slate-600">{unscheduled.length}</span>
+            <h2 className="text-[14px] font-medium tracking-tight text-slate-900">Unscheduled</h2>
+            <span className="rounded-full bg-slate-100 px-1.5 py-px font-mono text-[11px] font-medium text-slate-500">{unscheduled.length}</span>
             {addable.length > 0 && (
               <select
                 aria-label="Add a task to this day"
@@ -265,7 +265,7 @@ export function DayAgenda({
                 onChange={(e) => {
                   if (e.target.value) onAddToDay(e.target.value);
                 }}
-                className="ml-auto h-9 max-w-[160px] rounded-lg border border-slate-200 bg-white px-2 text-[13px] text-slate-700"
+                className="ml-auto h-9 max-w-[160px] rounded-xl border border-slate-300 bg-white px-2 text-[13px] font-medium text-slate-600"
               >
                 <option value="">+ Add task</option>
                 {addable.map((task) => (

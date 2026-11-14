@@ -147,7 +147,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
       
       {/* Filtering Toolbar: on phones, search + date + a Filters toggle share one row. */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 py-2 sm:p-2 w-full">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-between gap-2 py-2 sm:my-4 sm:p-1.5 w-full sm:bg-white sm:border sm:border-slate-200 sm:rounded-[18px] sm:shadow-xs">
         <div className="flex items-center gap-2 flex-1 sm:max-w-md min-w-0">
           <div className="relative flex-1 min-w-0">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -157,7 +157,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
               aria-label="Search activities"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 sm:pl-10 pr-9 min-h-10 sm:min-h-11 text-xs bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
+              className="w-full pl-9 sm:pl-10 pr-9 min-h-10 sm:min-h-9 text-[13px] bg-page border border-slate-200 rounded-xl placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
             />
             {searchQuery && (
               <button
@@ -174,7 +174,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
             value={selectedDate}
             onChange={(e) => onSelectDate(e.target.value)}
             aria-label="Filter by date"
-            className="sm:hidden w-24 shrink-0 min-h-10 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-slate-700 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            className="sm:hidden w-24 shrink-0 min-h-10 text-xs font-medium bg-white border border-slate-300 rounded-xl px-2.5 text-slate-600 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
           >
             {dateOptions}
           </select>
@@ -185,7 +185,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
             aria-label="Filters"
             aria-expanded={filtersOpen}
             className={`sm:hidden relative size-10 shrink-0 flex items-center justify-center rounded-xl border transition-colors ${
-              filtersOpen ? 'bg-slate-900 border-slate-900 text-white' : 'bg-slate-50 border-slate-200 text-slate-600'
+              filtersOpen ? 'btn-ink' : 'btn-paper'
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
@@ -206,7 +206,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
               setSelectedCategory(picked.success ? picked.data : 'all');
             }}
             aria-label="Filter by category"
-            className="flex-1 sm:flex-none min-w-0 min-h-10 sm:min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            className="flex-1 sm:flex-none min-w-0 min-h-10 sm:min-h-9 text-[13px] font-medium rounded-xl px-2.5 sm:px-3 text-slate-600 max-sm:border max-sm:border-slate-200 sm:hover:bg-slate-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500/20 cursor-pointer transition-colors"
           >
             <option value="all">Type</option>
             {Object.values(CATEGORIES).map((cat) => (
@@ -223,7 +223,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
               setSelectedPriority(picked.success ? picked.data : 'all');
             }}
             aria-label="Filter by priority"
-            className="flex-1 sm:flex-none min-w-0 min-h-10 sm:min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            className="flex-1 sm:flex-none min-w-0 min-h-10 sm:min-h-9 text-[13px] font-medium rounded-xl px-2.5 sm:px-3 text-slate-600 max-sm:border max-sm:border-slate-200 sm:hover:bg-slate-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500/20 cursor-pointer transition-colors"
           >
             <option value="all">Priority</option>
             <option value="urgent">Urgent</option>
@@ -236,7 +236,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
             value={selectedDate}
             onChange={(e) => onSelectDate(e.target.value)}
             aria-label="Filter by date"
-            className="hidden sm:block min-w-0 min-h-11 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 text-slate-700 hover:bg-slate-100/80 focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+            className="hidden sm:block min-w-0 min-h-9 text-[13px] font-medium rounded-xl px-3 text-slate-600 hover:bg-slate-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500/20 cursor-pointer transition-colors"
           >
             {dateOptions}
           </select>
@@ -245,7 +245,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
       </div>
 
       {/* Mobile Column Segmented Control (sm:hidden) */}
-      <div className="sm:hidden flex p-1 bg-slate-100 rounded-xl" role="tablist">
+      <div className="sm:hidden flex p-1 bg-tray rounded-[14px]" role="tablist">
         {STATUS_COLUMNS.map((col) => {
           const count = filteredActivities.filter((a) => a.status === col.id).length;
           const isActive = mobileActiveColumn === col.id;
@@ -256,12 +256,12 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
               onClick={() => setMobileActiveColumn(col.id)}
               role="tab"
               aria-selected={isActive}
-              className={`flex-1 h-8 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center justify-center gap-1 ${
+              className={`flex-1 h-8.5 rounded-[10px] text-xs font-semibold whitespace-nowrap transition-colors flex items-center justify-center gap-1 ${
                 isActive ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               <span>{col.shortTitle}</span>
-              <span className={`text-[11px] tabular-nums ${isActive ? 'text-indigo-600' : 'text-slate-500'}`}>
+              <span className={`text-[11px] font-mono tabular-nums ${isActive ? 'text-slate-600' : 'text-slate-400'}`}>
                 {count}
               </span>
             </button>
@@ -270,7 +270,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
       </div>
 
       {/* Kanban Drag & Drop Columns (Responsive: 1 selected column on mobile, 4-col grid on sm+) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch ">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-stretch sm:gap-4">
         {STATUS_COLUMNS.map((col) => {
           const colActivities = filteredActivities.filter((a) => a.status === col.id);
           const colMinutes = colActivities.reduce((acc, c) => acc + (c.estimatedMinutes || 0), 0);
@@ -292,17 +292,17 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
                 }
               }}
               onDrop={(e) => handleDropOnColumn(e, col.id)}
-              className={`flex flex-col sm:bg-white sm:border sm:border-neutral-100 pt-2 pb-3 sm:p-3.5 min-h-125 sm:min-h-155 h-full transition-all duration-200 ${
+              className={`flex flex-col sm:bg-tray sm:rounded-3xl sm:shadow-[inset_0_1px_2px_rgb(0_0_0/0.04)] pt-2 pb-3 sm:p-3 min-h-125 sm:min-h-155 h-full ${
                 isHiddenOnMobile ? 'hidden sm:flex' : 'flex'
               }`}
             >
               {/* Column Header: mobile tabs already show title and count. */}
-              <div className="flex items-center justify-between sm:pb-3 px-1 sm:border-b border-slate-200/60 mb-2 sm:mb-3">
+              <div className="flex items-center justify-between px-1.5 sm:pt-1 mb-2 sm:mb-2.5">
                 <div className="flex items-center gap-2">
-                  <h3 className="hidden sm:block text-[13px] sm:text-sm font-semibold text-slate-900 uppercase tracking-wider">
+                  <h3 className="hidden sm:block text-[15px] font-semibold tracking-tight text-slate-900">
                     {col.title}
                   </h3>
-                  <span className="hidden sm:inline text-[11px] font-semibold text-slate-600 bg-white/90 border border-slate-200 px-2 py-0.5 rounded-md tabular-nums shadow-2xs">
+                  <span className="hidden sm:inline text-[11px] font-mono font-medium text-slate-500 bg-white border border-slate-200 px-1.5 py-px rounded-full tabular-nums">
                     {colActivities.length}
                   </span>
                 </div>
@@ -315,7 +315,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
               {/* Activities List */}
               <div className="flex-1 space-y-2.5 overflow-y-auto overflow-x-hidden p-0.5 -m-0.5">
                 {colActivities.length === 0 ? (
-                  <div className="h-40 border-2 border-dashed border-slate-200/90 rounded-2xl flex flex-col items-center justify-center p-4 text-center">
+                  <div className="h-40 border-[1.5px] border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center p-4 text-center">
                     <Layers className="w-5 h-5 text-slate-300 mb-1.5" />
                     <p className="text-xs font-medium text-slate-500">
                       No activities in {col.title.toLowerCase()}

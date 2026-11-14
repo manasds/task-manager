@@ -50,7 +50,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 ];
 
 const inputClass =
-  'w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100';
+  'w-full min-w-0 rounded-xl border border-slate-300 bg-page px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100';
 
 /** Previews looked up for older links per visit; Microlink's free tier allows about 50 a day. */
 const BACKFILL_PER_VISIT = 5;
@@ -637,12 +637,12 @@ export default function CanvasView() {
   );
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-white text-slate-800">
-      <nav className="relative z-40 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-3 sm:px-4">
+    <div className="flex h-dvh flex-col overflow-hidden bg-page text-slate-800">
+      <nav className="relative z-40 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/90 px-3 backdrop-blur-md sm:px-4">
         <Link
           href="/"
           aria-label="Back to tasks"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -650,7 +650,7 @@ export default function CanvasView() {
           <button
             type="button"
             onClick={() => (isPhone ? setPhoneOpen(null) : page ? closePage() : boardRef.current?.fit(true))}
-            className="font-bold text-slate-900 hover:text-indigo-600"
+            className="font-semibold tracking-tight text-slate-900 hover:text-indigo-600"
           >
             Canvas
           </button>
@@ -661,19 +661,19 @@ export default function CanvasView() {
             </>
           )}
           {load === 'ready' && (
-            <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">{count}</span>
+            <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-px font-mono text-[11px] font-medium text-slate-500">{count}</span>
           )}
         </div>
 
-        <div className="mx-auto hidden items-center rounded-lg bg-slate-100 p-0.5 sm:flex" role="group" aria-label="Filter links">
+        <div className="mx-auto hidden items-center rounded-xl bg-tray p-0.5 sm:flex" role="group" aria-label="Filter links">
           {FILTERS.map(f => (
             <button
               key={f.id}
               type="button"
               onClick={() => setFilter(f.id)}
               aria-pressed={filter === f.id}
-              className={`rounded-md px-3 py-1 text-xs ${
-                filter === f.id ? 'bg-white font-semibold text-slate-900 shadow-sm' : 'font-medium text-slate-500 hover:text-slate-800'
+              className={`rounded-[9px] px-3 py-1 text-xs ${
+                filter === f.id ? 'bg-white font-semibold text-slate-900 shadow-xs' : 'font-medium text-slate-500 hover:text-slate-800'
               }`}
             >
               {f.label}
@@ -687,7 +687,7 @@ export default function CanvasView() {
               type="button"
               onClick={addSection}
               aria-label="Add section"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              className="btn-paper inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium"
             >
               <SquareDashed className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Section</span>
@@ -696,7 +696,7 @@ export default function CanvasView() {
               type="button"
               onClick={() => (adding ? resetAdd() : openAdd())}
               aria-expanded={adding}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+              className="inline-flex items-center gap-1.5 btn-ink whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-medium"
             >
               <Plus className="h-3.5 w-3.5" />
               Add<span className="hidden sm:inline"> link</span>
@@ -708,7 +708,7 @@ export default function CanvasView() {
                 onKeyDown={e => {
                   if (e.key === 'Escape') resetAdd();
                 }}
-                className="absolute right-0 top-10 z-50 flex w-80 max-w-[calc(100vw-1.5rem)] flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-lg"
+                className="absolute right-0 top-10 z-50 flex w-80 max-w-[calc(100vw-1.5rem)] flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 pop-shadow"
               >
                 <input
                   type="text"
@@ -755,7 +755,7 @@ export default function CanvasView() {
                     </select>
                   )}
                 </div>
-                <button type="submit" className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
+                <button type="submit" className="btn-ink rounded-xl px-3 py-1.5 text-xs font-medium">
                   Add
                 </button>
               </form>
@@ -784,12 +784,12 @@ export default function CanvasView() {
 
         {load === 'signed-out' && (
           <div className="absolute inset-0 flex items-center justify-center p-6">
-            <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
+            <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-3xl border border-slate-200 bg-white p-5 text-center pop-shadow">
               <p className="text-sm text-slate-600">Sign in to save links to your canvas.</p>
               <button
                 type="button"
                 onClick={signIn}
-                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+                className="btn-ink rounded-xl px-3 py-1.5 text-xs font-medium"
               >
                 Continue with Google
               </button>
@@ -892,7 +892,7 @@ export default function CanvasView() {
               onKeyDown={e => {
                 if (e.key === 'Escape') setEditing(null);
               }}
-              className="flex w-full max-w-sm flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+              className="flex w-full max-w-sm flex-col gap-2 rounded-3xl border border-slate-200 bg-white p-4 pop-shadow"
             >
               <p className="text-sm font-semibold text-slate-900">Edit link</p>
               <input name="title" defaultValue={editing.title} autoFocus aria-label="Title" maxLength={300} className={inputClass} />
@@ -909,11 +909,11 @@ export default function CanvasView() {
                 <button
                   type="button"
                   onClick={() => setEditing(null)}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                  className="btn-paper rounded-xl px-3 py-1.5 text-xs font-medium"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
+                <button type="submit" className="btn-ink rounded-xl px-3 py-1.5 text-xs font-medium">
                   Save
                 </button>
               </div>
