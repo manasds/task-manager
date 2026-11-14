@@ -212,13 +212,13 @@ select:not([multiple]) {
     --chart-track: #2a2a2f;
     --now: #ff8a3d;
 
-    --btn-a: #fafafa; --btn-b: #d4d4d8; --btn-line: #fafafa; --btn-ink: #18181b; --btn-hi: rgb(255 255 255 / 0.9);
+    --btn-a: #ececef; --btn-b: #cfcfd5; --btn-line: #ececef; --btn-ink: #18181b; --btn-hi: rgb(255 255 255 / 0.7);
     --paper-a: #29292e; --paper-b: #212125; --paper-hi: rgb(255 255 255 / 0.06); --paper-ink: #c4c4cc; --paper-line: #3f3f46; --paper-line-hover: #6b6b76;
     --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.05), 0 12px 32px rgb(0 0 0 / 0.5);
 
     --tile-fill: #ffd93d;
-    --tile-green-a: #25381a; --tile-blue-a: #1d2646; --tile-yellow-a: #40360d; --tile-pink-a: #45202a;
+    --tile-green-a: #2b4220; --tile-blue-a: #212c52; --tile-yellow-a: #483c10; --tile-pink-a: #502431;
 
     --cat-build: #8f85ff; --cat-build-bg: rgb(125 112 255 / 0.18); --cat-build-border: rgb(125 112 255 / 0.35); --cat-build-text: #c9c4ff;
     --cat-learn: #f472d0; --cat-learn-bg: rgb(244 114 208 / 0.16); --cat-learn-border: rgb(244 114 208 / 0.32); --cat-learn-text: #f9b8e6;
@@ -232,7 +232,7 @@ select:not([multiple]) {
     --color-slate-100: #26262a;  /* subtle fills and hairlines: a step above the surface so hovers and chips show */
     --color-slate-200: #2a2a2f;  /* borders, tracks */
     --color-slate-300: #3f3f46;
-    --color-slate-400: #6b6b76;
+    --color-slate-400: #76767f;  /* placeholders, icons, dates: ~3.6:1 on cards */
     --color-slate-500: #8d8d98;
     --color-slate-600: #a8a8b3;
     --color-slate-700: #c4c4cc;
@@ -246,8 +246,8 @@ select:not([multiple]) {
     --color-indigo-100: rgb(255 255 255 / 0.1);
     --color-indigo-200: rgb(255 255 255 / 0.16);
     --color-indigo-300: #d4d4d8;
-    --color-indigo-400: #a1a1aa;
-    --color-indigo-500: #e4e4e7;
+    --color-indigo-400: #63636e;  /* chart bars for other days */
+    --color-indigo-500: #a8a8b3;  /* today's chart bar, focus borders: softer than text white */
     --color-indigo-600: #fafafa;
     --color-indigo-700: #d4d4d8;
     --color-indigo-800: #e4e4e7;
@@ -314,6 +314,12 @@ select:not([multiple]) {
   .text-blue-700 { color: #93c5fd; }
   .text-violet-600\/70 { color: rgb(196 181 253 / 0.8); }
   .text-sky-600\/70 { color: rgb(125 211 252 / 0.8); }
+
+  /* App bars sit on the page colour, as in the approved mockup, instead of a lighter grey band. */
+  header.bg-white\/90, nav.bg-white\/90, nav.bg-white\/95.fixed { background-color: rgb(11 11 13 / 0.82); }
+  /* Text fields: a step above the page so they read as inset, not as holes. */
+  input.bg-page, textarea.bg-page { background-color: #141417; }
+  input.bg-page:focus, textarea.bg-page:focus { background-color: #17171a; }
 
   /* Shadows mean little on dark; keep a faint edge instead. */
   .shadow-sm, .shadow-xs { box-shadow: 0 0 0 1px rgb(255 255 255 / 0.02); }
