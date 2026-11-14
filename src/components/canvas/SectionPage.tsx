@@ -2,7 +2,6 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Minimize2, Trash2 } from 'lucide-react';
-import { Sticker } from '@/components/Sticker';
 import type { CanvasSection, CanvasTile } from '@/types/canvas';
 import type { Rect } from '@/utils/canvasBoard';
 import { LinkCard, type CardActions } from './LinkCard';
@@ -294,10 +293,7 @@ export default function SectionPage(props: Props) {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-28 pt-6 sm:px-6">
           {tiles.length === 0 ? (
-            <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl border-[1.5px] border-dashed border-slate-300 px-6 py-16">
-              <Sticker name="moon" className="size-14 -rotate-[10deg]" />
-              <p className="text-center text-sm text-slate-400">No links here yet. Use Add link, or drag cards into this box on the board.</p>
-            </div>
+            <p className="py-24 text-center text-sm text-slate-400">No links here yet. Use Add link, or drag cards into this box on the board.</p>
           ) : (
             <div className="flex flex-wrap justify-center gap-5">
               {others.map((tile, i) => (

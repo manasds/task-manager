@@ -2,6 +2,7 @@ import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { 
   Search, 
   X, 
+  Layers,
   SlidersHorizontal
 } from 'lucide-react';
 import { 
@@ -15,7 +16,6 @@ import {
   activityPrioritySchema
 } from '../types/activity';
 import { TaskCard } from './TaskCard';
-import { Sticker, type StickerName } from './Sticker';
 import { getTodayDateString } from '../utils/dates';
 import { isActivityOnDate } from '../utils/workSessions';
 
@@ -30,14 +30,6 @@ interface BoardViewProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
 }
-
-/** One sticker per column for its empty state. */
-const EMPTY_STICKER: Record<ActivityStatus, StickerName> = {
-  backlog: 'spark',
-  in_progress: 'clock',
-  completed: 'smile',
-  parked: 'moon',
-};
 
 const BoardViewBase: React.FC<BoardViewProps> = ({
   activities,
@@ -300,9 +292,7 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
                 }
               }}
               onDrop={(e) => handleDropOnColumn(e, col.id)}
-              className={`flex flex-col sm:bg-tray sm:rounded-3xl sm:shadow-[inset_0_1px_2px_rgb(0_0_0/0.04)] pt-2 pb-3 sm:p-3 min-h-125 sm:min-h-155 h-full transition-shadow duration-200 ${
-                activeDropColumn === col.id ? 'sm:ring-2 sm:ring-slate-900' : ''
-              } ${
+              className={`flex flex-col sm:bg-tray sm:rounded-3xl sm:shadow-[inset_0_1px_2px_rgb(0_0_0/0.04)] pt-2 pb-3 sm:p-3 min-h-125 sm:min-h-155 h-full ${
                 isHiddenOnMobile ? 'hidden sm:flex' : 'flex'
               }`}
             >
@@ -325,8 +315,8 @@ const BoardViewBase: React.FC<BoardViewProps> = ({
               {/* Activities List */}
               <div className="flex-1 space-y-2.5 overflow-y-auto overflow-x-hidden p-0.5 -m-0.5">
                 {colActivities.length === 0 ? (
-                  <div className="h-44 border-[1.5px] border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center gap-2 p-4 text-center">
-                    <Sticker name={EMPTY_STICKER[col.id]} className="size-14 -rotate-[10deg]" />
+                  <div className="h-40 border-[1.5px] border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center p-4 text-center">
+                    <Layers className="w-5 h-5 text-slate-300 mb-1.5" />
                     <p className="text-xs font-medium text-slate-500">
                       No activities in {col.title.toLowerCase()}
                     </p>

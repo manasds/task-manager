@@ -13,7 +13,6 @@ import {
   StickyNote,
   Trash2,
 } from 'lucide-react';
-import { Sticker } from '@/components/Sticker';
 import type { CanvasSection, CanvasTile } from '@/types/canvas';
 import { getDomain } from '@/utils/canvas';
 import { KIND_META, coverImage, type CardActions } from './LinkCard';
@@ -266,10 +265,7 @@ export default function PhoneCanvas(props: Props) {
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {list.length === 0 ? (
-            <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-2xl border-[1.5px] border-dashed border-slate-300 px-6 py-14">
-              <Sticker name="moon" className="size-14 -rotate-[10deg]" />
-              <p className="text-center text-sm text-slate-400">No links here yet. Use Add to save one.</p>
-            </div>
+            <p className="px-6 py-24 text-center text-sm text-slate-400">No links here yet. Use Add to save one.</p>
           ) : (
             <div className="flex flex-col gap-4 px-4 pb-24 pt-4">
               {list.map(tile => (

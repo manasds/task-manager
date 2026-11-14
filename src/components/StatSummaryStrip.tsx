@@ -55,55 +55,95 @@ const StatSummaryStripComponent: React.FC<StatSummaryStripProps> = ({
   const focusLogged = `${loggedHours}h ${String(loggedRemMinutes).padStart(2, '0')}m`;
   const completionPercent = totalTasks > 0 ? `${Math.round((completedTasks / totalTasks) * 100)}%` : '';
 
-  // Phones: four mini tiles on one line. md+: full tiles with a label and a corner sticker.
-  const tile =
-    'tile flex flex-col items-center justify-center gap-0.5 rounded-[14px] px-1 py-2 md:items-stretch md:justify-between md:gap-0 md:rounded-[22px] md:px-4 md:py-3 md:min-h-19';
+  const goalBar = (
+    <span className="block h-1.5 w-12 md:w-auto md:max-w-28 md:flex-1 rounded-full overflow-hidden bg-slate-200">
+      <span
+        className="block h-full rounded-full bg-(--tile-fill) transition-all duration-500"
+        style={{ width: `${goalPercent}%` }}
+      />
+    </span>
+  );
 
-  const label = 'hidden md:block text-xs font-medium text-(--tile-ink-2)';
-  const value = 'text-[13px] md:text-2xl font-semibold md:font-medium leading-none md:tracking-tight tabular-nums';
-  const unit = 'hidden md:inline ml-1 text-xs font-medium tracking-normal text-(--tile-ink-2)';
-  const sticker = 'size-6 md:size-11 md:absolute md:right-3 md:top-1/2 md:-translate-y-1/2';
+  // md+: a white card per stat, with the sticker on a small pastel tile.
+  const card = 'flex items-center gap-3 rounded-[20px] border border-slate-200 bg-white px-3.5 py-3 card-lift';
+  const iconTile = 'flex size-11 shrink-0 items-center justify-center rounded-[14px]';
+  const label = 'text-xs font-medium text-slate-500';
+  const value = 'text-[22px] font-medium leading-none tracking-tight text-slate-900 tabular-nums';
+  const unit = 'text-xs font-medium text-slate-500';
 
   return (
     <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 pt-3 md:pt-4">
-      <div className="grid grid-cols-4 gap-1.5 md:gap-4">
-        <div className={`${tile} tile-green`} title="Completed today">
-          <span className={label}>Completion</span>
-          <Sticker name="check" className={`${sticker} md:rotate-[8deg] max-md:order-first`} />
-          <span className={value}>
-            {completedTasks}/{totalTasks}
-            <span className={unit}>{completionPercent}</span>
-          </span>
-        </div>
+      {/* Phones: all four stats on one line. */}
+      <div className="md:hidden h-10 px-3.5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white card-lift text-xs font-semibold text-slate-700 tabular-nums">
+        <span className="flex items-center gap-1.5" title="Completed today">
+          <Sticker name="check" className="size-4.5" />
+          {completedTasks}/{totalTasks}
+        </span>
+        <span className="flex items-center gap-1.5" title="Focus logged today">
+          <Sticker name="clock" className="size-4.5" />
+          {focusLogged}
+        </span>
+        <span className="flex items-center gap-1.5" title="Daily target">
+          <Sticker name="target" className="size-4.5" />
+          {goalBar}
+          {goalPercent}%
+        </span>
+        <span className="flex items-center gap-1.5" title="Streak">
+          <Sticker name="flame" className="size-4.5" />
+          {streak}d
+        </span>
+      </div>
 
-        <div className={`${tile} tile-blue`} title="Focus logged today">
-          <span className={label}>Focus Logged</span>
-          <Sticker name="clock" className={`${sticker} md:-rotate-[8deg] max-md:order-first`} />
-          <span className={value}>{focusLogged}</span>
-        </div>
-
-        <div className={`${tile} tile-yellow`} title="Daily target">
-          <span className={label}>Target</span>
-          <Sticker name="target" className={`${sticker} md:rotate-[10deg] max-md:order-first`} />
-          <div className="md:mr-14">
-            <span className={value}>{goalPercent}%</span>
-            <div className="hidden md:block h-1.5 mt-1.5 rounded-full overflow-hidden bg-(--tile-track)">
-              <div
-                className="h-full rounded-full bg-(--tile-fill) transition-all duration-500"
-                style={{ width: `${goalPercent}%` }}
-              />
-            </div>
+      <div className="hidden md:grid grid-cols-4 gap-4">
+        <div className={card}>
+          <div className={`${iconTile} bg-(--tile-green-a)`}>
+            <Sticker name="check" className="size-7.5 rotate-[8deg]" />
+          </div>
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <span className={label}>Completion</span>
+            <span className="flex items-baseline gap-1.5">
+              <span className={value}>
+                {completedTasks}/{totalTasks}
+              </span>
+              <span className={unit}>{completionPercent}</span>
+            </span>
           </div>
         </div>
 
-        <div className={`${tile} tile-pink`} title="Streak">
-          <span className={label}>Streak</span>
-          <Sticker name="flame" className={`${sticker} md:-rotate-[6deg] max-md:order-first`} />
-          <span className={value}>
-            {streak}
-            <span className="md:hidden">d</span>
-            <span className={unit}>{streak === 1 ? 'day' : 'days'}</span>
-          </span>
+        <div className={card}>
+          <div className={`${iconTile} bg-(--tile-blue-a)`}>
+            <Sticker name="clock" className="size-7.5 -rotate-[8deg]" />
+          </div>
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <span className={label}>Focus Logged</span>
+            <span className={value}>{focusLogged}</span>
+          </div>
+        </div>
+
+        <div className={card}>
+          <div className={`${iconTile} bg-(--tile-yellow-a)`}>
+            <Sticker name="target" className="size-7.5 rotate-[10deg]" />
+          </div>
+          <div className="min-w-0 flex-1 flex flex-col gap-1.5">
+            <span className={label}>Target</span>
+            <span className="flex items-center gap-2.5">
+              <span className={value}>{goalPercent}%</span>
+              {goalBar}
+            </span>
+          </div>
+        </div>
+
+        <div className={card}>
+          <div className={`${iconTile} bg-(--tile-pink-a)`}>
+            <Sticker name="flame" className="size-7.5 -rotate-[6deg]" />
+          </div>
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <span className={label}>Streak</span>
+            <span className="flex items-baseline gap-1.5">
+              <span className={value}>{streak}</span>
+              <span className={unit}>{streak === 1 ? 'day' : 'days'}</span>
+            </span>
+          </div>
         </div>
       </div>
     </div>

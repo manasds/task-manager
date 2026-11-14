@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
-import { Sticker } from "./Sticker";
 import { Activity, PRIORITY_CONFIG } from "../types/activity";
 import type { CanvasTile } from "../types/canvas";
 import { fetchCanvas } from "../api/client";
@@ -21,7 +20,7 @@ type LinksState =
   | { phase: "ready"; tiles: CanvasTile[] };
 
 const mutedText =
-  "h-44 border-[1.5px] border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center gap-2 p-4 text-center text-xs font-medium text-slate-500";
+  "h-28 border-[1.5px] border-dashed border-slate-300 rounded-2xl flex items-center justify-center p-4 text-center text-xs text-slate-400";
 
 const cardClass =
   "block bg-white rounded-2xl border border-slate-200 card-lift hover:border-slate-300 p-3 space-y-2.5 text-left transition-[color,background-color,border-color,opacity,filter] duration-200";
@@ -165,10 +164,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
   const taskColumn = (title: string, list: Activity[]) => (
     <Column title={title} count={list.length}>
       {list.length === 0 ? (
-        <div className={mutedText}>
-          <Sticker name="spark" className="size-14 -rotate-[10deg]" />
-          Nothing here
-        </div>
+        <div className={mutedText}>Nothing here</div>
       ) : (
         list.map(taskCard)
       )}
@@ -201,10 +197,7 @@ export const ByTypeView: React.FC<ByTypeViewProps> = ({
           ) : links.phase === "error" ? (
             <div className={mutedText}>Could not load links.</div>
           ) : tiles.length === 0 ? (
-            <div className={mutedText}>
-              <Sticker name="spark" className="size-14 -rotate-[10deg]" />
-              Nothing here
-            </div>
+            <div className={mutedText}>Nothing here</div>
           ) : (
             tiles.map((t) => {
               const ytId = getYouTubeId(t.url);

@@ -1,9 +1,8 @@
 'use client';
 
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, Inbox } from 'lucide-react';
 import { CALENDAR_TYPES, PRIORITY_LABELS } from '@/lib/calendar/theme';
-import { Sticker } from '@/components/Sticker';
 import type { DragPayload, UnscheduledItem } from '@/lib/calendar/types';
 
 /** Droppable id for the tray: dropping a planned card here unschedules it. */
@@ -93,7 +92,7 @@ export function UnscheduledTray({ items, open, onToggle, dayLabel, addable, onAd
           aria-expanded={open}
           className="flex h-11 flex-1 items-center gap-2 pl-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
         >
-          <Sticker name="spark" className="size-6" />
+          <Inbox className="h-4 w-4 text-slate-500" aria-hidden />
           <span className="text-sm font-medium tracking-tight text-slate-900">
             Unscheduled · <span className="font-normal text-slate-500">{dayLabel}</span>
           </span>

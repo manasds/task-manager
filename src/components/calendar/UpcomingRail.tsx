@@ -1,6 +1,5 @@
 import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { Clock } from 'lucide-react';
-import { Sticker } from '@/components/Sticker';
 import { formatRange } from '@/lib/calendar/layout';
 import { CALENDAR_TYPES } from '@/lib/calendar/theme';
 import type { CalendarItem } from '@/lib/calendar/types';
@@ -57,10 +56,7 @@ export function UpcomingRail({ items, today, now, onSelectItem }: UpcomingRailPr
           <div key={group.day.toISOString()}>
             <h3 className="text-sm text-slate-500">{dayLabel(group.day, today)}</h3>
             {group.items.length === 0 ? (
-              <div className="mt-2 flex items-center gap-2">
-                <Sticker name="smile" className="size-9 -rotate-[8deg]" />
-                <p className="text-sm text-slate-400">No more events today</p>
-              </div>
+              <p className="mt-2 text-sm text-slate-400">No more events today</p>
             ) : (
               <ul className="mt-1.5 space-y-0.5">
                 {group.items.map((item) => (

@@ -231,7 +231,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const dot = SYNC_DOT[syncPhase];
 
   return (
-    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200">
+    // z-40: above the calendar's sticky hour header (z-30), so the menu is never covered. Dialogs and toasts are z-50.
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-13 md:h-15 flex items-center gap-6">
         <div className="group flex items-center gap-2.5 shrink-0">
           {/* The lime tile is fixed art, so its glyph stays dark in both themes. */}

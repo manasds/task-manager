@@ -35,12 +35,11 @@ This is a **look-only** change. The app must behave exactly as before.
 | `btn-paper` | Secondary action. Paper gradient with a hairline border. |
 | `card-lift` | Shadow for a white card sitting on a tray or the page. |
 | `pop-shadow` | Shadow for floating layers: menus, popovers, dialogs. |
-| `tile tile-green` / `tile-blue` / `tile-yellow` / `tile-pink` | Pastel stat tile. Text inside uses `text-(--tile-ink-2)` for labels. |
 | `bg-tray`, `bg-page` | See above. |
 | `sticker` | Applied by the `Sticker` component; do not use directly. |
 
-`import { Sticker } from '@/components/Sticker'` (or a relative path). Names: `check`, `clock`, `target`, `flame`,
-`star`, `spark`, `smile`, `moon`. Size and tilt with classes: `<Sticker name="spark" className="size-6 -rotate-6" />`.
+Stickers (`src/components/Sticker.tsx`: `check`, `clock`, `target`, `flame`) are used **only in the stat strip**, one per
+stat, on a small pastel square. Do not add stickers anywhere else: the user called stickers in empty states overuse.
 
 ## Dark mode traps
 
@@ -86,10 +85,10 @@ Follow these so every screen matches. Keep whatever sizing and layout classes th
 - **Numbers, durations, dates, clock times, timers**: add `font-mono tabular-nums`.
 - **Count badge**: `rounded-full bg-slate-100 px-1.5 py-px text-[11px] font-mono font-medium text-slate-500`.
 - **Active or selected item** (tabs, nav): `bg-slate-100 text-slate-900` pill, not an underline or an indigo colour.
-- **Empty state**: `border-[1.5px] border-dashed border-slate-300 rounded-2xl`, and replace the grey lucide icon with one
-  `<Sticker … className="size-14 -rotate-[10deg]" />`. Keep the text. Remove the lucide import if it becomes unused.
-- **Stickers**: decoration only, used sparingly. One per empty state, one beside a section title at most. Never inside
-  buttons, inputs, list rows or anything repeated more than four times on screen.
+- **Empty state**: `border-[1.5px] border-dashed border-slate-300 rounded-2xl` around the existing grey icon and text.
+  No sticker.
+- **Drag and drop**: no outline or ring on the drop target column.
+- **Stat strip**: white cards (`rounded-[20px] border border-slate-200 bg-white card-lift`), not full pastel tiles.
 
 ## Reference
 

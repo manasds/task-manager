@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ChevronRight, Plus, SquareDashed } from 'lucide-react';
-import { Sticker } from '@/components/Sticker';
 import {
   ApiError,
   deleteCanvasSection,
@@ -842,8 +841,7 @@ export default function CanvasView() {
             />
 
             {sections.length === 0 && looseTiles.length === 0 && (
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
-                <Sticker name="spark" className="size-14 -rotate-[10deg]" />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <p className="text-sm text-slate-500">Add a link, or a section to group links in.</p>
               </div>
             )}
