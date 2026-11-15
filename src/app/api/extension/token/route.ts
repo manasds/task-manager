@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { ensureMigrated } from '@/lib/db';
 import { createExtensionToken, revokeExtensionToken } from '@/lib/extensionTokens';
-import { getSessionUser } from '@/lib/session';
+import { getCookieUserId } from '@/lib/requestUser';
 import { allowedExtensionIds, bearerToken, redirectExtensionId } from '@/utils/extensionAuth';
 
 export const runtime = 'nodejs';
@@ -15,10 +14,9 @@ const bodySchema = z.object({ redirect: z.string().max(2048) });
  */
 export async function POST(request: Request) {
   try {
-    await ensureMigrated();
-    const user = await getSessionUser();
+    const userId = await getCookieUserId(request);
 
-    if (!user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
@@ -32,7 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This extension is not allowed to connect' }, { status: 400 });
     }
 
-    return NextResponse.json({ token: await createExtensionToken(user.id, extensionId) });
+    return NextResponse.json({ token: await createExtensionToken(userId, extensionId) });
   } catch (error) {
     console.error(error);
 
@@ -43,7 +41,6 @@ export async function POST(request: Request) {
 /** DELETE /api/extension/token with the key as a bearer token: the extension signs out and the key stops working. */
 export async function DELETE(request: Request) {
   try {
-    await ensureMigrated();
     const token = bearerToken(request.headers.get('authorization'));
 
     if (token) await revokeExtensionToken(token);

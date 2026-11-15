@@ -13,6 +13,9 @@ type Phase = 'loading' | 'signed-out' | 'form' | 'saved';
 const sectionsResponseSchema = z.object({ sections: z.array(canvasSectionSchema) });
 const savedResponseSchema = z.object({ section: z.object({ id: z.string(), name: z.string() }) });
 
+/** A 409 means the canvas is at its cap; the server says which. */
+const limitResponseSchema = z.object({ error: z.string().min(1) });
+
 const LAST_SECTION_KEY = 'tasky.share.lastSection';
 
 function readLastSection(): string | null {
@@ -148,6 +151,12 @@ export default function ShareSheet() {
       });
 
       if (response.status === 401) return setPhase('signed-out');
+
+      if (response.status === 409) {
+        const limit = limitResponseSchema.safeParse(await response.json().catch(() => null));
+
+        return setMessage(limit.success ? limit.data.error : 'Your canvas is full. Delete some links to add more.');
+      }
 
       const body = savedResponseSchema.safeParse(await response.json().catch(() => null));
 

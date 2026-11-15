@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { ensureMigrated } from '@/lib/db';
 import { PreviewLimitError, lookupPreview } from '@/lib/linkPreview';
 import { getRequestUserId } from '@/lib/requestUser';
 
@@ -10,7 +9,6 @@ const urlSchema = z.url({ protocol: /^https?$/ }).max(2048);
 
 /** GET /api/canvas/preview?url=…: the page's title and preview image, looked up through Microlink. */
 export async function GET(request: Request) {
-  await ensureMigrated();
   const userId = await getRequestUserId(request);
 
   if (!userId) {
