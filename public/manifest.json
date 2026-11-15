@@ -1,14 +1,19 @@
 {
   "id": "/",
-  "name": "Tasky - Daily Activity Tracker",
+  "name": "Tasky – Daily Planner & Focus Timer",
   "short_name": "Tasky",
-  "description": "Drag and drop activity & daily task tracker with custom progress visualization charts.",
+  "description": "Plan your day on a board and a calendar, run a focus timer, and see the hours you put into building and learning.",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "productivity"
+  ],
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
-  "theme_color": "#18181b",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "/pwa-192x192.png",

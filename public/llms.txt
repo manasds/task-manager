@@ -1,0 +1,30 @@
+# Tasky
+
+> Tasky is a free daily planner for people who build and learn. Plan the day on a task board and a week calendar, run a focus timer on a task, and see how many hours you actually put in. It runs in the browser, installs as an app, and works offline.
+
+Website: https://tasky.manasbuilds.me/
+
+## What it does
+
+- Task board with To do, Doing, Done and Parking columns. Drag tasks between them.
+- Every task is tagged Build (making things) or Learn (taking things in), with a priority, an optional deadline, a time estimate and subtasks.
+- Week calendar for time-blocking: put tasks on days and hours, and see the time you logged on each day.
+- Focus timer: start it on a task and the minutes are logged against that task.
+- Analytics: time logged per day, a daily focus goal and a streak.
+- Canvas: a board of saved links, articles and YouTube videos to read or watch later, grouped into sections.
+- Saving links: the Tasky Saver browser extension (Chrome and other Chromium browsers) and, on Android, the installed app's share sheet.
+- Light and dark themes. Tasks can be exported and imported as JSON.
+
+## Accounts, sync and price
+
+- Tasky is free.
+- Without an account, tasks are kept in the browser on that device, up to 6 tasks. The canvas needs an account.
+- Signing in with Google syncs tasks and the canvas across devices. Task edits made offline are saved on the device and sync when it is back online.
+
+## Common questions
+
+- Is Tasky free? Yes.
+- Does it work offline? Yes. It is a progressive web app; install it from the browser and it opens without a connection.
+- Do I need an account? No, but without one a board holds up to 6 tasks and stays on one device.
+- Which sign-in does it use? Google.
+- Is there a mobile app? Tasky installs from the browser on phones and desktops as an app; there is no app-store app.
