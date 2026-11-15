@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { listSections, listTiles } from '@/lib/canvas';
-import { ensureMigrated } from '@/lib/db';
 import { getRequestUserId } from '@/lib/requestUser';
 
 export const runtime = 'nodejs';
@@ -8,7 +7,6 @@ export const runtime = 'nodejs';
 /** GET /api/canvas: this user's tiles in display order, and the section boxes they sit in. The extension reads sections here too. */
 export async function GET(request: Request) {
   try {
-    await ensureMigrated();
     const userId = await getRequestUserId(request);
 
     if (!userId) {

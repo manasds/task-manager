@@ -17,7 +17,7 @@ export const pool = new pg.Pool({
 
 let migrating: Promise<void> | null = null;
 
-/** Create the tables once per server process. The schema is safe to re-run. */
+/** Create or update the tables. Run by scripts/migrate.ts at deploy, not per request. Safe to re-run. */
 export function ensureMigrated(): Promise<void> {
   if (!databaseUrl) return Promise.reject(new Error('DATABASE_URL is not set.'));
   migrating ??= pool.query(SCHEMA_SQL).then(

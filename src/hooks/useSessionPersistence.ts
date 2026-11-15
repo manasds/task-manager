@@ -64,8 +64,8 @@ interface PersistenceState {
 /**
  * Local-first persistence with per-task cloud sync. Edits save to this device at once
  * and sync SYNC_DELAY_AFTER_EDIT_MS after the last edit. Other devices' changes are
- * pulled on sign-in, when the tab regains focus or comes back online, and every
- * BACKGROUND_SYNC_INTERVAL_MS while the tab is visible.
+ * pulled on sign-in, after each edit, and when the tab is shown again or comes back
+ * online. Unconfirmed edits are retried every BACKGROUND_SYNC_INTERVAL_MS.
  * `onRemoteUpdate` receives server changes so the UI can merge them into its state.
  */
 export function useSessionPersistence(
@@ -338,10 +338,10 @@ export function useSessionPersistence(
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
 
+    // Only retries edits the server hasn't confirmed. An idle tab doesn't poll, so the
+    // database can sleep; other devices' changes arrive when this tab is shown again.
     const interval = window.setInterval(() => {
-      const wanted = hasPending(metaRef.current) || document.visibilityState === 'visible';
-
-      if (shouldSafetyFlush(Date.now(), lastAttemptRef.current, wanted, inFlightRef.current)) {
+      if (shouldSafetyFlush(Date.now(), lastAttemptRef.current, hasPending(metaRef.current), inFlightRef.current)) {
         void sync();
       }
     }, BACKGROUND_SYNC_INTERVAL_MS);

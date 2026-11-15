@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { pool } from './db';
+import { LimitError, MAX_TASKS_PER_USER } from './limits';
 import { storedActivitySchema, type Activity } from '../types/activity';
 import {
   ActivityChange,
@@ -48,49 +49,80 @@ function toGoal(state: DbSyncState): GoalRow | null {
   };
 }
 
-/** Everything that changed for this user after `since`, from one consistent snapshot. */
+/** A pull reads the sync state and a page of rows together; either side is null when missing. */
+interface DbPullRow {
+  seq: string | null;
+  daily_goal_minutes: number | null;
+  goal_updated_at: Date | null;
+  goal_seq: string | null;
+  id: string | null;
+  data: Activity | null;
+  client_updated_at: Date | null;
+  server_seq: string | null;
+}
+
+/**
+ * Everything that changed for this user after `since`. One statement, so the rows and the
+ * sync state come from one snapshot and the pull is a single round trip.
+ */
 export async function pullChanges(userId: string, since: number): Promise<PullResponse> {
-  const client = await pool.connect();
-
-  try {
-    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
-
-    const rows = await client.query<DbActivityRow>(
-      `SELECT id, data, client_updated_at, server_seq
+  const result = await pool.query<DbPullRow>(
+    `SELECT s.seq, s.daily_goal_minutes, s.goal_updated_at, s.goal_seq,
+            a.id, a.data, a.client_updated_at, a.server_seq
+     FROM (SELECT $1::text AS user_id) u
+     LEFT JOIN user_sync_state s ON s.user_id = u.user_id
+     LEFT JOIN LATERAL (
+       SELECT id, data, client_updated_at, server_seq
        FROM activities
-       WHERE user_id = $1 AND server_seq > $2
+       WHERE user_id = u.user_id AND server_seq > $2
        ORDER BY server_seq
-       LIMIT $3`,
-      [userId, since, PULL_PAGE_SIZE + 1]
-    );
+       LIMIT $3
+     ) a ON true
+     ORDER BY a.server_seq`,
+    [userId, since, PULL_PAGE_SIZE + 1]
+  );
 
-    const state = await client.query<DbSyncState>(
-      'SELECT seq, daily_goal_minutes, goal_updated_at, goal_seq FROM user_sync_state WHERE user_id = $1',
-      [userId]
-    );
+  const rows = result.rows.flatMap((row) =>
+    row.id !== null && row.client_updated_at !== null && row.server_seq !== null
+      ? [toRow({ id: row.id, data: row.data, client_updated_at: row.client_updated_at, server_seq: row.server_seq })]
+      : []
+  );
 
-    await client.query('COMMIT');
+  // The outer select always yields a row, which carries the state when the user has one.
+  const first = result.rows[0];
 
-    const hasMore = rows.rows.length > PULL_PAGE_SIZE;
-    const page = rows.rows.slice(0, PULL_PAGE_SIZE).map(toRow);
-    const stateRow = state.rows[0];
-    const goal = stateRow && Number(stateRow.goal_seq) > since ? toGoal(stateRow) : null;
+  const stateRow: DbSyncState | null =
+    first && first.seq !== null
+      ? {
+          seq: first.seq,
+          daily_goal_minutes: first.daily_goal_minutes,
+          goal_updated_at: first.goal_updated_at,
+          goal_seq: first.goal_seq ?? '0',
+        }
+      : null;
 
-    let cursor = since;
+  const hasMore = rows.length > PULL_PAGE_SIZE;
+  const page = rows.slice(0, PULL_PAGE_SIZE);
+  const goal = stateRow && Number(stateRow.goal_seq) > since ? toGoal(stateRow) : null;
 
-    if (hasMore) {
-      cursor = page[page.length - 1].seq;
-    } else if (stateRow) {
-      cursor = Math.max(since, Number(stateRow.seq));
-    }
+  let cursor = since;
 
-    return { rows: page, goal, cursor, hasMore };
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw error;
-  } finally {
-    client.release();
+  if (hasMore) {
+    cursor = page[page.length - 1].seq;
+  } else if (stateRow) {
+    cursor = Math.max(since, Number(stateRow.seq));
   }
+
+  return { rows: page, goal, cursor, hasMore };
+}
+
+interface DbExistingRow {
+  /** The user's live (not deleted) tasks before this push. */
+  live: number;
+  id: string | null;
+  data: Activity | null;
+  client_updated_at: Date | null;
+  server_seq: string | null;
 }
 
 /** Edit wins when nobody else wrote since the device last saw the row, or when it is newer. */
@@ -107,31 +139,44 @@ export async function pushChanges(userId: string, request: PushRequest): Promise
 
   try {
     await client.query('BEGIN');
-    await client.query(
-      'INSERT INTO user_sync_state (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING',
-      [userId]
-    );
 
-    // Row lock serializes pushes per user so seqs commit in order.
+    // Creates the state row on a first push and locks it either way, so a user's pushes run
+    // one at a time and their seqs commit in order. A waiting push gets the committed state.
     const stateResult = await client.query<DbSyncState>(
-      'SELECT seq, daily_goal_minutes, goal_updated_at, goal_seq FROM user_sync_state WHERE user_id = $1 FOR UPDATE',
+      `INSERT INTO user_sync_state (user_id) VALUES ($1)
+       ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
+       RETURNING seq, daily_goal_minutes, goal_updated_at, goal_seq`,
       [userId]
     );
 
     const state = stateResult.rows[0];
-    let seq = Number(state.seq);
+    const startSeq = Number(state.seq);
+    let seq = startSeq;
 
     const response: PushResponse = { applied: [], rejected: [], goalApplied: null, goalRejected: null };
 
     const ids = request.changes.map((c) => c.id);
 
-    const existing = await client.query<DbActivityRow>(
-      `SELECT id, data, client_updated_at, server_seq
-       FROM activities WHERE user_id = $1 AND id = ANY($2::text[])`,
+    // A separate statement from the lock above, so it sees what the push before this one wrote.
+    const existing = await client.query<DbExistingRow>(
+      `SELECT n.live, a.id, a.data, a.client_updated_at, a.server_seq
+       FROM (SELECT count(*)::int AS live FROM activities WHERE user_id = $1 AND data IS NOT NULL) n
+       LEFT JOIN activities a ON a.user_id = $1 AND a.id = ANY($2::text[])`,
       [userId, ids]
     );
 
-    const currentById = new Map(existing.rows.map((row) => [row.id, row]));
+    const live = existing.rows[0]?.live ?? 0;
+
+    const currentById = new Map(
+      existing.rows.flatMap((row): [string, DbActivityRow][] =>
+        row.id !== null && row.client_updated_at !== null && row.server_seq !== null
+          ? [[row.id, { id: row.id, data: row.data, client_updated_at: row.client_updated_at, server_seq: row.server_seq }]]
+          : []
+      )
+    );
+
+    /** How many live tasks this push adds: creates minus deletes. */
+    let liveDelta = 0;
 
     // Winning rows, written together below. Ids are unique per push, so one upsert is safe.
     const winnerIds: string[] = [];
@@ -155,6 +200,10 @@ export async function pushChanges(userId: string, request: PushRequest): Promise
 
       seq += 1;
 
+      if (change.data !== null && !current?.data) liveDelta += 1;
+
+      if (change.data === null && current?.data) liveDelta -= 1;
+
       winnerIds.push(change.id);
       winnerData.push(change.data === null ? null : JSON.stringify(change.data));
       winnerUpdatedAt.push(change.updatedAt);
@@ -162,17 +211,10 @@ export async function pushChanges(userId: string, request: PushRequest): Promise
       response.applied.push({ id: change.id, seq });
     }
 
-    if (winnerIds.length > 0) {
-      await client.query(
-        `INSERT INTO activities (user_id, id, data, client_updated_at, server_seq)
-         SELECT $1, w.id, w.data, w.client_updated_at, w.server_seq
-         FROM unnest($2::text[], $3::jsonb[], $4::timestamptz[], $5::bigint[])
-           AS w(id, data, client_updated_at, server_seq)
-         ON CONFLICT (user_id, id) DO UPDATE
-           SET data = EXCLUDED.data,
-               client_updated_at = EXCLUDED.client_updated_at,
-               server_seq = EXCLUDED.server_seq`,
-        [userId, winnerIds, winnerData, winnerUpdatedAt, winnerSeqs]
+    // Deletes in the same push count against the creates, so clearing old tasks makes room.
+    if (liveDelta > 0 && live + liveDelta > MAX_TASKS_PER_USER) {
+      throw new LimitError(
+        `Your account is at its limit of ${MAX_TASKS_PER_USER.toLocaleString('en-US')} tasks. Delete some tasks to keep syncing.`
       );
     }
 
@@ -195,12 +237,27 @@ export async function pushChanges(userId: string, request: PushRequest): Promise
       }
     }
 
-    await client.query(
-      `UPDATE user_sync_state
-       SET seq = $2, daily_goal_minutes = $3, goal_updated_at = $4, goal_seq = $5
-       WHERE user_id = $1`,
-      [userId, seq, goalMinutes, goalUpdatedAt, goalSeq]
-    );
+    // Every applied task or goal took a seq, so an unchanged seq means there is nothing to write.
+    // Postgres runs a writing CTE to completion even though nothing reads it.
+    if (seq !== startSeq) {
+      await client.query(
+        `WITH written AS (
+           INSERT INTO activities (user_id, id, data, client_updated_at, server_seq)
+           SELECT $1, w.id, w.data, w.client_updated_at, w.server_seq
+           FROM unnest($2::text[], $3::jsonb[], $4::timestamptz[], $5::bigint[])
+             AS w(id, data, client_updated_at, server_seq)
+           ON CONFLICT (user_id, id) DO UPDATE
+             SET data = EXCLUDED.data,
+                 client_updated_at = EXCLUDED.client_updated_at,
+                 server_seq = EXCLUDED.server_seq
+         )
+         UPDATE user_sync_state
+         SET seq = $6, daily_goal_minutes = $7, goal_updated_at = $8, goal_seq = $9
+         WHERE user_id = $1`,
+        [userId, winnerIds, winnerData, winnerUpdatedAt, winnerSeqs, seq, goalMinutes, goalUpdatedAt, goalSeq]
+      );
+    }
+
     await client.query('COMMIT');
 
     return response;
@@ -212,7 +269,16 @@ export async function pushChanges(userId: string, request: PushRequest): Promise
   }
 }
 
-const isoTimestampSchema = z.string().refine((value) => !Number.isNaN(Date.parse(value)));
+/** Postgres can't read every date string Date.parse can, so it is passed on as a plain ISO timestamp. */
+const isoTimestampSchema = z
+  .string()
+  .max(64)
+  .refine((value) => {
+    const year = new Date(value).getUTCFullYear();
+
+    return year >= 1970 && year <= 9999;
+  })
+  .transform((value) => new Date(value).toISOString());
 
 const seqSchema = z.int().nonnegative();
 

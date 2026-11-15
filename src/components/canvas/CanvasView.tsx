@@ -252,7 +252,12 @@ export default function CanvasView() {
               return;
             }
 
-            setError('Could not save that change. Showing what is saved.');
+            // 409: the account is at a cap, and the server's message says which.
+            setError(
+              err instanceof ApiError && err.status === 409
+                ? err.message
+                : 'Could not save that change. Showing what is saved.'
+            );
             reloadAfterWritesRef.current = true;
           }
         )

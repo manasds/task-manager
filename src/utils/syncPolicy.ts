@@ -17,7 +17,7 @@ import {
  */
 export const SYNC_DELAY_AFTER_EDIT_MS = 1_500;
 
-/** While the tab is visible, pull other devices' changes (and retry failed pushes) this often. */
+/** While edits wait for the server to confirm them, try again this often. An idle tab doesn't poll. */
 export const BACKGROUND_SYNC_INTERVAL_MS = 60_000;
 
 /** A local edit not yet confirmed by the server. `at` is unique and increasing per task. */

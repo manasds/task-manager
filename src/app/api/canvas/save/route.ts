@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { lastPositionInSection, listSections, saveSection, saveTile } from '@/lib/canvas';
-import { ensureMigrated } from '@/lib/db';
+import { LimitError } from '@/lib/limits';
 import { lookupPreview } from '@/lib/linkPreview';
 import { getRequestUserId } from '@/lib/requestUser';
 import { saveLinkSchema, type CanvasSection, type CanvasTile, type LinkPreview } from '@/types/canvas';
@@ -24,7 +24,6 @@ async function previewOrNothing(url: string): Promise<LinkPreview | null> {
  */
 export async function POST(request: Request) {
   try {
-    await ensureMigrated();
     const userId = await getRequestUserId(request);
 
     if (!userId) {
@@ -67,6 +66,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ tile, section: { id: section.id, name: section.name } });
   } catch (error) {
+    if (error instanceof LimitError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+
     console.error(error);
 
     return NextResponse.json({ error: 'Could not save the link' }, { status: 500 });
