@@ -51,6 +51,10 @@ export const metadata: Metadata = {
   },
 };
 
+const GTM_ID = 'GTM-MTDSKRF4';
+const GTM_BOOT_SCRIPT = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());`;
+const LOAD_ANALYTICS = process.env.NODE_ENV === 'production';
+
 /** Browser chrome matches the page: white in light, near-black in dark. */
 export const viewport: Viewport = {
   themeColor: [
@@ -65,6 +69,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        {LOAD_ANALYTICS && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`} />
+            <script dangerouslySetInnerHTML={{ __html: GTM_BOOT_SCRIPT }} />
+          </>
+        )}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} bg-page text-slate-900 antialiased font-sans selection:bg-amber-100 selection:text-amber-900`}
